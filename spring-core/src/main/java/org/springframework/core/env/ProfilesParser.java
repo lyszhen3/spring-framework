@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.StringTokenizer;
 import java.util.function.Predicate;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -31,7 +32,11 @@ import org.springframework.util.StringUtils;
  * @author Phillip Webb
  * @since 5.1
  */
-class ProfilesParser {
+final class ProfilesParser {
+
+	private ProfilesParser() {
+	}
+
 
 	static Profiles parse(String... expressions) {
 		Assert.notEmpty(expressions, "Must specify at least one profile");
@@ -43,13 +48,15 @@ class ProfilesParser {
 	}
 
 	private static Profiles parseExpression(String expression) {
-		Assert.hasText(expression, () ->
-				"Invalid profile expression [" + expression + "]: must contain text");
+		Assert.hasText(expression, () -> "Invalid profile expression [" + expression + "]: must contain text");
 		StringTokenizer tokens = new StringTokenizer(expression, "()&|!", true);
 		return parseTokens(expression, tokens);
 	}
 
 	private static Profiles parseTokens(String expression, StringTokenizer tokens) {
+		return parseTokens(expression, tokens, Context.NONE);
+	}
+	private static Profiles parseTokens(String expression, StringTokenizer tokens, Context context) {
 		List<Profiles> elements = new ArrayList<>();
 		Operator operator = null;
 		while (tokens.hasMoreTokens()) {
@@ -59,7 +66,11 @@ class ProfilesParser {
 			}
 			switch (token) {
 				case "(":
-					elements.add(parseTokens(expression, tokens));
+					Profiles contents = parseTokens(expression, tokens, Context.BRACKET);
+					if (context == Context.INVERT) {
+						return contents;
+					}
+					elements.add(contents);
 					break;
 				case "&":
 					assertWellFormed(expression, operator == null || operator == Operator.AND);
@@ -70,23 +81,29 @@ class ProfilesParser {
 					operator = Operator.OR;
 					break;
 				case "!":
-					elements.add(not(parseTokens(expression, tokens)));
+					elements.add(not(parseTokens(expression, tokens, Context.INVERT)));
 					break;
 				case ")":
 					Profiles merged = merge(expression, elements, operator);
+					if (context == Context.BRACKET) {
+						return merged;
+					}
 					elements.clear();
 					elements.add(merged);
 					operator = null;
 					break;
 				default:
-					elements.add(equals(token));
+					Profiles value = equals(token);
+					if (context == Context.INVERT) {
+						return value;
+					}
+					elements.add(value);
 			}
 		}
 		return merge(expression, elements, operator);
 	}
 
-	private static Profiles merge(String expression, List<Profiles> elements,
-			Operator operator) {
+	private static Profiles merge(String expression, List<Profiles> elements, @Nullable Operator operator) {
 		assertWellFormed(expression, !elements.isEmpty());
 		if (elements.size() == 1) {
 			return elements.get(0);
@@ -96,36 +113,35 @@ class ProfilesParser {
 	}
 
 	private static void assertWellFormed(String expression, boolean wellFormed) {
-		Assert.isTrue(wellFormed,
-				() -> "Malformed profile expression [" + expression + "]");
+		Assert.isTrue(wellFormed, () -> "Malformed profile expression [" + expression + "]");
 	}
 
 	private static Profiles or(Profiles... profiles) {
-		return (activeProfile) -> Arrays.stream(profiles).anyMatch(
-				isMatch(activeProfile));
+		return activeProfile -> Arrays.stream(profiles).anyMatch(isMatch(activeProfile));
 	}
 
 	private static Profiles and(Profiles... profiles) {
-		return (activeProfile) -> Arrays.stream(profiles).allMatch(
-				isMatch(activeProfile));
+		return activeProfile -> Arrays.stream(profiles).allMatch(isMatch(activeProfile));
 	}
 
 	private static Profiles not(Profiles profiles) {
-		return (activeProfile) -> !profiles.matches(activeProfile);
+		return activeProfile -> !profiles.matches(activeProfile);
 	}
 
 	private static Profiles equals(String profile) {
-		return (activeProfile) -> activeProfile.test(profile);
+		return activeProfile -> activeProfile.test(profile);
 	}
 
 	private static Predicate<Profiles> isMatch(Predicate<String> activeProfile) {
-		return (profiles) -> profiles.matches(activeProfile);
+		return profiles -> profiles.matches(activeProfile);
 	}
 
-	private enum Operator {
-		AND,
-		OR
-	}
+
+	private enum Operator {AND, OR}
+
+
+	private enum Context {NONE, INVERT, BRACKET}
+
 
 	private static class ParsedProfiles implements Profiles {
 
@@ -152,7 +168,6 @@ class ProfilesParser {
 		public String toString() {
 			return StringUtils.arrayToDelimitedString(this.expressions, " or ");
 		}
-
 	}
 
 }

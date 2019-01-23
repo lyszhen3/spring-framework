@@ -66,14 +66,13 @@ import static org.junit.Assert.*;
 import static org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder.*;
 
 /**
- * Unit tests for {@link org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder}.
+ * Unit tests for {@link MvcUriComponentsBuilder}.
  *
  * @author Oliver Gierke
  * @author Dietrich Schulten
  * @author Rossen Stoyanchev
  * @author Sam Brannen
  */
-@SuppressWarnings("unused")
 public class MvcUriComponentsBuilderTests {
 
 	private final MockHttpServletRequest request = new MockHttpServletRequest();
@@ -277,7 +276,7 @@ public class MvcUriComponentsBuilderTests {
 		assertThat(uriComponents.toUriString(), endsWith("/something/else"));
 	}
 
- 	@Test
+	@Test
 	public void fromMethodCallOnSubclass() {
 		UriComponents uriComponents = fromMethodCall(on(ExtendedController.class).myMethod(null)).build();
 
@@ -402,6 +401,20 @@ public class MvcUriComponentsBuilderTests {
 		assertEquals("http://example.org:9999/base/people/123/addresses/DE", url);
 	}
 
+	@Test // SPR-17027
+	public void fromMappingNameWithEncoding() {
+
+		initWebApplicationContext(WebConfig.class);
+
+		this.request.setServerName("example.org");
+		this.request.setServerPort(9999);
+		this.request.setContextPath("/base");
+
+		String mappingName = "PAC#getAddressesForCountry";
+		String url = fromMappingName(mappingName).arg(0, "DE;FR").encode().buildAndExpand("_+_");
+		assertEquals("/base/people/_%2B_/addresses/DE%3BFR", url);
+	}
+
 	@Test
 	public void fromControllerWithPrefix() {
 
@@ -453,12 +466,12 @@ public class MvcUriComponentsBuilderTests {
 	}
 
 
-	private class PersonControllerImpl implements PersonController {
+	static class PersonControllerImpl implements PersonController {
 	}
 
 
 	@RequestMapping("/people/{id}/addresses")
-	private static class PersonsAddressesController {
+	static class PersonsAddressesController {
 
 		@RequestMapping("/{country}")
 		HttpEntity<Void> getAddressesForCountry(@PathVariable String country) {
@@ -525,7 +538,7 @@ public class MvcUriComponentsBuilderTests {
 
 
 	@RequestMapping("/user/{userId}/contacts")
-	private static class UserContactController {
+	static class UserContactController {
 
 		@RequestMapping("/create")
 		public String showCreate(@PathVariable Integer userId) {
@@ -540,7 +553,7 @@ public class MvcUriComponentsBuilderTests {
 	}
 
 
-	private static class PersonCrudController extends AbstractCrudController<Person, Long> {
+	static class PersonCrudController extends AbstractCrudController<Person, Long> {
 
 		@RequestMapping(path = "/{id}", method = RequestMethod.GET)
 		public Person get(@PathVariable Long id) {
@@ -550,7 +563,7 @@ public class MvcUriComponentsBuilderTests {
 
 
 	@Controller
-	private static class MetaAnnotationController {
+	static class MetaAnnotationController {
 
 		@RequestMapping
 		public void handle() {

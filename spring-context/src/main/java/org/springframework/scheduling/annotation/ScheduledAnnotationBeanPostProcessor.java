@@ -33,6 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.aop.framework.AopInfrastructureBean;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.BeanFactory;
@@ -105,7 +106,7 @@ public class ScheduledAnnotationBeanPostProcessor
 		SmartInitializingSingleton, ApplicationListener<ContextRefreshedEvent>, DisposableBean {
 
 	/**
-	 * The default name of the {@link TaskScheduler} bean to pick up: "taskScheduler".
+	 * The default name of the {@link TaskScheduler} bean to pick up: {@value}.
 	 * <p>Note that the initial lookup happens by type; this is just the fallback
 	 * in case of multiple scheduler beans found in the context.
 	 * @since 4.2
@@ -250,12 +251,12 @@ public class ScheduledAnnotationBeanPostProcessor
 			Assert.state(this.beanFactory != null, "BeanFactory must be set to find scheduler by type");
 			try {
 				// Search for TaskScheduler bean...
-				this.registrar.setTaskScheduler(resolveSchedulerBean(beanFactory, TaskScheduler.class, false));
+				this.registrar.setTaskScheduler(resolveSchedulerBean(this.beanFactory, TaskScheduler.class, false));
 			}
 			catch (NoUniqueBeanDefinitionException ex) {
-				logger.debug("Could not find unique TaskScheduler bean", ex);
+				logger.trace("Could not find unique TaskScheduler bean", ex);
 				try {
-					this.registrar.setTaskScheduler(resolveSchedulerBean(beanFactory, TaskScheduler.class, true));
+					this.registrar.setTaskScheduler(resolveSchedulerBean(this.beanFactory, TaskScheduler.class, true));
 				}
 				catch (NoSuchBeanDefinitionException ex2) {
 					if (logger.isInfoEnabled()) {
@@ -268,15 +269,15 @@ public class ScheduledAnnotationBeanPostProcessor
 				}
 			}
 			catch (NoSuchBeanDefinitionException ex) {
-				logger.debug("Could not find default TaskScheduler bean", ex);
+				logger.trace("Could not find default TaskScheduler bean", ex);
 				// Search for ScheduledExecutorService bean next...
 				try {
-					this.registrar.setScheduler(resolveSchedulerBean(beanFactory, ScheduledExecutorService.class, false));
+					this.registrar.setScheduler(resolveSchedulerBean(this.beanFactory, ScheduledExecutorService.class, false));
 				}
 				catch (NoUniqueBeanDefinitionException ex2) {
-					logger.debug("Could not find unique ScheduledExecutorService bean", ex2);
+					logger.trace("Could not find unique ScheduledExecutorService bean", ex2);
 					try {
-						this.registrar.setScheduler(resolveSchedulerBean(beanFactory, ScheduledExecutorService.class, true));
+						this.registrar.setScheduler(resolveSchedulerBean(this.beanFactory, ScheduledExecutorService.class, true));
 					}
 					catch (NoSuchBeanDefinitionException ex3) {
 						if (logger.isInfoEnabled()) {
@@ -289,7 +290,7 @@ public class ScheduledAnnotationBeanPostProcessor
 					}
 				}
 				catch (NoSuchBeanDefinitionException ex2) {
-					logger.debug("Could not find default ScheduledExecutorService bean", ex2);
+					logger.trace("Could not find default ScheduledExecutorService bean", ex2);
 					// Giving up -> falling back to default scheduler within the registrar...
 					logger.info("No TaskScheduler/ScheduledExecutorService bean found for scheduled processing");
 				}
@@ -331,7 +332,13 @@ public class ScheduledAnnotationBeanPostProcessor
 	}
 
 	@Override
-	public Object postProcessAfterInitialization(final Object bean, String beanName) {
+	public Object postProcessAfterInitialization(Object bean, String beanName) {
+		if (bean instanceof AopInfrastructureBean || bean instanceof TaskScheduler ||
+				bean instanceof ScheduledExecutorService) {
+			// Ignore AOP infrastructure such as scoped proxies.
+			return bean;
+		}
+
 		Class<?> targetClass = AopProxyUtils.ultimateTargetClass(bean);
 		if (!this.nonAnnotatedClasses.contains(targetClass)) {
 			Map<Method, Set<Scheduled>> annotatedMethods = MethodIntrospector.selectMethods(targetClass,
@@ -343,15 +350,15 @@ public class ScheduledAnnotationBeanPostProcessor
 			if (annotatedMethods.isEmpty()) {
 				this.nonAnnotatedClasses.add(targetClass);
 				if (logger.isTraceEnabled()) {
-					logger.trace("No @Scheduled annotations found on bean class: " + bean.getClass());
+					logger.trace("No @Scheduled annotations found on bean class: " + targetClass);
 				}
 			}
 			else {
 				// Non-empty set of methods
 				annotatedMethods.forEach((method, scheduledMethods) ->
 						scheduledMethods.forEach(scheduled -> processScheduled(scheduled, method, bean)));
-				if (logger.isDebugEnabled()) {
-					logger.debug(annotatedMethods.size() + " @Scheduled methods processed on bean '" + beanName +
+				if (logger.isTraceEnabled()) {
+					logger.trace(annotatedMethods.size() + " @Scheduled methods processed on bean '" + beanName +
 							"': " + annotatedMethods);
 				}
 			}
@@ -405,14 +412,16 @@ public class ScheduledAnnotationBeanPostProcessor
 				if (StringUtils.hasLength(cron)) {
 					Assert.isTrue(initialDelay == -1, "'initialDelay' not supported for cron triggers");
 					processedSchedule = true;
-					TimeZone timeZone;
-					if (StringUtils.hasText(zone)) {
-						timeZone = StringUtils.parseTimeZoneString(zone);
+					if (!Scheduled.CRON_DISABLED.equals(cron)) {
+						TimeZone timeZone;
+						if (StringUtils.hasText(zone)) {
+							timeZone = StringUtils.parseTimeZoneString(zone);
+						}
+						else {
+							timeZone = TimeZone.getDefault();
+						}
+						tasks.add(this.registrar.scheduleCronTask(new CronTask(runnable, new CronTrigger(cron, timeZone))));
 					}
-					else {
-						timeZone = TimeZone.getDefault();
-					}
-					tasks.add(this.registrar.scheduleCronTask(new CronTask(runnable, new CronTrigger(cron, timeZone))));
 				}
 			}
 
@@ -478,12 +487,8 @@ public class ScheduledAnnotationBeanPostProcessor
 
 			// Finally register the scheduled tasks
 			synchronized (this.scheduledTasks) {
-				Set<ScheduledTask> registeredTasks = this.scheduledTasks.get(bean);
-				if (registeredTasks == null) {
-					registeredTasks = new LinkedHashSet<>(4);
-					this.scheduledTasks.put(bean, registeredTasks);
-				}
-				registeredTasks.addAll(tasks);
+				Set<ScheduledTask> regTasks = this.scheduledTasks.computeIfAbsent(bean, key -> new LinkedHashSet<>(4));
+				regTasks.addAll(tasks);
 			}
 		}
 		catch (IllegalArgumentException ex) {
@@ -502,9 +507,7 @@ public class ScheduledAnnotationBeanPostProcessor
 	 * @see ScheduledMethodRunnable#ScheduledMethodRunnable(Object, Method)
 	 */
 	protected Runnable createRunnable(Object target, Method method) {
-		Assert.isTrue(method.getParameterCount() == 0,
-				"Only no-arg methods may be annotated with @Scheduled");
-
+		Assert.isTrue(method.getParameterCount() == 0, "Only no-arg methods may be annotated with @Scheduled");
 		Method invocableMethod = AopUtils.selectInvocableMethod(method, target.getClass());
 		return new ScheduledMethodRunnable(target, invocableMethod);
 	}

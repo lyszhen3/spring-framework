@@ -18,6 +18,7 @@ package org.springframework.web.reactive.result.method;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,6 +29,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import reactor.core.publisher.Mono;
 
@@ -55,7 +58,7 @@ import org.springframework.web.server.ServerWebExchange;
  * @author Rossen Stoyanchev
  * @author Brian Clozel
  * @since 5.0
- * @param <T> The mapping for a {@link HandlerMethod} containing the conditions
+ * @param <T> the mapping for a {@link HandlerMethod} containing the conditions
  * needed to match the handler method to incoming request.
  */
 public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMapping implements InitializingBean {
@@ -202,13 +205,31 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 			Map<Method, T> methods = MethodIntrospector.selectMethods(userType,
 					(MethodIntrospector.MetadataLookup<T>) method -> getMappingForMethod(method, userType));
 			if (logger.isTraceEnabled()) {
-				logger.trace("Mapped " + methods.size() + " handler method(s) for " + userType + ": " + methods);
+				logger.trace(formatMappings(userType, methods));
 			}
 			methods.forEach((key, mapping) -> {
 				Method invocableMethod = AopUtils.selectInvocableMethod(key, userType);
 				registerHandlerMethod(handler, invocableMethod, mapping);
 			});
 		}
+	}
+
+	private String formatMappings(Class<?> userType, Map<Method, T> methods) {
+
+		String formattedType = Arrays.stream(userType.getPackage().getName().split("\\."))
+				.map(p -> p.substring(0, 1))
+				.collect(Collectors.joining(".", "", ".")) + userType.getSimpleName();
+
+		Function<Method, String> methodFormatter = method -> Arrays.stream(method.getParameterTypes())
+				.map(Class::getSimpleName)
+				.collect(Collectors.joining(",", "(", ")"));
+
+		return methods.entrySet().stream()
+				.map(e -> {
+					Method method = e.getKey();
+					return e.getValue() + ": " + method.getName() + methodFormatter.apply(method);
+				})
+				.collect(Collectors.joining("\n\t", "\n\t" + formattedType + ":" + "\n\t", ""));
 	}
 
 	/**
@@ -305,7 +326,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 			Match bestMatch = matches.get(0);
 			if (matches.size() > 1) {
 				if (logger.isTraceEnabled()) {
-					logger.trace(matches.size() + " matching mappings: " + matches);
+					logger.trace(exchange.getLogPrefix() + matches.size() + " matching mappings: " + matches);
 				}
 				if (CorsUtils.isPreFlightRequest(exchange.getRequest())) {
 					return PREFLIGHT_AMBIGUOUS_MATCH;

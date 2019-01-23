@@ -32,8 +32,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.synchronoss.cloud.nio.multipart.DefaultPartBodyStreamStorageFactory;
 import org.synchronoss.cloud.nio.multipart.Multipart;
 import org.synchronoss.cloud.nio.multipart.MultipartContext;
@@ -47,10 +45,12 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.core.codec.Hints;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.core.log.LogFormatUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpInputMessage;
@@ -87,7 +87,7 @@ public class SynchronossPartHttpMessageReader extends LoggingCodecSupport implem
 
 	@Override
 	public boolean canRead(ResolvableType elementType, @Nullable MediaType mediaType) {
-		return Part.class.equals(elementType.resolve(Object.class)) &&
+		return Part.class.equals(elementType.toClass()) &&
 				(mediaType == null || MediaType.MULTIPART_FORM_DATA.isCompatibleWith(mediaType));
 	}
 
@@ -96,8 +96,11 @@ public class SynchronossPartHttpMessageReader extends LoggingCodecSupport implem
 	public Flux<Part> read(ResolvableType elementType, ReactiveHttpInputMessage message, Map<String, Object> hints) {
 		return Flux.create(new SynchronossPartGenerator(message, this.bufferFactory, this.streamStorageFactory))
 				.doOnNext(part -> {
-					if (shouldLogRequestDetails()) {
-						logger.debug("Decoded [" + part + "]");
+					if (!Hints.isLoggingSuppressed(hints)) {
+						LogFormatUtils.traceDebug(logger, traceOn -> Hints.getLogPrefix(hints) + "Parsed " +
+								(isEnableLoggingRequestDetails() ?
+										LogFormatUtils.formatValue(part, !traceOn) :
+										"parts '" + part.name() + "' (content masked)"));
 					}
 				});
 	}
@@ -118,7 +121,7 @@ public class SynchronossPartHttpMessageReader extends LoggingCodecSupport implem
 		private final ReactiveHttpInputMessage inputMessage;
 
 		private final DataBufferFactory bufferFactory;
-		
+
 		private final PartBodyStreamStorageFactory streamStorageFactory;
 
 		SynchronossPartGenerator(ReactiveHttpInputMessage inputMessage, DataBufferFactory bufferFactory,
@@ -135,14 +138,14 @@ public class SynchronossPartHttpMessageReader extends LoggingCodecSupport implem
 			MediaType mediaType = headers.getContentType();
 			Assert.state(mediaType != null, "No content type set");
 
-			int length = Math.toIntExact(headers.getContentLength());
+			int length = getContentLength(headers);
 			Charset charset = Optional.ofNullable(mediaType.getCharset()).orElse(StandardCharsets.UTF_8);
 			MultipartContext context = new MultipartContext(mediaType.toString(), length, charset.name());
 
 			NioMultipartParserListener listener = new FluxSinkAdapterListener(emitter, this.bufferFactory, context);
 			NioMultipartParser parser = Multipart
 					.multipart(context)
-					.usePartBodyStreamStorageFactory(streamStorageFactory)
+					.usePartBodyStreamStorageFactory(this.streamStorageFactory)
 					.forNIO(listener);
 
 			this.inputMessage.getBody().subscribe(buffer -> {
@@ -173,7 +176,12 @@ public class SynchronossPartHttpMessageReader extends LoggingCodecSupport implem
 					listener.onError("Exception thrown while closing the parser", ex);
 				}
 			});
+		}
 
+		private int getContentLength(HttpHeaders headers) {
+			// Until this is fixed https://github.com/synchronoss/nio-multipart/issues/10
+			long length = headers.getContentLength();
+			return (int) length == length ? (int) length : -1;
 		}
 	}
 

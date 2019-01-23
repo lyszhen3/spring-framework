@@ -51,9 +51,9 @@ public class ResponseStatusExceptionHandler implements WebExceptionHandler {
 	 * Set the log category for warn logging.
 	 * <p>Default is no warn logging. Specify this setting to activate warn
 	 * logging into a specific category.
+	 * @since 5.1
 	 * @see org.apache.commons.logging.LogFactory#getLog(String)
 	 * @see java.util.logging.Logger#getLogger(String)
-	 * @see 5.1
 	 */
 	public void setWarnLogCategory(String loggerName) {
 		this.warnLogger = LogFactory.getLog(loggerName);
@@ -62,19 +62,18 @@ public class ResponseStatusExceptionHandler implements WebExceptionHandler {
 
 	@Override
 	public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
-
 		HttpStatus status = resolveStatus(ex);
 		if (status == null || !exchange.getResponse().setStatusCode(status)) {
 			return Mono.error(ex);
 		}
 
-		// Mirrors AbstractHandlerExceptionResolver in spring-webmvc..
-
+		// Mirrors AbstractHandlerExceptionResolver in spring-webmvc...
+		String logPrefix = exchange.getLogPrefix();
 		if (this.warnLogger != null && this.warnLogger.isWarnEnabled()) {
-			this.warnLogger.warn(formatError(ex, exchange.getRequest()), ex);
+			this.warnLogger.warn(logPrefix + formatError(ex, exchange.getRequest()), ex);
 		}
 		else if (logger.isDebugEnabled()) {
-			logger.debug(formatError(ex, exchange.getRequest()));
+			logger.debug(logPrefix + formatError(ex, exchange.getRequest()));
 		}
 
 		return exchange.getResponse().setComplete();

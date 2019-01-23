@@ -21,8 +21,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -31,11 +29,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.lang.Nullable;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebHandler;
@@ -77,8 +71,6 @@ public class DispatcherHandler implements WebHandler, ApplicationContextAware {
 	private static final Exception HANDLER_NOT_FOUND_EXCEPTION =
 			new ResponseStatusException(HttpStatus.NOT_FOUND, "No matching handler");
 
-
-	private static final Log logger = LogFactory.getLog(DispatcherHandler.class);
 
 	@Nullable
 	private List<HandlerMapping> handlerMappings;
@@ -150,14 +142,21 @@ public class DispatcherHandler implements WebHandler, ApplicationContextAware {
 	@Override
 	public Mono<Void> handle(ServerWebExchange exchange) {
 		if (this.handlerMappings == null) {
-			return Mono.error(HANDLER_NOT_FOUND_EXCEPTION);
+			return createNotFoundError();
 		}
 		return Flux.fromIterable(this.handlerMappings)
 				.concatMap(mapping -> mapping.getHandler(exchange))
 				.next()
-				.switchIfEmpty(Mono.error(HANDLER_NOT_FOUND_EXCEPTION))
+				.switchIfEmpty(createNotFoundError())
 				.flatMap(handler -> invokeHandler(exchange, handler))
 				.flatMap(result -> handleResult(exchange, result));
+	}
+
+	private <R> Mono<R> createNotFoundError() {
+		return Mono.defer(() -> {
+			Exception ex = new ResponseStatusException(HttpStatus.NOT_FOUND, "No matching handler");
+			return Mono.error(ex);
+		});
 	}
 
 	private Mono<HandlerResult> invokeHandler(ServerWebExchange exchange, Object handler) {

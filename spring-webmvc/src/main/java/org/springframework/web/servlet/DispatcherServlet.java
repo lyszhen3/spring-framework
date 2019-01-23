@@ -48,6 +48,7 @@ import org.springframework.context.i18n.LocaleContext;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.support.PropertiesLoaderUtils;
+import org.springframework.core.log.LogFormatUtils;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.lang.Nullable;
 import org.springframework.ui.context.ThemeSource;
@@ -291,60 +292,57 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 	}
 
-	/** Detect all HandlerMappings or just expect "handlerMapping" bean? */
+	/** Detect all HandlerMappings or just expect "handlerMapping" bean?. */
 	private boolean detectAllHandlerMappings = true;
 
-	/** Detect all HandlerAdapters or just expect "handlerAdapter" bean? */
+	/** Detect all HandlerAdapters or just expect "handlerAdapter" bean?. */
 	private boolean detectAllHandlerAdapters = true;
 
-	/** Detect all HandlerExceptionResolvers or just expect "handlerExceptionResolver" bean? */
+	/** Detect all HandlerExceptionResolvers or just expect "handlerExceptionResolver" bean?. */
 	private boolean detectAllHandlerExceptionResolvers = true;
 
-	/** Detect all ViewResolvers or just expect "viewResolver" bean? */
+	/** Detect all ViewResolvers or just expect "viewResolver" bean?. */
 	private boolean detectAllViewResolvers = true;
 
-	/** Throw a NoHandlerFoundException if no Handler was found to process this request? **/
+	/** Throw a NoHandlerFoundException if no Handler was found to process this request? *.*/
 	private boolean throwExceptionIfNoHandlerFound = false;
 
-	/** Perform cleanup of request attributes after include request? */
+	/** Perform cleanup of request attributes after include request?. */
 	private boolean cleanupAfterInclude = true;
 
-	/** Do not log potentially sensitive information (params at DEBUG and headers at TRACE). */
-	private boolean disableLoggingRequestDetails = false;
-
-	/** MultipartResolver used by this servlet */
+	/** MultipartResolver used by this servlet. */
 	@Nullable
 	private MultipartResolver multipartResolver;
 
-	/** LocaleResolver used by this servlet */
+	/** LocaleResolver used by this servlet. */
 	@Nullable
 	private LocaleResolver localeResolver;
 
-	/** ThemeResolver used by this servlet */
+	/** ThemeResolver used by this servlet. */
 	@Nullable
 	private ThemeResolver themeResolver;
 
-	/** List of HandlerMappings used by this servlet */
+	/** List of HandlerMappings used by this servlet. */
 	@Nullable
 	private List<HandlerMapping> handlerMappings;
 
-	/** List of HandlerAdapters used by this servlet */
+	/** List of HandlerAdapters used by this servlet. */
 	@Nullable
 	private List<HandlerAdapter> handlerAdapters;
 
-	/** List of HandlerExceptionResolvers used by this servlet */
+	/** List of HandlerExceptionResolvers used by this servlet. */
 	@Nullable
 	private List<HandlerExceptionResolver> handlerExceptionResolvers;
 
-	/** RequestToViewNameTranslator used by this servlet */
+	/** RequestToViewNameTranslator used by this servlet. */
 	@Nullable
 	private RequestToViewNameTranslator viewNameTranslator;
 
-	/** FlashMapManager used by this servlet */
+	/** FlashMapManager used by this servlet. */
 	@Nullable
 	private FlashMapManager flashMapManager;
 
-	/** List of ViewResolvers used by this servlet */
+	/** List of ViewResolvers used by this servlet. */
 	@Nullable
 	private List<ViewResolver> viewResolvers;
 
@@ -487,25 +485,6 @@ public class DispatcherServlet extends FrameworkServlet {
 		this.cleanupAfterInclude = cleanupAfterInclude;
 	}
 
-	/**
-	 * Set whether the {@code DispatcherServlet} should not log request
-	 * parameters and headers. By default request parameters are logged at DEBUG
-	 * while headers are logged at TRACE under the log category
-	 * {@code "org.springframework.web.servlet.DispatcherServlet"}. Those may
-	 * contain sensitive information, however this is typically not a problem
-	 * since DEBUG and TRACE are only expected to be enabled in development.
-	 * This property may be used to explicitly disable logging of such
-	 * information regardless of the log level.
-	 * <p>By default this is set to {@code false} in which case request details
-	 * are logged. If set to {@code true} request details will not be logged at
-	 * any log level.
-	 * @param disableLoggingRequestDetails whether to disable or not
-	 * @since 5.1
-	 */
-	public void setDisableLoggingRequestDetails(boolean disableLoggingRequestDetails) {
-		this.disableLoggingRequestDetails = disableLoggingRequestDetails;
-	}
-
 
 	/**
 	 * This implementation calls {@link #initStrategies}.
@@ -529,20 +508,6 @@ public class DispatcherServlet extends FrameworkServlet {
 		initRequestToViewNameTranslator(context);
 		initViewResolvers(context);
 		initFlashMapManager(context);
-
-		if (logger.isDebugEnabled()) {
-			if (this.disableLoggingRequestDetails) {
-				logger.debug("Logging request parameters and headers is OFF.");
-			}
-			else {
-				logger.warn("\n\n" +
-						"!!!!!!!!!!!!!!!!!!!\n" +
-						"Logging request parameters (DEBUG) and headers (TRACE) may show sensitive data.\n" +
-						"If not in development, use the DispatcherServlet property \"disableLoggingRequestDetails=true\",\n" +
-						"or lower the log level.\n" +
-						"!!!!!!!!!!!!!!!!!!!\n");
-			}
-		}
 	}
 
 	/**
@@ -942,7 +907,6 @@ public class DispatcherServlet extends FrameworkServlet {
 	 */
 	@Override
 	protected void doService(HttpServletRequest request, HttpServletResponse response) throws Exception {
-
 		logRequest(request);
 
 		// Keep a snapshot of the request attributes in case of an include,
@@ -988,33 +952,36 @@ public class DispatcherServlet extends FrameworkServlet {
 	}
 
 	private void logRequest(HttpServletRequest request) {
-		if (logger.isDebugEnabled()) {
-
-			String params = "";
-			if (!this.disableLoggingRequestDetails) {
+		LogFormatUtils.traceDebug(logger, traceOn -> {
+			String params;
+			if (isEnableLoggingRequestDetails()) {
 				params = request.getParameterMap().entrySet().stream()
 						.map(entry -> entry.getKey() + ":" + Arrays.toString(entry.getValue()))
-						.collect(Collectors.joining(", ", ", parameters={", "}"));
-			}
-
-			String dispatchType = !request.getDispatcherType().equals(DispatcherType.REQUEST) ?
-					"\"" + request.getDispatcherType().name() + "\" dispatch for " : "";
-
-			String message = dispatchType + request.getMethod() + " \"" + getRequestUri(request) + "\"" + params;
-
-			if (logger.isTraceEnabled()) {
-				String headers = "";
-				if (!this.disableLoggingRequestDetails) {
-					headers = Collections.list(request.getHeaderNames()).stream()
-							.map(name -> name + ":" + Collections.list(request.getHeaders(name)))
-							.collect(Collectors.joining(", ", ", headers={", "}"));
-				}
-				logger.trace(message + headers + " in DispatcherServlet '" + getServletName() + "'");
+						.collect(Collectors.joining(", "));
 			}
 			else {
-				logger.debug(message);
+				params = (request.getParameterMap().isEmpty() ? "" :  "masked");
 			}
-		}
+
+			String query = StringUtils.isEmpty(request.getQueryString()) ? "" : "?" + request.getQueryString();
+			String dispatchType = (!request.getDispatcherType().equals(DispatcherType.REQUEST) ?
+					"\"" + request.getDispatcherType().name() + "\" dispatch for " : "");
+			String message = (dispatchType + request.getMethod() + " \"" + getRequestUri(request) +
+					query + "\", parameters={" + params + "}");
+
+			if (traceOn) {
+				List<String> values = Collections.list(request.getHeaderNames());
+				String headers = values.size() > 0 ? "masked" : "";
+				if (isEnableLoggingRequestDetails()) {
+					headers = values.stream().map(name -> name + ":" + Collections.list(request.getHeaders(name)))
+							.collect(Collectors.joining(", "));
+				}
+				return message + ", headers={" + headers + "} in DispatcherServlet '" + getServletName() + "'";
+			}
+			else {
+				return message;
+			}
+		});
 	}
 
 	/**

@@ -18,7 +18,6 @@ package org.springframework.core.codec;
 
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
 import reactor.core.publisher.Flux;
 
 import org.springframework.core.ResolvableType;
@@ -33,13 +32,16 @@ import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StreamUtils;
 
 /**
- * Encoder for {@link Resource}s.
+ * Encoder for {@link Resource Resources}.
  *
  * @author Arjen Poutsma
  * @since 5.0
  */
 public class ResourceEncoder extends AbstractSingleValueEncoder<Resource> {
 
+	/**
+	 * The default buffer size used by the encoder.
+	 */
 	public static final int DEFAULT_BUFFER_SIZE = StreamUtils.BUFFER_SIZE;
 
 	private final int bufferSize;
@@ -58,7 +60,7 @@ public class ResourceEncoder extends AbstractSingleValueEncoder<Resource> {
 
 	@Override
 	public boolean canEncode(ResolvableType elementType, @Nullable MimeType mimeType) {
-		Class<?> clazz = elementType.resolve(Object.class);
+		Class<?> clazz = elementType.toClass();
 		return (super.canEncode(elementType, mimeType) && Resource.class.isAssignableFrom(clazz));
 	}
 
@@ -66,9 +68,9 @@ public class ResourceEncoder extends AbstractSingleValueEncoder<Resource> {
 	protected Flux<DataBuffer> encode(Resource resource, DataBufferFactory dataBufferFactory,
 			ResolvableType type, @Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
 
-		Log logger = getLogger(hints);
-		if (logger.isDebugEnabled()) {
-			logger.debug("Writing [" + resource + "]");
+		if (logger.isDebugEnabled() && !Hints.isLoggingSuppressed(hints)) {
+			String logPrefix = Hints.getLogPrefix(hints);
+			logger.debug(logPrefix + "Writing [" + resource + "]");
 		}
 
 		return DataBufferUtils.read(resource, dataBufferFactory, this.bufferSize);

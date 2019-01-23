@@ -184,7 +184,7 @@ public class ResourceHttpRequestHandler extends WebContentGenerator
 	}
 
 	/**
-	 * Configure the list of {@link ResourceResolver}s to use.
+	 * Configure the list of {@link ResourceResolver ResourceResolvers} to use.
 	 * <p>By default {@link PathResourceResolver} is configured. If using this property,
 	 * it is recommended to add {@link PathResourceResolver} as the last resolver.
 	 */
@@ -203,7 +203,7 @@ public class ResourceHttpRequestHandler extends WebContentGenerator
 	}
 
 	/**
-	 * Configure the list of {@link ResourceTransformer}s to use.
+	 * Configure the list of {@link ResourceTransformer ResourceTransformers} to use.
 	 * <p>By default no transformers are configured for use.
 	 */
 	public void setResourceTransformers(@Nullable List<ResourceTransformer> resourceTransformers) {
@@ -630,22 +630,25 @@ public class ResourceHttpRequestHandler extends WebContentGenerator
 	 */
 	protected boolean isInvalidPath(String path) {
 		if (path.contains("WEB-INF") || path.contains("META-INF")) {
-			logger.warn("Path with \"WEB-INF\" or \"META-INF\": [" + path + "]");
+			if (logger.isWarnEnabled()) {
+				logger.warn("Path with \"WEB-INF\" or \"META-INF\": [" + path + "]");
+			}
 			return true;
 		}
 		if (path.contains(":/")) {
 			String relativePath = (path.charAt(0) == '/' ? path.substring(1) : path);
 			if (ResourceUtils.isUrl(relativePath) || relativePath.startsWith("url:")) {
-				logger.warn("Path represents URL or has \"url:\" prefix: [" + path + "]");
+				if (logger.isWarnEnabled()) {
+					logger.warn("Path represents URL or has \"url:\" prefix: [" + path + "]");
+				}
 				return true;
 			}
 		}
-		if (path.contains("..")) {
-			path = StringUtils.cleanPath(path);
-			if (path.contains("../")) {
-				logger.warn("Invalid Path contains \"../\" after call to StringUtils#cleanPath.");
-				return true;
+		if (path.contains("..") && StringUtils.cleanPath(path).contains("../")) {
+			if (logger.isWarnEnabled()) {
+				logger.warn("Path contains \"../\" after call to StringUtils#cleanPath: [" + path + "]");
 			}
+			return true;
 		}
 		return false;
 	}

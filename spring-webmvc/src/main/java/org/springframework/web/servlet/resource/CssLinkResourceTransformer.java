@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,7 +108,7 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 
 	private boolean hasScheme(String link) {
 		int schemeIndex = link.indexOf(':');
-		return (schemeIndex > 0 && !link.substring(0, schemeIndex).contains("/")) || link.indexOf("//") == 0;
+		return ((schemeIndex > 0 && !link.substring(0, schemeIndex).contains("/")) || link.indexOf("//") == 0);
 	}
 
 
@@ -123,6 +123,9 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 	}
 
 
+	/**
+	 * Abstract base class for {@link LinkParser} implementations.
+	 */
 	protected abstract static class AbstractLinkParser implements LinkParser {
 
 		/** Return the keyword to use to search for links, e.g. "@import", "url(" */
@@ -164,9 +167,7 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 		 * Invoked after a keyword match, after whitespaces removed, and when
 		 * the next char is neither a single nor double quote.
 		 */
-		protected abstract int extractLink(int index, String content,
-				SortedSet<ContentChunkInfo> linksToAdd);
-
+		protected abstract int extractLink(int index, String content, SortedSet<ContentChunkInfo> linksToAdd);
 	}
 
 
@@ -226,19 +227,19 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 
 		@Override
 		public int compareTo(ContentChunkInfo other) {
-			return (this.start < other.start ? -1 : (this.start == other.start ? 0 : 1));
+			return Integer.compare(this.start, other.start);
 		}
 
 		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) {
+		public boolean equals(Object other) {
+			if (this == other) {
 				return true;
 			}
-			if (obj instanceof ContentChunkInfo) {
-				ContentChunkInfo other = (ContentChunkInfo) obj;
-				return (this.start == other.start && this.end == other.end);
+			if (!(other instanceof ContentChunkInfo)) {
+				return false;
 			}
-			return false;
+			ContentChunkInfo otherCci = (ContentChunkInfo) other;
+			return (this.start == otherCci.start && this.end == otherCci.end);
 		}
 
 		@Override

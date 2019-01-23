@@ -25,13 +25,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.core.codec.Hints;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.log.LogFormatUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpOutputMessage;
 import org.springframework.lang.Nullable;
@@ -61,6 +61,9 @@ import org.springframework.util.MultiValueMap;
 public class FormHttpMessageWriter extends LoggingCodecSupport
 		implements HttpMessageWriter<MultiValueMap<String, String>> {
 
+	/**
+	 * The default charset used by the writer.
+	 */
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
 	private static final MediaType DEFAULT_FORM_DATA_MEDIA_TYPE =
@@ -102,8 +105,7 @@ public class FormHttpMessageWriter extends LoggingCodecSupport
 
 	@Override
 	public boolean canWrite(ResolvableType elementType, @Nullable MediaType mediaType) {
-		Class<?> rawClass = elementType.getRawClass();
-		if (rawClass == null || !MultiValueMap.class.isAssignableFrom(rawClass)) {
+		if (!MultiValueMap.class.isAssignableFrom(elementType.toClass())) {
 			return false;
 		}
 		if (MediaType.APPLICATION_FORM_URLENCODED.isCompatibleWith(mediaType)) {
@@ -129,9 +131,7 @@ public class FormHttpMessageWriter extends LoggingCodecSupport
 		Assert.notNull(charset, "No charset"); // should never occur
 
 		return Mono.from(inputStream).flatMap(form -> {
-			if (shouldLogRequestDetails()) {
-				logger.debug("Encoding " + form);
-			}
+			logFormData(form, hints);
 			String value = serializeForm(form, charset);
 			ByteBuffer byteBuffer = charset.encode(value);
 			DataBuffer buffer = message.bufferFactory().wrap(byteBuffer);
@@ -150,6 +150,13 @@ public class FormHttpMessageWriter extends LoggingCodecSupport
 		else {
 			return mediaType;
 		}
+	}
+
+	private void logFormData(MultiValueMap<String, String> form, Map<String, Object> hints) {
+		LogFormatUtils.traceDebug(logger, traceOn -> Hints.getLogPrefix(hints) + "Writing " +
+				(isEnableLoggingRequestDetails() ?
+						LogFormatUtils.formatValue(form, !traceOn) :
+						"form fields " + form.keySet() + " (content masked)"));
 	}
 
 	protected String serializeForm(MultiValueMap<String, String> formData, Charset charset) {

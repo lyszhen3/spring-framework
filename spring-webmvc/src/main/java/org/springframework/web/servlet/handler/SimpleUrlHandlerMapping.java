@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import org.springframework.beans.BeansException;
 import org.springframework.util.CollectionUtils;
@@ -108,7 +107,7 @@ public class SimpleUrlHandlerMapping extends AbstractUrlHandlerMapping {
 
 	/**
 	 * Register all handlers specified in the URL map for the corresponding paths.
-	 * @param urlMap Map with URL paths as keys and handler beans or bean names as values
+	 * @param urlMap a Map with URL paths as keys and handler beans or bean names as values
 	 * @throws BeansException if a handler couldn't be registered
 	 * @throws IllegalStateException if there is a conflicting handler registered
 	 */

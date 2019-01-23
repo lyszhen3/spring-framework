@@ -18,7 +18,6 @@ package org.springframework.core.codec;
 
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
@@ -30,7 +29,7 @@ import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
 /**
- * Simple pass-through encoder for {@link DataBuffer}s.
+ * Simple pass-through encoder for {@link DataBuffer DataBuffers}.
  *
  * @author Arjen Poutsma
  * @since 5.0
@@ -44,7 +43,7 @@ public class DataBufferEncoder extends AbstractEncoder<DataBuffer> {
 
 	@Override
 	public boolean canEncode(ResolvableType elementType, @Nullable MimeType mimeType) {
-		Class<?> clazz = elementType.resolve(Object.class);
+		Class<?> clazz = elementType.toClass();
 		return super.canEncode(elementType, mimeType) && DataBuffer.class.isAssignableFrom(clazz);
 	}
 
@@ -55,9 +54,11 @@ public class DataBufferEncoder extends AbstractEncoder<DataBuffer> {
 
 		Flux<DataBuffer> flux = Flux.from(inputStream);
 
-		Log logger = getLogger(hints);
-		if (logger.isDebugEnabled()) {
-			flux = flux.doOnNext(buffer -> logger.debug("Writing " + buffer.readableByteCount() + " bytes"));
+		if (logger.isDebugEnabled() && !Hints.isLoggingSuppressed(hints)) {
+			flux = flux.doOnNext(buffer -> {
+				String logPrefix = Hints.getLogPrefix(hints);
+				logger.debug(logPrefix + "Writing " + buffer.readableByteCount() + " bytes");
+			});
 		}
 
 		return flux;

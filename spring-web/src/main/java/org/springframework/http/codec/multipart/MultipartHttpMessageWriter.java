@@ -29,8 +29,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.impl.NoOpLog;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -38,10 +36,12 @@ import reactor.core.publisher.Mono;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.codec.CharSequenceEncoder;
 import org.springframework.core.codec.CodecException;
+import org.springframework.core.codec.Hints;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.core.log.LogFormatUtils;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -81,11 +81,13 @@ import org.springframework.util.MultiValueMap;
 public class MultipartHttpMessageWriter extends LoggingCodecSupport
 		implements HttpMessageWriter<MultiValueMap<String, ?>> {
 
+	/**
+	 * THe default charset used by the writer.
+	 */
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
-	/** Suppress logging from individual part writers (full map logged at this level) */
-	private static final Map<String, Object> DEFAULT_HINTS =
-			Collections.singletonMap(Log.class.getName(), new NoOpLog());
+	/** Suppress logging from individual part writers (full map logged at this level). */
+	private static final Map<String, Object> DEFAULT_HINTS = Hints.from(Hints.SUPPRESS_LOGGING_HINT, true);
 
 
 	private final List<HttpMessageWriter<?>> partWriters;
@@ -147,7 +149,7 @@ public class MultipartHttpMessageWriter extends LoggingCodecSupport
 	 * @since 5.0.7
 	 */
 	public List<HttpMessageWriter<?>> getPartWriters() {
-		return Collections.unmodifiableList(partWriters);
+		return Collections.unmodifiableList(this.partWriters);
 	}
 
 	/**
@@ -175,10 +177,9 @@ public class MultipartHttpMessageWriter extends LoggingCodecSupport
 
 	@Override
 	public boolean canWrite(ResolvableType elementType, @Nullable MediaType mediaType) {
-		Class<?> rawClass = elementType.getRawClass();
-		return rawClass != null && MultiValueMap.class.isAssignableFrom(rawClass) &&
+		return (MultiValueMap.class.isAssignableFrom(elementType.toClass()) &&
 				(mediaType == null ||
-						this.supportedMediaTypes.stream().anyMatch(m -> m.isCompatibleWith(mediaType)));
+						this.supportedMediaTypes.stream().anyMatch(element -> element.isCompatibleWith(mediaType))));
 	}
 
 	@Override
@@ -188,7 +189,7 @@ public class MultipartHttpMessageWriter extends LoggingCodecSupport
 
 		return Mono.from(inputStream).flatMap(map -> {
 			if (this.formWriter == null || isMultipart(map, mediaType)) {
-				return writeMultipart(map, outputMessage);
+				return writeMultipart(map, outputMessage, hints);
 			}
 			else {
 				@SuppressWarnings("unchecked")
@@ -213,7 +214,9 @@ public class MultipartHttpMessageWriter extends LoggingCodecSupport
 		return false;
 	}
 
-	private Mono<Void> writeMultipart(MultiValueMap<String, ?> map, ReactiveHttpOutputMessage outputMessage) {
+	private Mono<Void> writeMultipart(
+			MultiValueMap<String, ?> map, ReactiveHttpOutputMessage outputMessage, Map<String, Object> hints) {
+
 		byte[] boundary = generateMultipartBoundary();
 
 		Map<String, String> params = new HashMap<>(2);
@@ -222,9 +225,10 @@ public class MultipartHttpMessageWriter extends LoggingCodecSupport
 
 		outputMessage.getHeaders().setContentType(new MediaType(MediaType.MULTIPART_FORM_DATA, params));
 
-		if (shouldLogRequestDetails()) {
-			logger.debug("Encoding " + map);
-		}
+		LogFormatUtils.traceDebug(logger, traceOn -> Hints.getLogPrefix(hints) + "Encoding " +
+				(isEnableLoggingRequestDetails() ?
+						LogFormatUtils.formatValue(map, !traceOn) :
+						"parts " + map.keySet() + " (content masked)"));
 
 		Flux<DataBuffer> body = Flux.fromIterable(map.entrySet())
 				.concatMap(entry -> encodePartValues(boundary, entry.getKey(), entry.getValue()))
@@ -276,7 +280,7 @@ public class MultipartHttpMessageWriter extends LoggingCodecSupport
 			if (body instanceof Resource) {
 				outputHeaders.setContentDispositionFormData(name, ((Resource) body).getFilename());
 			}
-			else if (Resource.class.equals(resolvableType.getRawClass())) {
+			else if (resolvableType.resolve() == Resource.class) {
 				body = (T) Mono.from((Publisher<?>) body).doOnNext(o -> outputHeaders
 						.setContentDispositionFormData(name, ((Resource) o).getFilename()));
 			}
@@ -395,7 +399,7 @@ public class MultipartHttpMessageWriter extends LoggingCodecSupport
 
 		private DataBuffer generateHeaders() {
 			DataBuffer buffer = this.bufferFactory.allocateBuffer();
-			for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+			for (Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
 				byte[] headerName = entry.getKey().getBytes(this.charset);
 				for (String headerValueString : entry.getValue()) {
 					byte[] headerValue = headerValueString.getBytes(this.charset);

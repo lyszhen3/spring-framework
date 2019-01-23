@@ -19,7 +19,6 @@ package org.springframework.core.codec;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
@@ -31,7 +30,7 @@ import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
 /**
- * Encoder for {@link ByteBuffer}s.
+ * Encoder for {@link ByteBuffer ByteBuffers}.
  *
  * @author Sebastien Deleuze
  * @since 5.0
@@ -45,7 +44,7 @@ public class ByteBufferEncoder extends AbstractEncoder<ByteBuffer> {
 
 	@Override
 	public boolean canEncode(ResolvableType elementType, @Nullable MimeType mimeType) {
-		Class<?> clazz = elementType.resolve(Object.class);
+		Class<?> clazz = elementType.toClass();
 		return super.canEncode(elementType, mimeType) && ByteBuffer.class.isAssignableFrom(clazz);
 	}
 
@@ -56,9 +55,9 @@ public class ByteBufferEncoder extends AbstractEncoder<ByteBuffer> {
 
 		return Flux.from(inputStream).map(byteBuffer -> {
 			DataBuffer dataBuffer = bufferFactory.wrap(byteBuffer);
-			Log logger = getLogger(hints);
-			if (logger.isDebugEnabled()) {
-				logger.debug("Writing " + dataBuffer.readableByteCount() + " bytes");
+			if (logger.isDebugEnabled() && !Hints.isLoggingSuppressed(hints)) {
+				String logPrefix = Hints.getLogPrefix(hints);
+				logger.debug(logPrefix + "Writing " + dataBuffer.readableByteCount() + " bytes");
 			}
 			return dataBuffer;
 		});

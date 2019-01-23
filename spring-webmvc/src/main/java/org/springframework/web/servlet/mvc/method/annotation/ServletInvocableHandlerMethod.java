@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ public class ServletInvocableHandlerMethod extends InvocableHandlerMethod {
 
 	/**
 	 * Invoke the method and handle the return value through one of the
-	 * configured {@link HandlerMethodReturnValueHandler}s.
+	 * configured {@link HandlerMethodReturnValueHandler HandlerMethodReturnValueHandlers}.
 	 * @param webRequest the current request
 	 * @param mavContainer the ModelAndViewContainer for this request
 	 * @param providedArgs "given" arguments matched by type (not resolved)
@@ -256,7 +256,7 @@ public class ServletInvocableHandlerMethod extends InvocableHandlerMethod {
 			this.returnValue = returnValue;
 			this.returnType = (returnValue instanceof ReactiveTypeHandler.CollectedValuesList ?
 					((ReactiveTypeHandler.CollectedValuesList) returnValue).getReturnType() :
-					ResolvableType.forType(super.getGenericParameterType()).getGeneric(0));
+					ResolvableType.forType(super.getGenericParameterType()).getGeneric());
 		}
 
 		public ConcurrentResultMethodParameter(ConcurrentResultMethodParameter original) {
@@ -271,7 +271,7 @@ public class ServletInvocableHandlerMethod extends InvocableHandlerMethod {
 				return this.returnValue.getClass();
 			}
 			if (!ResolvableType.NONE.equals(this.returnType)) {
-				return this.returnType.resolve(Object.class);
+				return this.returnType.toClass();
 			}
 			return super.getParameterType();
 		}

@@ -33,6 +33,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.codec.Hints;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.CacheControl;
@@ -86,8 +87,6 @@ import org.springframework.web.server.WebHandler;
 public class ResourceWebHandler implements WebHandler, InitializingBean {
 
 	private static final Set<HttpMethod> SUPPORTED_METHODS = EnumSet.of(HttpMethod.GET, HttpMethod.HEAD);
-
-	private static final Exception NOT_FOUND_EXCEPTION = new ResponseStatusException(HttpStatus.NOT_FOUND);
 
 	private static final Log logger = LogFactory.getLog(ResourceWebHandler.class);
 
@@ -160,7 +159,7 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 	}
 
 	/**
-	 * Configure the list of {@link ResourceResolver}s to use.
+	 * Configure the list of {@link ResourceResolver ResourceResolvers} to use.
 	 * <p>By default {@link PathResourceResolver} is configured. If using this property,
 	 * it is recommended to add {@link PathResourceResolver} as the last resolver.
 	 */
@@ -179,7 +178,7 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 	}
 
 	/**
-	 * Configure the list of {@link ResourceTransformer}s to use.
+	 * Configure the list of {@link ResourceTransformer ResourceTransformers} to use.
 	 * <p>By default no transformers are configured for use.
 	 */
 	public void setResourceTransformers(@Nullable List<ResourceTransformer> resourceTransformers) {
@@ -288,8 +287,8 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 	 */
 	protected void initAllowedLocations() {
 		if (CollectionUtils.isEmpty(this.locations)) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("Locations list is empty. No resources will be served unless a " +
+			if (logger.isInfoEnabled()) {
+				logger.info("Locations list is empty. No resources will be served unless a " +
 						"custom ResourceResolver is configured as an alternative to PathResourceResolver.");
 			}
 			return;
@@ -322,8 +321,8 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 	public Mono<Void> handle(ServerWebExchange exchange) {
 		return getResource(exchange)
 				.switchIfEmpty(Mono.defer(() -> {
-					logger.debug("Resource not found");
-					return Mono.error(NOT_FOUND_EXCEPTION);
+					logger.debug(exchange.getLogPrefix() + "Resource not found");
+					return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND));
 				}))
 				.flatMap(resource -> {
 					try {
@@ -341,16 +340,14 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 
 						// Header phase
 						if (exchange.checkNotModified(Instant.ofEpochMilli(resource.lastModified()))) {
-							logger.trace("Resource not modified");
+							logger.trace(exchange.getLogPrefix() + "Resource not modified");
 							return Mono.empty();
 						}
 
 						// Apply cache settings, if any
-						if (getCacheControl() != null) {
-							String value = getCacheControl().getHeaderValue();
-							if (value != null) {
-								exchange.getResponse().getHeaders().setCacheControl(value);
-							}
+						CacheControl cacheControl = getCacheControl();
+						if (cacheControl != null) {
+							exchange.getResponse().getHeaders().setCacheControl(cacheControl);
 						}
 
 						// Check the media type for the resource
@@ -368,7 +365,8 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 						Assert.state(writer != null, "No ResourceHttpMessageWriter");
 						return writer.write(Mono.just(resource),
 								null, ResolvableType.forClass(Resource.class), mediaType,
-								exchange.getRequest(), exchange.getResponse(), Collections.emptyMap());
+								exchange.getRequest(), exchange.getResponse(),
+								Hints.from(Hints.LOG_PREFIX_HINT, exchange.getLogPrefix()));
 					}
 					catch (IOException ex) {
 						return Mono.error(ex);
@@ -388,8 +386,8 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 			return Mono.empty();
 		}
 
-		Assert.notNull(this.resolverChain, "ResourceResolverChain not initialized.");
-		Assert.notNull(this.transformerChain, "ResourceTransformerChain not initialized.");
+		Assert.state(this.resolverChain != null, "ResourceResolverChain not initialized");
+		Assert.state(this.transformerChain != null, "ResourceTransformerChain not initialized");
 
 		return this.resolverChain.resolveResource(exchange, path, getLocations())
 				.flatMap(resource -> this.transformerChain.transform(exchange, resource));
@@ -419,7 +417,7 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 		for (int i = 0; i < path.length(); i++) {
 			char curr = path.charAt(i);
 			try {
-				if ((curr == '/') && (prev == '/')) {
+				if (curr == '/' && prev == '/') {
 					if (sb == null) {
 						sb = new StringBuilder(path.substring(0, i));
 					}
@@ -433,7 +431,7 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 				prev = curr;
 			}
 		}
-		return sb != null ? sb.toString() : path;
+		return (sb != null ? sb.toString() : path);
 	}
 
 	private String cleanLeadingSlash(String path) {
@@ -446,7 +444,7 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 				if (i == 0 || (i == 1 && slash)) {
 					return path;
 				}
-				return slash ? "/" + path.substring(i) : path.substring(i);
+				return (slash ? "/" + path.substring(i) : path.substring(i));
 			}
 		}
 		return (slash ? "/" : "");
@@ -494,22 +492,25 @@ public class ResourceWebHandler implements WebHandler, InitializingBean {
 	 */
 	protected boolean isInvalidPath(String path) {
 		if (path.contains("WEB-INF") || path.contains("META-INF")) {
-			logger.warn("Path contains \"WEB-INF\" or \"META-INF\".");
+			if (logger.isWarnEnabled()) {
+				logger.warn("Path with \"WEB-INF\" or \"META-INF\": [" + path + "]");
+			}
 			return true;
 		}
 		if (path.contains(":/")) {
 			String relativePath = (path.charAt(0) == '/' ? path.substring(1) : path);
 			if (ResourceUtils.isUrl(relativePath) || relativePath.startsWith("url:")) {
-				logger.warn("Path represents URL or has \"url:\" prefix.");
+				if (logger.isWarnEnabled()) {
+					logger.warn("Path represents URL or has \"url:\" prefix: [" + path + "]");
+				}
 				return true;
 			}
 		}
-		if (path.contains("..")) {
-			path = StringUtils.cleanPath(path);
-			if (path.contains("../")) {
-				logger.warn("Path contains \"../\" after call to StringUtils#cleanPath.");
-				return true;
+		if (path.contains("..") && StringUtils.cleanPath(path).contains("../")) {
+			if (logger.isWarnEnabled()) {
+				logger.warn("Path contains \"../\" after call to StringUtils#cleanPath: [" + path + "]");
 			}
+			return true;
 		}
 		return false;
 	}

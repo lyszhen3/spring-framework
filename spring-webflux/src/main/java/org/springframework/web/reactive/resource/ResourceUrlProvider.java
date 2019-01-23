@@ -123,7 +123,8 @@ public class ResourceUrlProvider implements ApplicationListener<ContextRefreshed
 		String lookupPath = uriString.substring(0, queryIndex);
 		String query = uriString.substring(queryIndex);
 		PathContainer parsedLookupPath = PathContainer.parsePath(lookupPath);
-		return resolveResourceUrl(parsedLookupPath).map(resolvedPath ->
+
+		return resolveResourceUrl(exchange, parsedLookupPath).map(resolvedPath ->
 				request.getPath().contextPath().value() + resolvedPath + query);
 	}
 
@@ -140,12 +141,11 @@ public class ResourceUrlProvider implements ApplicationListener<ContextRefreshed
 		return suffixIndex;
 	}
 
-	private Mono<String> resolveResourceUrl(PathContainer lookupPath) {
+	private Mono<String> resolveResourceUrl(ServerWebExchange exchange, PathContainer lookupPath) {
 		return this.handlerMap.entrySet().stream()
 				.filter(entry -> entry.getKey().matches(lookupPath))
-				.sorted((entry1, entry2) ->
+				.min((entry1, entry2) ->
 						PathPattern.SPECIFICITY_COMPARATOR.compare(entry1.getKey(), entry2.getKey()))
-				.findFirst()
 				.map(entry -> {
 					PathContainer path = entry.getKey().extractPathWithinPattern(lookupPath);
 					int endIndex = lookupPath.elements().size() - path.elements().size();
@@ -154,14 +154,11 @@ public class ResourceUrlProvider implements ApplicationListener<ContextRefreshed
 					List<ResourceResolver> resolvers = handler.getResourceResolvers();
 					ResourceResolverChain chain = new DefaultResourceResolverChain(resolvers);
 					return chain.resolveUrlPath(path.value(), handler.getLocations())
-							.map(resolvedPath -> {
-								return mapping.value() + resolvedPath;
-							});
-
+							.map(resolvedPath -> mapping.value() + resolvedPath);
 				})
 				.orElseGet(() ->{
 					if (logger.isTraceEnabled()) {
-						logger.trace("No match for \"" + lookupPath + "\"");
+						logger.trace(exchange.getLogPrefix() + "No match for \"" + lookupPath + "\"");
 					}
 					return Mono.empty();
 				});

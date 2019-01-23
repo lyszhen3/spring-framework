@@ -25,13 +25,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.ResolvableType;
+import org.springframework.core.codec.Hints;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.core.log.LogFormatUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpInputMessage;
 import org.springframework.lang.Nullable;
@@ -51,6 +51,9 @@ import org.springframework.util.StringUtils;
 public class FormHttpMessageReader extends LoggingCodecSupport
 		implements HttpMessageReader<MultiValueMap<String, String>> {
 
+	/**
+	 * The default charset used by the reader.
+	 */
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
 	private static final ResolvableType MULTIVALUE_TYPE =
@@ -82,7 +85,7 @@ public class FormHttpMessageReader extends LoggingCodecSupport
 	public boolean canRead(ResolvableType elementType, @Nullable MediaType mediaType) {
 		return ((MULTIVALUE_TYPE.isAssignableFrom(elementType) ||
 				(elementType.hasUnresolvableGenerics() &&
-						MultiValueMap.class.isAssignableFrom(elementType.resolve(Object.class)))) &&
+						MultiValueMap.class.isAssignableFrom(elementType.toClass()))) &&
 				(mediaType == null || MediaType.APPLICATION_FORM_URLENCODED.isCompatibleWith(mediaType)));
 	}
 
@@ -106,11 +109,16 @@ public class FormHttpMessageReader extends LoggingCodecSupport
 					String body = charBuffer.toString();
 					DataBufferUtils.release(buffer);
 					MultiValueMap<String, String> formData = parseFormData(charset, body);
-					if (shouldLogRequestDetails()) {
-						logger.debug("Decoded " + formData);
-					}
+					logFormData(formData, hints);
 					return formData;
 				});
+	}
+
+	private void logFormData(MultiValueMap<String, String> formData, Map<String, Object> hints) {
+		LogFormatUtils.traceDebug(logger, traceOn -> Hints.getLogPrefix(hints) + "Read " +
+				(isEnableLoggingRequestDetails() ?
+						LogFormatUtils.formatValue(formData, !traceOn) :
+						"form fields " + formData.keySet() + " (content masked)"));
 	}
 
 	private Charset getMediaTypeCharset(@Nullable MediaType mediaType) {
