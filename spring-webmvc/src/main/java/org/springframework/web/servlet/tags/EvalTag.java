@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,8 +17,11 @@
 package org.springframework.web.servlet.tags;
 
 import java.io.IOException;
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.PageContext;
+
+import jakarta.el.ELContext;
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.PageContext;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.context.expression.EnvironmentAccessor;
@@ -33,7 +36,6 @@ import org.springframework.expression.TypedValue;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.util.JavaScriptUtils;
 import org.springframework.web.util.TagUtils;
@@ -72,7 +74,7 @@ import org.springframework.web.util.TagUtils;
  * <td>false</td>
  * <td>true</td>
  * <td>Set JavaScript escaping for this tag, as a boolean value.
- * Default is false.</td>
+ * Default is {@code false}.</td>
  * </tr>
  * <tr>
  * <td>scope</td>
@@ -95,13 +97,14 @@ import org.springframework.web.util.TagUtils;
  *
  * @author Keith Donald
  * @author Juergen Hoeller
+ * @author Sam Brannen
  * @since 3.0.1
  */
 @SuppressWarnings("serial")
 public class EvalTag extends HtmlEscapingAwareTag {
 
 	/**
-	 * {@link javax.servlet.jsp.PageContext} attribute for the
+	 * {@link jakarta.servlet.jsp.PageContext} attribute for the
 	 * page-level {@link EvaluationContext} instance.
 	 */
 	private static final String EVALUATION_CONTEXT_PAGE_ATTRIBUTE =
@@ -110,11 +113,9 @@ public class EvalTag extends HtmlEscapingAwareTag {
 
 	private final ExpressionParser expressionParser = new SpelExpressionParser();
 
-	@Nullable
-	private Expression expression;
+	private @Nullable Expression expression;
 
-	@Nullable
-	private String var;
+	private @Nullable String var;
 
 	private int scope = PageContext.PAGE_SCOPE;
 
@@ -199,8 +200,7 @@ public class EvalTag extends HtmlEscapingAwareTag {
 		return context;
 	}
 
-	@Nullable
-	private ConversionService getConversionService(PageContext pageContext) {
+	private @Nullable ConversionService getConversionService(PageContext pageContext) {
 		return (ConversionService) pageContext.getRequest().getAttribute(ConversionService.class.getName());
 	}
 
@@ -210,17 +210,16 @@ public class EvalTag extends HtmlEscapingAwareTag {
 
 		private final PageContext pageContext;
 
-		@Nullable
-		private final javax.servlet.jsp.el.VariableResolver variableResolver;
+		private final @Nullable ELContext elContext;
+
 
 		public JspPropertyAccessor(PageContext pageContext) {
 			this.pageContext = pageContext;
-			this.variableResolver = pageContext.getVariableResolver();
+			this.elContext = pageContext.getELContext();
 		}
 
 		@Override
-		@Nullable
-		public Class<?>[] getSpecificTargetClasses() {
+		public Class<?> @Nullable [] getSpecificTargetClasses() {
 			return null;
 		}
 
@@ -249,13 +248,12 @@ public class EvalTag extends HtmlEscapingAwareTag {
 			throw new UnsupportedOperationException();
 		}
 
-		@Nullable
-		private Object resolveImplicitVariable(String name) throws AccessException {
-			if (this.variableResolver == null) {
+		private @Nullable Object resolveImplicitVariable(String name) throws AccessException {
+			if (this.elContext == null) {
 				return null;
 			}
 			try {
-				return this.variableResolver.resolveVariable(name);
+				return this.elContext.getELResolver().getValue(this.elContext, null, name);
 			}
 			catch (Exception ex) {
 				throw new AccessException(

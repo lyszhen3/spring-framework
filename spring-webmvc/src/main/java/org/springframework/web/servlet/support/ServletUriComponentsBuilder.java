@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,9 @@
 
 package org.springframework.web.servlet.support;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestAttributes;
@@ -44,8 +44,7 @@ import org.springframework.web.util.UrlPathHelper;
  */
 public class ServletUriComponentsBuilder extends UriComponentsBuilder {
 
-	@Nullable
-	private String originalPath;
+	private @Nullable String originalPath;
 
 
 	/**
@@ -70,7 +69,7 @@ public class ServletUriComponentsBuilder extends UriComponentsBuilder {
 	}
 
 
-	// Factory methods based on a HttpServletRequest
+	// Factory methods based on an HttpServletRequest
 
 	/**
 	 * Prepare a builder from the host, port, scheme, and context path of the
@@ -85,14 +84,14 @@ public class ServletUriComponentsBuilder extends UriComponentsBuilder {
 	/**
 	 * Prepare a builder from the host, port, scheme, context path, and
 	 * servlet mapping of the given HttpServletRequest.
-	 * <p>If the servlet is mapped by name, e.g. {@code "/main/*"}, the path
-	 * will end with "/main". If the servlet is mapped otherwise, e.g.
+	 * <p>If the servlet is mapped by name, for example, {@code "/main/*"}, the path
+	 * will end with "/main". If the servlet is mapped otherwise, for example,
 	 * {@code "/"} or {@code "*.do"}, the result will be the same as
 	 * if calling {@link #fromContextPath(HttpServletRequest)}.
 	 */
 	public static ServletUriComponentsBuilder fromServletMapping(HttpServletRequest request) {
 		ServletUriComponentsBuilder builder = fromContextPath(request);
-		if (StringUtils.hasText(new UrlPathHelper().getPathWithinServletMapping(request))) {
+		if (StringUtils.hasText(UrlPathHelper.defaultInstance.getPathWithinServletMapping(request))) {
 			builder.path(request.getServletPath());
 		}
 		return builder;
@@ -191,22 +190,21 @@ public class ServletUriComponentsBuilder extends UriComponentsBuilder {
 	 * requestURI}. This method must be invoked before any calls to {@link #path(String)}
 	 * or {@link #pathSegment(String...)}.
 	 * <pre>
-	 * GET http://foo.com/rest/books/6.json
+	 * GET http://www.foo.example/rest/books/6.json
 	 *
 	 * ServletUriComponentsBuilder builder = ServletUriComponentsBuilder.fromRequestUri(this.request);
 	 * String ext = builder.removePathExtension();
 	 * String uri = builder.path("/pages/1.{ext}").buildAndExpand(ext).toUriString();
-	 * assertEquals("http://foo.com/rest/books/6/pages/1.json", result);
+	 * assertEquals("http://www.foo.example/rest/books/6/pages/1.json", result);
 	 * </pre>
 	 * @return the removed path extension for possible re-use, or {@code null}
 	 * @since 4.0
 	 */
-	@Nullable
-	public String removePathExtension() {
+	public @Nullable String removePathExtension() {
 		String extension = null;
 		if (this.originalPath != null) {
 			extension = UriUtils.extractFileExtension(this.originalPath);
-			if (!StringUtils.isEmpty(extension)) {
+			if (StringUtils.hasLength(extension)) {
 				int end = this.originalPath.length() - (extension.length() + 1);
 				replacePath(this.originalPath.substring(0, end));
 			}

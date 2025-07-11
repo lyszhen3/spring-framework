@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,10 @@
 
 package org.springframework.web.servlet.mvc;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
@@ -38,7 +38,7 @@ import org.springframework.web.servlet.ModelAndView;
  * <h3><a name="workflow">Workflow</a></h3>
  *
  * <p>After a {@code DispatcherServlet} has received a request and has
- * done its work to resolve locales, themes, and suchlike, it then tries
+ * done its work to resolve locales, and suchlike, it then tries
  * to resolve a Controller, using a
  * {@link org.springframework.web.servlet.HandlerMapping HandlerMapping}.
  * When a Controller has been found to handle the request, the
@@ -93,11 +93,12 @@ import org.springframework.web.servlet.ModelAndView;
  * you all those references through convenient accessors but requires an
  * ApplicationContext reference on initialization.
  *
- * <p>Controllers can optionally implement the {@link LastModified} interface.
+ * <p>Controllers can use the {@code checkNotModified} methods on
+ * {@link org.springframework.web.context.request.WebRequest} for HTTP caching
+ * support.
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
- * @see LastModified
  * @see SimpleControllerHandlerAdapter
  * @see AbstractController
  * @see org.springframework.mock.web.MockHttpServletRequest
@@ -120,7 +121,6 @@ public interface Controller {
 	 * @return a ModelAndView to render, or {@code null} if handled directly
 	 * @throws Exception in case of errors
 	 */
-	@Nullable
-	ModelAndView handleRequest(HttpServletRequest request, HttpServletResponse response) throws Exception;
+	@Nullable ModelAndView handleRequest(HttpServletRequest request, HttpServletResponse response) throws Exception;
 
 }

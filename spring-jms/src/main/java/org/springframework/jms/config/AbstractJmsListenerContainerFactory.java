@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,16 +16,17 @@
 
 package org.springframework.jms.config;
 
-import javax.jms.ConnectionFactory;
-
+import io.micrometer.observation.ObservationRegistry;
+import jakarta.jms.ConnectionFactory;
+import jakarta.jms.ExceptionListener;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.jms.listener.AbstractMessageListenerContainer;
 import org.springframework.jms.support.QosSettings;
 import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.destination.DestinationResolver;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ErrorHandler;
 
 /**
@@ -41,47 +42,39 @@ public abstract class AbstractJmsListenerContainerFactory<C extends AbstractMess
 
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private ConnectionFactory connectionFactory;
+	private @Nullable ConnectionFactory connectionFactory;
 
-	@Nullable
-	private DestinationResolver destinationResolver;
+	private @Nullable DestinationResolver destinationResolver;
 
-	@Nullable
-	private ErrorHandler errorHandler;
+	private @Nullable MessageConverter messageConverter;
 
-	@Nullable
-	private MessageConverter messageConverter;
+	private @Nullable ExceptionListener exceptionListener;
 
-	@Nullable
-	private Boolean sessionTransacted;
+	private @Nullable ErrorHandler errorHandler;
 
-	@Nullable
-	private Integer sessionAcknowledgeMode;
+	private @Nullable Boolean sessionTransacted;
 
-	@Nullable
-	private Boolean pubSubDomain;
+	private @Nullable Integer sessionAcknowledgeMode;
 
-	@Nullable
-	private Boolean replyPubSubDomain;
+	private @Nullable Boolean acknowledgeAfterListener;
 
-	@Nullable
-	private QosSettings replyQosSettings;
+	private @Nullable Boolean pubSubDomain;
 
-	@Nullable
-	private Boolean subscriptionDurable;
+	private @Nullable Boolean replyPubSubDomain;
 
-	@Nullable
-	private Boolean subscriptionShared;
+	private @Nullable QosSettings replyQosSettings;
 
-	@Nullable
-	private String clientId;
+	private @Nullable Boolean subscriptionDurable;
 
-	@Nullable
-	private Integer phase;
+	private @Nullable Boolean subscriptionShared;
 
-	@Nullable
-	private Boolean autoStartup;
+	private @Nullable String clientId;
+
+	private @Nullable Integer phase;
+
+	private @Nullable Boolean autoStartup;
+
+	private @Nullable ObservationRegistry observationRegistry;
 
 
 	/**
@@ -99,17 +92,25 @@ public abstract class AbstractJmsListenerContainerFactory<C extends AbstractMess
 	}
 
 	/**
-	 * @see AbstractMessageListenerContainer#setErrorHandler(ErrorHandler)
-	 */
-	public void setErrorHandler(ErrorHandler errorHandler) {
-		this.errorHandler = errorHandler;
-	}
-
-	/**
 	 * @see AbstractMessageListenerContainer#setMessageConverter(MessageConverter)
 	 */
 	public void setMessageConverter(MessageConverter messageConverter) {
 		this.messageConverter = messageConverter;
+	}
+
+	/**
+	 * @since 5.2.8
+	 * @see AbstractMessageListenerContainer#setExceptionListener(ExceptionListener)
+	 */
+	public void setExceptionListener(ExceptionListener exceptionListener) {
+		this.exceptionListener = exceptionListener;
+	}
+
+	/**
+	 * @see AbstractMessageListenerContainer#setErrorHandler(ErrorHandler)
+	 */
+	public void setErrorHandler(ErrorHandler errorHandler) {
+		this.errorHandler = errorHandler;
 	}
 
 	/**
@@ -124,6 +125,14 @@ public abstract class AbstractJmsListenerContainerFactory<C extends AbstractMess
 	 */
 	public void setSessionAcknowledgeMode(Integer sessionAcknowledgeMode) {
 		this.sessionAcknowledgeMode = sessionAcknowledgeMode;
+	}
+
+	/**
+	 * @since 6.2.6
+	 * @see AbstractMessageListenerContainer#setAcknowledgeAfterListener(boolean)
+	 */
+	public void setAcknowledgeAfterListener(Boolean acknowledgeAfterListener) {
+		this.acknowledgeAfterListener = acknowledgeAfterListener;
 	}
 
 	/**
@@ -182,6 +191,19 @@ public abstract class AbstractJmsListenerContainerFactory<C extends AbstractMess
 		this.autoStartup = autoStartup;
 	}
 
+	/**
+	 * Set the {@link ObservationRegistry} to be used for recording
+	 * {@linkplain io.micrometer.jakarta9.instrument.jms.JmsObservationDocumentation#JMS_MESSAGE_PROCESS
+	 * JMS message processing observations}.
+	 * <p>Defaults to no-op observations if the registry is not set.
+	 * @since 6.1
+	 * @see AbstractMessageListenerContainer#setObservationRegistry(ObservationRegistry)
+	 */
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		this.observationRegistry = observationRegistry;
+	}
+
+
 	@Override
 	public C createListenerContainer(JmsListenerEndpoint endpoint) {
 		C instance = createContainerInstance();
@@ -192,17 +214,23 @@ public abstract class AbstractJmsListenerContainerFactory<C extends AbstractMess
 		if (this.destinationResolver != null) {
 			instance.setDestinationResolver(this.destinationResolver);
 		}
-		if (this.errorHandler != null) {
-			instance.setErrorHandler(this.errorHandler);
-		}
 		if (this.messageConverter != null) {
 			instance.setMessageConverter(this.messageConverter);
+		}
+		if (this.exceptionListener != null) {
+			instance.setExceptionListener(this.exceptionListener);
+		}
+		if (this.errorHandler != null) {
+			instance.setErrorHandler(this.errorHandler);
 		}
 		if (this.sessionTransacted != null) {
 			instance.setSessionTransacted(this.sessionTransacted);
 		}
 		if (this.sessionAcknowledgeMode != null) {
 			instance.setSessionAcknowledgeMode(this.sessionAcknowledgeMode);
+		}
+		if (this.acknowledgeAfterListener != null) {
+			instance.setAcknowledgeAfterListener(this.acknowledgeAfterListener);
 		}
 		if (this.pubSubDomain != null) {
 			instance.setPubSubDomain(this.pubSubDomain);
@@ -227,6 +255,9 @@ public abstract class AbstractJmsListenerContainerFactory<C extends AbstractMess
 		}
 		if (this.autoStartup != null) {
 			instance.setAutoStartup(this.autoStartup);
+		}
+		if (this.observationRegistry != null) {
+			instance.setObservationRegistry(this.observationRegistry);
 		}
 
 		initializeContainer(instance);

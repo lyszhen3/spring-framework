@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,10 @@ package org.springframework.jdbc.object;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+
 import javax.sql.DataSource;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Reusable query in which concrete subclasses must implement the abstract
@@ -38,7 +39,7 @@ import org.springframework.lang.Nullable;
  * @param <T> the result type
  * @see MappingSqlQueryWithParameters
  */
-public abstract class MappingSqlQuery<T> extends MappingSqlQueryWithParameters<T> {
+public abstract class MappingSqlQuery<T extends @Nullable Object> extends MappingSqlQueryWithParameters<T> {
 
 	/**
 	 * Constructor that allows use as a JavaBean.
@@ -62,8 +63,7 @@ public abstract class MappingSqlQuery<T> extends MappingSqlQueryWithParameters<T
 	 * @see #mapRow(ResultSet, int)
 	 */
 	@Override
-	@Nullable
-	protected final T mapRow(ResultSet rs, int rowNum, @Nullable Object[] parameters, @Nullable Map<?, ?> context)
+	protected final T mapRow(ResultSet rs, int rowNum, @Nullable Object @Nullable [] parameters, @Nullable Map<?, ?> context)
 			throws SQLException {
 
 		return mapRow(rs, rowNum);
@@ -82,7 +82,6 @@ public abstract class MappingSqlQuery<T> extends MappingSqlQueryWithParameters<T
 	 * Subclasses can simply not catch SQLExceptions, relying on the
 	 * framework to clean up.
 	 */
-	@Nullable
 	protected abstract T mapRow(ResultSet rs, int rowNum) throws SQLException;
 
 }

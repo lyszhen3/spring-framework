@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -44,16 +45,15 @@ import org.springframework.util.StringUtils;
  * @see AnnotatedElementUtils
  */
 @SuppressWarnings("serial")
-public class AnnotationAttributes extends LinkedHashMap<String, Object> {
+public class AnnotationAttributes extends LinkedHashMap<String, @Nullable Object> {
 
 	private static final String UNKNOWN = "unknown";
 
-	@Nullable
-	private final Class<? extends Annotation> annotationType;
+	private final @Nullable Class<? extends Annotation> annotationType;
 
 	final String displayName;
 
-	boolean validated = false;
+	final boolean validated;
 
 
 	/**
@@ -62,6 +62,7 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 	public AnnotationAttributes() {
 		this.annotationType = null;
 		this.displayName = UNKNOWN;
+		this.validated = false;
 	}
 
 	/**
@@ -73,6 +74,7 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 		super(initialCapacity);
 		this.annotationType = null;
 		this.displayName = UNKNOWN;
+		this.validated = false;
 	}
 
 	/**
@@ -81,10 +83,11 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 	 * @param map original source of annotation attribute <em>key-value</em> pairs
 	 * @see #fromMap(Map)
 	 */
-	public AnnotationAttributes(Map<String, Object> map) {
+	public AnnotationAttributes(Map<String, @Nullable Object> map) {
 		super(map);
 		this.annotationType = null;
 		this.displayName = UNKNOWN;
+		this.validated = false;
 	}
 
 	/**
@@ -108,9 +111,23 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 	 * @since 4.2
 	 */
 	public AnnotationAttributes(Class<? extends Annotation> annotationType) {
+		this(annotationType, false);
+	}
+
+	/**
+	 * Create a possibly already validated new, empty
+	 * {@link AnnotationAttributes} instance for the specified
+	 * {@code annotationType}.
+	 * @param annotationType the type of annotation represented by this
+	 * {@code AnnotationAttributes} instance; never {@code null}
+	 * @param validated if the attributes are considered already validated
+	 * @since 5.2
+	 */
+	AnnotationAttributes(Class<? extends Annotation> annotationType, boolean validated) {
 		Assert.notNull(annotationType, "'annotationType' must not be null");
 		this.annotationType = annotationType;
 		this.displayName = annotationType.getName();
+		this.validated = validated;
 	}
 
 	/**
@@ -126,11 +143,11 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 		Assert.notNull(annotationType, "'annotationType' must not be null");
 		this.annotationType = getAnnotationType(annotationType, classLoader);
 		this.displayName = annotationType;
+		this.validated = false;
 	}
 
 	@SuppressWarnings("unchecked")
-	@Nullable
-	private static Class<? extends Annotation> getAnnotationType(String annotationType, @Nullable ClassLoader classLoader) {
+	private static @Nullable Class<? extends Annotation> getAnnotationType(String annotationType, @Nullable ClassLoader classLoader) {
 		if (classLoader != null) {
 			try {
 				return (Class<? extends Annotation>) classLoader.loadClass(annotationType);
@@ -148,8 +165,7 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 	 * @return the annotation type, or {@code null} if unknown
 	 * @since 4.2
 	 */
-	@Nullable
-	public Class<? extends Annotation> annotationType() {
+	public @Nullable Class<? extends Annotation> annotationType() {
 		return this.annotationType;
 	}
 
@@ -311,8 +327,7 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 	 */
 	@SuppressWarnings("unchecked")
 	public <A extends Annotation> A[] getAnnotationArray(String attributeName, Class<A> annotationType) {
-		Object array = Array.newInstance(annotationType, 0);
-		return (A[]) getRequiredAttribute(attributeName, array.getClass());
+		return (A[]) getRequiredAttribute(attributeName, annotationType.arrayType());
 	}
 
 	/**
@@ -334,82 +349,54 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 	private <T> T getRequiredAttribute(String attributeName, Class<T> expectedType) {
 		Assert.hasText(attributeName, "'attributeName' must not be null or empty");
 		Object value = get(attributeName);
-		assertAttributePresence(attributeName, value);
-		assertNotException(attributeName, value);
+		if (value == null) {
+			throw new IllegalArgumentException(String.format(
+					"Attribute '%s' not found in attributes for annotation [%s]",
+					attributeName, this.displayName));
+		}
+		if (value instanceof Throwable throwable) {
+			throw new IllegalArgumentException(String.format(
+					"Attribute '%s' for annotation [%s] was not resolvable due to exception [%s]",
+					attributeName, this.displayName, value), throwable);
+		}
 		if (!expectedType.isInstance(value) && expectedType.isArray() &&
-				expectedType.getComponentType().isInstance(value)) {
-			Object array = Array.newInstance(expectedType.getComponentType(), 1);
+				expectedType.componentType().isInstance(value)) {
+			Object array = Array.newInstance(expectedType.componentType(), 1);
 			Array.set(array, 0, value);
 			value = array;
 		}
-		assertAttributeType(attributeName, value, expectedType);
-		return (T) value;
-	}
-
-	private void assertAttributePresence(String attributeName, Object attributeValue) {
-		Assert.notNull(attributeValue, () -> String.format(
-				"Attribute '%s' not found in attributes for annotation [%s]",
-				attributeName, this.displayName));
-	}
-
-	private void assertNotException(String attributeName, Object attributeValue) {
-		if (attributeValue instanceof Exception) {
+		if (!expectedType.isInstance(value)) {
 			throw new IllegalArgumentException(String.format(
-					"Attribute '%s' for annotation [%s] was not resolvable due to exception [%s]",
-					attributeName, this.displayName, attributeValue), (Exception) attributeValue);
-		}
-	}
-
-	private void assertAttributeType(String attributeName, Object attributeValue, Class<?> expectedType) {
-		if (!expectedType.isInstance(attributeValue)) {
-			throw new IllegalArgumentException(String.format(
-					"Attribute '%s' is of type [%s], but [%s] was expected in attributes for annotation [%s]",
-					attributeName, attributeValue.getClass().getSimpleName(), expectedType.getSimpleName(),
+					"Attribute '%s' is of type %s, but %s was expected in attributes for annotation [%s]",
+					attributeName, value.getClass().getSimpleName(), expectedType.getSimpleName(),
 					this.displayName));
 		}
-	}
-
-	/**
-	 * Store the supplied {@code value} in this map under the specified
-	 * {@code key}, unless a value is already stored under the key.
-	 * @param key the key under which to store the value
-	 * @param value the value to store
-	 * @return the current value stored in this map, or {@code null} if no
-	 * value was previously stored in this map
-	 * @see #get
-	 * @see #put
-	 * @since 4.2
-	 */
-	@Override
-	public Object putIfAbsent(String key, Object value) {
-		Object obj = get(key);
-		if (obj == null) {
-			obj = put(key, value);
-		}
-		return obj;
+		return (T) value;
 	}
 
 	@Override
 	public String toString() {
-		Iterator<Map.Entry<String, Object>> entries = entrySet().iterator();
+		Iterator<Map.Entry<String, @Nullable Object>> entries = entrySet().iterator();
 		StringBuilder sb = new StringBuilder("{");
 		while (entries.hasNext()) {
-			Map.Entry<String, Object> entry = entries.next();
+			Map.Entry<String, @Nullable Object> entry = entries.next();
 			sb.append(entry.getKey());
 			sb.append('=');
 			sb.append(valueToString(entry.getValue()));
-			sb.append(entries.hasNext() ? ", " : "");
+			if (entries.hasNext()) {
+				sb.append(", ");
+			}
 		}
-		sb.append("}");
+		sb.append('}');
 		return sb.toString();
 	}
 
-	private String valueToString(Object value) {
+	private String valueToString(@Nullable Object value) {
 		if (value == this) {
 			return "(this Map)";
 		}
-		if (value instanceof Object[]) {
-			return "[" + StringUtils.arrayToDelimitedString((Object[]) value, ", ") + "]";
+		if (value instanceof Object[] objects) {
+			return "[" + StringUtils.arrayToDelimitedString(objects, ", ") + "]";
 		}
 		return String.valueOf(value);
 	}
@@ -423,13 +410,12 @@ public class AnnotationAttributes extends LinkedHashMap<String, Object> {
 	 * to the {@link #AnnotationAttributes(Map)} constructor.
 	 * @param map original source of annotation attribute <em>key-value</em> pairs
 	 */
-	@Nullable
-	public static AnnotationAttributes fromMap(@Nullable Map<String, Object> map) {
+	public static @Nullable AnnotationAttributes fromMap(@Nullable Map<String, @Nullable Object> map) {
 		if (map == null) {
 			return null;
 		}
-		if (map instanceof AnnotationAttributes) {
-			return (AnnotationAttributes) map;
+		if (map instanceof AnnotationAttributes annotationAttributes) {
+			return annotationAttributes;
 		}
 		return new AnnotationAttributes(map);
 	}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,14 +17,14 @@
 package org.springframework.context.support;
 
 import java.text.MessageFormat;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
@@ -53,21 +53,22 @@ public abstract class MessageSourceSupport {
 	 * Used for passed-in default messages. MessageFormats for resolved
 	 * codes are cached on a specific basis in subclasses.
 	 */
-	private final Map<String, Map<Locale, MessageFormat>> messageFormatsPerMessage = new HashMap<>();
+	private final Map<String, Map<Locale, MessageFormat>> messageFormatsPerMessage = new ConcurrentHashMap<>();
 
 
 	/**
-	 * Set whether to always apply the {@code MessageFormat} rules,
-	 * parsing even messages without arguments.
-	 * <p>Default is "false": Messages without arguments are by default
-	 * returned as-is, without parsing them through MessageFormat.
-	 * Set this to "true" to enforce MessageFormat for all messages,
-	 * expecting all message texts to be written with MessageFormat escaping.
-	 * <p>For example, MessageFormat expects a single quote to be escaped
-	 * as "''". If your message texts are all written with such escaping,
-	 * even when not defining argument placeholders, you need to set this
-	 * flag to "true". Else, only message texts with actual arguments
-	 * are supposed to be written with MessageFormat escaping.
+	 * Set whether to always apply the {@code MessageFormat} rules, parsing even
+	 * messages without arguments.
+	 * <p>Default is {@code false}: Messages without arguments are by default
+	 * returned as-is, without parsing them through {@code MessageFormat}.
+	 * Set this to {@code true} to enforce {@code MessageFormat} for all messages,
+	 * expecting all message texts to be written with {@code MessageFormat} escaping.
+	 * <p>For example, {@code MessageFormat} expects a single quote to be escaped
+	 * as two adjacent single quotes ({@code "''"}). If your message texts are all
+	 * written with such escaping, even when not defining argument placeholders,
+	 * you need to set this flag to {@code true}. Otherwise, only message texts
+	 * with actual arguments are supposed to be written with {@code MessageFormat}
+	 * escaping.
 	 * @see java.text.MessageFormat
 	 */
 	public void setAlwaysUseMessageFormat(boolean alwaysUseMessageFormat) {
@@ -75,7 +76,7 @@ public abstract class MessageSourceSupport {
 	}
 
 	/**
-	 * Return whether to always apply the MessageFormat rules, parsing even
+	 * Return whether to always apply the {@code MessageFormat} rules, parsing even
 	 * messages without arguments.
 	 */
 	protected boolean isAlwaysUseMessageFormat() {
@@ -97,7 +98,7 @@ public abstract class MessageSourceSupport {
 	 * @return the rendered default message (with resolved arguments)
 	 * @see #formatMessage(String, Object[], java.util.Locale)
 	 */
-	protected String renderDefaultMessage(String defaultMessage, @Nullable Object[] args, Locale locale) {
+	protected String renderDefaultMessage(String defaultMessage, Object @Nullable [] args, Locale locale) {
 		return formatMessage(defaultMessage, args, locale);
 	}
 
@@ -111,36 +112,26 @@ public abstract class MessageSourceSupport {
 	 * @param locale the Locale used for formatting
 	 * @return the formatted message (with resolved arguments)
 	 */
-	protected String formatMessage(String msg, @Nullable Object[] args, Locale locale) {
+	protected String formatMessage(String msg, Object @Nullable [] args, Locale locale) {
 		if (!isAlwaysUseMessageFormat() && ObjectUtils.isEmpty(args)) {
 			return msg;
 		}
-		MessageFormat messageFormat = null;
-		synchronized (this.messageFormatsPerMessage) {
-			Map<Locale, MessageFormat> messageFormatsPerLocale = this.messageFormatsPerMessage.get(msg);
-			if (messageFormatsPerLocale != null) {
-				messageFormat = messageFormatsPerLocale.get(locale);
+		Map<Locale, MessageFormat> messageFormatsPerLocale = this.messageFormatsPerMessage
+				.computeIfAbsent(msg, key -> new ConcurrentHashMap<>());
+		MessageFormat messageFormat = messageFormatsPerLocale.computeIfAbsent(locale, key -> {
+			try {
+				return createMessageFormat(msg, locale);
 			}
-			else {
-				messageFormatsPerLocale = new HashMap<>();
-				this.messageFormatsPerMessage.put(msg, messageFormatsPerLocale);
-			}
-			if (messageFormat == null) {
-				try {
-					messageFormat = createMessageFormat(msg, locale);
+			catch (IllegalArgumentException ex) {
+				// Invalid message format - probably not intended for formatting,
+				// rather using a message structure with no arguments involved...
+				if (isAlwaysUseMessageFormat()) {
+					throw ex;
 				}
-				catch (IllegalArgumentException ex) {
-					// Invalid message format - probably not intended for formatting,
-					// rather using a message structure with no arguments involved...
-					if (isAlwaysUseMessageFormat()) {
-						throw ex;
-					}
-					// Silently proceed with raw message if format not enforced...
-					messageFormat = INVALID_MESSAGE_FORMAT;
-				}
-				messageFormatsPerLocale.put(locale, messageFormat);
+				// Silently proceed with raw message if format not enforced...
+				return INVALID_MESSAGE_FORMAT;
 			}
-		}
+		});
 		if (messageFormat == INVALID_MESSAGE_FORMAT) {
 			return msg;
 		}
@@ -150,10 +141,10 @@ public abstract class MessageSourceSupport {
 	}
 
 	/**
-	 * Create a MessageFormat for the given message and Locale.
-	 * @param msg the message to create a MessageFormat for
-	 * @param locale the Locale to create a MessageFormat for
-	 * @return the MessageFormat instance
+	 * Create a {@code MessageFormat} for the given message and Locale.
+	 * @param msg the message to create a {@code MessageFormat} for
+	 * @param locale the Locale to create a {@code MessageFormat} for
+	 * @return the {@code MessageFormat} instance
 	 */
 	protected MessageFormat createMessageFormat(String msg, Locale locale) {
 		return new MessageFormat(msg, locale);
@@ -167,7 +158,7 @@ public abstract class MessageSourceSupport {
 	 * @param locale the Locale to resolve against
 	 * @return the resolved argument array
 	 */
-	protected Object[] resolveArguments(@Nullable Object[] args, Locale locale) {
+	protected Object[] resolveArguments(Object @Nullable [] args, Locale locale) {
 		return (args != null ? args : new Object[0]);
 	}
 

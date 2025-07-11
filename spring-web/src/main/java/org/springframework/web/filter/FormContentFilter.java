@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,18 +28,19 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter;
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
@@ -93,8 +94,7 @@ public class FormContentFilter extends OncePerRequestFilter {
 		}
 	}
 
-	@Nullable
-	private MultiValueMap<String, String> parseIfNecessary(HttpServletRequest request) throws IOException {
+	private @Nullable MultiValueMap<String, String> parseIfNecessary(HttpServletRequest request) throws IOException {
 		if (!shouldParse(request)) {
 			return null;
 		}
@@ -109,22 +109,23 @@ public class FormContentFilter extends OncePerRequestFilter {
 	}
 
 	private boolean shouldParse(HttpServletRequest request) {
-		if (!HTTP_METHODS.contains(request.getMethod())) {
-			return false;
+		String contentType = request.getContentType();
+		String method = request.getMethod();
+		if (StringUtils.hasLength(contentType) && HTTP_METHODS.contains(method)) {
+			try {
+				MediaType mediaType = MediaType.parseMediaType(contentType);
+				return MediaType.APPLICATION_FORM_URLENCODED.includes(mediaType);
+			}
+			catch (IllegalArgumentException ignored) {
+			}
 		}
-		try {
-			MediaType mediaType = MediaType.parseMediaType(request.getContentType());
-			return MediaType.APPLICATION_FORM_URLENCODED.includes(mediaType);
-		}
-		catch (IllegalArgumentException ex) {
-			return false;
-		}
+		return false;
 	}
 
 
 	private static class FormContentRequestWrapper extends HttpServletRequestWrapper {
 
-		private MultiValueMap<String, String> formParams;
+		private final MultiValueMap<String, String> formParams;
 
 		public FormContentRequestWrapper(HttpServletRequest request, MultiValueMap<String, String> params) {
 			super(request);
@@ -132,8 +133,7 @@ public class FormContentFilter extends OncePerRequestFilter {
 		}
 
 		@Override
-		@Nullable
-		public String getParameter(String name) {
+		public @Nullable String getParameter(String name) {
 			String queryStringValue = super.getParameter(name);
 			String formValue = this.formParams.getFirst(name);
 			return (queryStringValue != null ? queryStringValue : formValue);
@@ -159,7 +159,6 @@ public class FormContentFilter extends OncePerRequestFilter {
 		}
 
 		@Override
-		@Nullable
 		public String[] getParameterValues(String name) {
 			String[] parameterValues = super.getParameterValues(name);
 			List<String> formParam = this.formParams.get(name);

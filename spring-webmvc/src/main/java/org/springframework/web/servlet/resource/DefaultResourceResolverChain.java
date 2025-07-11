@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +20,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
-import javax.servlet.http.HttpServletRequest;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.io.Resource;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -34,11 +35,9 @@ import org.springframework.util.Assert;
  */
 class DefaultResourceResolverChain implements ResourceResolverChain {
 
-	@Nullable
-	private final ResourceResolver resolver;
+	private final @Nullable ResourceResolver resolver;
 
-	@Nullable
-	private final ResourceResolverChain nextChain;
+	private final @Nullable ResourceResolverChain nextChain;
 
 
 	public DefaultResourceResolverChain(@Nullable List<? extends ResourceResolver> resolvers) {
@@ -66,8 +65,7 @@ class DefaultResourceResolverChain implements ResourceResolverChain {
 
 
 	@Override
-	@Nullable
-	public Resource resolveResource(
+	public @Nullable Resource resolveResource(
 			@Nullable HttpServletRequest request, String requestPath, List<? extends Resource> locations) {
 
 		return (this.resolver != null && this.nextChain != null ?
@@ -75,8 +73,7 @@ class DefaultResourceResolverChain implements ResourceResolverChain {
 	}
 
 	@Override
-	@Nullable
-	public String resolveUrlPath(String resourcePath, List<? extends Resource> locations) {
+	public @Nullable String resolveUrlPath(String resourcePath, List<? extends Resource> locations) {
 		return (this.resolver != null && this.nextChain != null ?
 				this.resolver.resolveUrlPath(resourcePath, locations, this.nextChain) : null);
 	}

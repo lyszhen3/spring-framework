@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,12 +22,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import javax.servlet.ServletContext;
+
+import jakarta.servlet.ServletContext;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.io.AbstractFileResolvingResource;
 import org.springframework.core.io.ContextResource;
 import org.springframework.core.io.Resource;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
@@ -35,7 +36,7 @@ import org.springframework.web.util.WebUtils;
 
 /**
  * {@link org.springframework.core.io.Resource} implementation for
- * {@link javax.servlet.ServletContext} resources, interpreting
+ * {@link jakarta.servlet.ServletContext} resources, interpreting
  * relative paths within the web application root directory.
  *
  * <p>Always supports stream access and URL access, but only allows
@@ -44,9 +45,9 @@ import org.springframework.web.util.WebUtils;
  *
  * @author Juergen Hoeller
  * @since 28.12.2003
- * @see javax.servlet.ServletContext#getResourceAsStream
- * @see javax.servlet.ServletContext#getResource
- * @see javax.servlet.ServletContext#getRealPath
+ * @see jakarta.servlet.ServletContext#getResourceAsStream
+ * @see jakarta.servlet.ServletContext#getResource
+ * @see jakarta.servlet.ServletContext#getRealPath
  */
 public class ServletContextResource extends AbstractFileResolvingResource implements ContextResource {
 
@@ -56,7 +57,7 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 
 
 	/**
-	 * Create a new ServletContextResource.
+	 * Create a new {@code ServletContextResource} for the given path.
 	 * <p>The Servlet spec requires that resource paths start with a slash,
 	 * even if many containers accept paths without leading slash too.
 	 * Consequently, the given path will be prepended with a slash if it
@@ -93,9 +94,10 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 		return this.path;
 	}
 
+
 	/**
 	 * This implementation checks {@code ServletContext.getResource}.
-	 * @see javax.servlet.ServletContext#getResource(String)
+	 * @see jakarta.servlet.ServletContext#getResource(String)
 	 */
 	@Override
 	public boolean exists() {
@@ -110,8 +112,8 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 
 	/**
 	 * This implementation delegates to {@code ServletContext.getResourceAsStream},
-	 * which returns {@code null} in case of a non-readable resource (e.g. a directory).
-	 * @see javax.servlet.ServletContext#getResourceAsStream(String)
+	 * which returns {@code null} in case of a non-readable resource (for example, a directory).
+	 * @see jakarta.servlet.ServletContext#getResourceAsStream(String)
 	 */
 	@Override
 	public boolean isReadable() {
@@ -120,8 +122,7 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 			try {
 				is.close();
 			}
-			catch (IOException ex) {
-				// ignore
+			catch (IOException ignored) {
 			}
 			return true;
 		}
@@ -138,10 +139,15 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 				return true;
 			}
 			else {
-				return (this.servletContext.getRealPath(this.path) != null);
+				String realPath = this.servletContext.getRealPath(this.path);
+				if (realPath == null) {
+					return false;
+				}
+				File file = new File(realPath);
+				return (file.exists() && file.isFile());
 			}
 		}
-		catch (MalformedURLException ex) {
+		catch (IOException ex) {
 			return false;
 		}
 	}
@@ -149,7 +155,7 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 	/**
 	 * This implementation delegates to {@code ServletContext.getResourceAsStream},
 	 * but throws a FileNotFoundException if no resource found.
-	 * @see javax.servlet.ServletContext#getResourceAsStream(String)
+	 * @see jakarta.servlet.ServletContext#getResourceAsStream(String)
 	 */
 	@Override
 	public InputStream getInputStream() throws IOException {
@@ -163,7 +169,7 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 	/**
 	 * This implementation delegates to {@code ServletContext.getResource},
 	 * but throws a FileNotFoundException if no resource found.
-	 * @see javax.servlet.ServletContext#getResource(String)
+	 * @see jakarta.servlet.ServletContext#getResource(String)
 	 */
 	@Override
 	public URL getURL() throws IOException {
@@ -179,8 +185,8 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 	 * This implementation resolves "file:" URLs or alternatively delegates to
 	 * {@code ServletContext.getRealPath}, throwing a FileNotFoundException
 	 * if not found or not resolvable.
-	 * @see javax.servlet.ServletContext#getResource(String)
-	 * @see javax.servlet.ServletContext#getRealPath(String)
+	 * @see jakarta.servlet.ServletContext#getResource(String)
+	 * @see jakarta.servlet.ServletContext#getRealPath(String)
 	 */
 	@Override
 	public File getFile() throws IOException {
@@ -212,8 +218,7 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 	 * @see org.springframework.util.StringUtils#getFilename(String)
 	 */
 	@Override
-	@Nullable
-	public String getFilename() {
+	public @Nullable String getFilename() {
 		return StringUtils.getFilename(this.path);
 	}
 
@@ -236,15 +241,9 @@ public class ServletContextResource extends AbstractFileResolvingResource implem
 	 * This implementation compares the underlying ServletContext resource locations.
 	 */
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof ServletContextResource)) {
-			return false;
-		}
-		ServletContextResource otherRes = (ServletContextResource) other;
-		return (this.servletContext.equals(otherRes.servletContext) && this.path.equals(otherRes.path));
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof ServletContextResource that &&
+				this.path.equals(that.path) && this.servletContext.equals(that.servletContext)));
 	}
 
 	/**

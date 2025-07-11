@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,9 +20,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.config.Scope;
-import org.springframework.lang.Nullable;
 
 /**
  * A simple transaction-backed {@link Scope} implementation, delegating to
@@ -50,6 +51,8 @@ public class SimpleTransactionScope implements Scope {
 			TransactionSynchronizationManager.registerSynchronization(new CleanupSynchronization(scopedObjects));
 			TransactionSynchronizationManager.bindResource(this, scopedObjects);
 		}
+		// NOTE: Do NOT modify the following to use Map::computeIfAbsent. For details,
+		// see https://github.com/spring-projects/spring-framework/issues/25801.
 		Object scopedObject = scopedObjects.scopedInstances.get(name);
 		if (scopedObject == null) {
 			scopedObject = objectFactory.getObject();
@@ -59,8 +62,7 @@ public class SimpleTransactionScope implements Scope {
 	}
 
 	@Override
-	@Nullable
-	public Object remove(String name) {
+	public @Nullable Object remove(String name) {
 		ScopedObjectsHolder scopedObjects = (ScopedObjectsHolder) TransactionSynchronizationManager.getResource(this);
 		if (scopedObjects != null) {
 			scopedObjects.destructionCallbacks.remove(name);
@@ -80,14 +82,7 @@ public class SimpleTransactionScope implements Scope {
 	}
 
 	@Override
-	@Nullable
-	public Object resolveContextualObject(String key) {
-		return null;
-	}
-
-	@Override
-	@Nullable
-	public String getConversationId() {
+	public @Nullable String getConversationId() {
 		return TransactionSynchronizationManager.getCurrentTransactionName();
 	}
 
@@ -103,7 +98,7 @@ public class SimpleTransactionScope implements Scope {
 	}
 
 
-	private class CleanupSynchronization extends TransactionSynchronizationAdapter {
+	private class CleanupSynchronization implements TransactionSynchronization {
 
 		private final ScopedObjectsHolder scopedObjects;
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,13 +19,14 @@ package org.springframework.web.filter;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
-import javax.servlet.Filter;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
 
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeansException;
@@ -42,17 +43,15 @@ import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceEditor;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.ServletContextAware;
 import org.springframework.web.context.support.ServletContextResourceLoader;
 import org.springframework.web.context.support.StandardServletEnvironment;
-import org.springframework.web.util.NestedServletException;
 
 /**
- * Simple base implementation of {@link javax.servlet.Filter} which treats
+ * Simple base implementation of {@link jakarta.servlet.Filter} which treats
  * its config parameters ({@code init-param} entries within the
  * {@code filter} tag in {@code web.xml}) as bean properties.
  *
@@ -63,7 +62,7 @@ import org.springframework.web.util.NestedServletException;
  * setter will simply be ignored.
  *
  * <p>This filter leaves actual filtering to subclasses, which have to
- * implement the {@link javax.servlet.Filter#doFilter} method.
+ * implement the {@link jakarta.servlet.Filter#doFilter} method.
  *
  * <p>This generic filter base class has no dependency on the Spring
  * {@link org.springframework.context.ApplicationContext} concept.
@@ -84,17 +83,13 @@ public abstract class GenericFilterBean implements Filter, BeanNameAware, Enviro
 	/** Logger available to subclasses. */
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private String beanName;
+	private @Nullable String beanName;
 
-	@Nullable
-	private Environment environment;
+	private @Nullable Environment environment;
 
-	@Nullable
-	private ServletContext servletContext;
+	private @Nullable ServletContext servletContext;
 
-	@Nullable
-	private FilterConfig filterConfig;
+	private @Nullable FilterConfig filterConfig;
 
 	private final Set<String> requiredProperties = new HashSet<>(4);
 
@@ -166,7 +161,7 @@ public abstract class GenericFilterBean implements Filter, BeanNameAware, Enviro
 	 * <p>Only relevant in case of initialization as bean, where the
 	 * standard {@code init(FilterConfig)} method won't be called.
 	 * @see #initFilterBean()
-	 * @see #init(javax.servlet.FilterConfig)
+	 * @see #init(jakarta.servlet.FilterConfig)
 	 */
 	@Override
 	public void afterPropertiesSet() throws ServletException {
@@ -228,9 +223,9 @@ public abstract class GenericFilterBean implements Filter, BeanNameAware, Enviro
 			}
 			catch (BeansException ex) {
 				String msg = "Failed to set bean properties on filter '" +
-					filterConfig.getFilterName() + "': " + ex.getMessage();
+						filterConfig.getFilterName() + "': " + ex.getMessage();
 				logger.error(msg, ex);
-				throw new NestedServletException(msg, ex);
+				throw new ServletException(msg, ex);
 			}
 		}
 
@@ -274,10 +269,9 @@ public abstract class GenericFilterBean implements Filter, BeanNameAware, Enviro
 	 * <p>Public to resemble the {@code getFilterConfig()} method
 	 * of the Servlet Filter version that shipped with WebLogic 6.1.
 	 * @return the FilterConfig instance, or {@code null} if none available
-	 * @see javax.servlet.GenericServlet#getServletConfig()
+	 * @see jakarta.servlet.GenericServlet#getServletConfig()
 	 */
-	@Nullable
-	public FilterConfig getFilterConfig() {
+	public @Nullable FilterConfig getFilterConfig() {
 		return this.filterConfig;
 	}
 
@@ -288,12 +282,11 @@ public abstract class GenericFilterBean implements Filter, BeanNameAware, Enviro
 	 * If initialized as bean in a Spring application context,
 	 * it falls back to the bean name as defined in the bean factory.
 	 * @return the filter name, or {@code null} if none available
-	 * @see javax.servlet.GenericServlet#getServletName()
-	 * @see javax.servlet.FilterConfig#getFilterName()
+	 * @see jakarta.servlet.GenericServlet#getServletName()
+	 * @see jakarta.servlet.FilterConfig#getFilterName()
 	 * @see #setBeanName
 	 */
-	@Nullable
-	protected String getFilterName() {
+	protected @Nullable String getFilterName() {
 		return (this.filterConfig != null ? this.filterConfig.getFilterName() : this.beanName);
 	}
 
@@ -305,8 +298,8 @@ public abstract class GenericFilterBean implements Filter, BeanNameAware, Enviro
 	 * it falls back to the ServletContext that the bean factory runs in.
 	 * @return the ServletContext instance
 	 * @throws IllegalStateException if no ServletContext is available
-	 * @see javax.servlet.GenericServlet#getServletContext()
-	 * @see javax.servlet.FilterConfig#getServletContext()
+	 * @see jakarta.servlet.GenericServlet#getServletContext()
+	 * @see jakarta.servlet.FilterConfig#getServletContext()
 	 * @see #setServletContext
 	 */
 	protected ServletContext getServletContext() {

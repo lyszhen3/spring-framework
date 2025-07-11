@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,8 @@
 
 package org.springframework.expression.spel.ast;
 
+import java.util.Optional;
+
 import org.springframework.asm.Label;
 import org.springframework.asm.MethodVisitor;
 import org.springframework.expression.EvaluationException;
@@ -24,36 +26,55 @@ import org.springframework.expression.spel.CodeFlow;
 import org.springframework.expression.spel.ExpressionState;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
-import org.springframework.util.StringUtils;
 
 /**
- * Represents the elvis operator ?:. For an expression "a?:b" if a is not null, the value
- * of the expression is "a", if a is null then the value of the expression is "b".
+ * Represents the Elvis operator {@code ?:}.
+ *
+ * <p>For the expression "{@code A ?: B}", if {@code A} is neither {@code null},
+ * an empty {@link Optional}, nor an empty {@link String}, the value of the
+ * expression is {@code A}, or {@code A.get()} for an {@code Optional}. If
+ * {@code A} is {@code null}, an empty {@code Optional}, or an
+ * empty {@code String}, the value of the expression is {@code B}.
  *
  * @author Andy Clement
  * @author Juergen Hoeller
+ * @author Sam Brannen
  * @since 3.0
  */
 public class Elvis extends SpelNodeImpl {
 
-	public Elvis(int pos, SpelNodeImpl... args) {
-		super(pos, args);
+	public Elvis(int startPos, int endPos, SpelNodeImpl... args) {
+		super(startPos, endPos, args);
 	}
 
 
 	/**
-	 * Evaluate the condition and if not null, return it.
-	 * If it is null, return the other value.
+	 * If the left-hand operand is neither neither {@code null}, an empty
+	 * {@link Optional}, nor an empty {@link String}, return its value, or the
+	 * value contained in the {@code Optional}. If the left-hand operand is
+	 * {@code null}, an empty {@code Optional}, or an empty {@code String},
+	 * return the other value.
 	 * @param state the expression state
-	 * @throws EvaluationException if the condition does not evaluate correctly
-	 * to a boolean or there is a problem executing the chosen alternative
+	 * @throws EvaluationException if the null/empty check does not evaluate correctly
+	 * or there is a problem evaluating the alternative
 	 */
 	@Override
 	public TypedValue getValueInternal(ExpressionState state) throws EvaluationException {
-		TypedValue value = this.children[0].getValueInternal(state);
+		TypedValue leftHandTypedValue = this.children[0].getValueInternal(state);
+		Object leftHandValue = leftHandTypedValue.getValue();
+
+		if (leftHandValue instanceof Optional<?> optional) {
+			// Compilation is currently not supported for Optional with the Elvis operator.
+			this.exitTypeDescriptor = null;
+			if (optional.isPresent()) {
+				return new TypedValue(optional.get());
+			}
+			return this.children[1].getValueInternal(state);
+		}
+
 		// If this check is changed, the generateCode method will need changing too
-		if (!StringUtils.isEmpty(value.getValue())) {
-			return value;
+		if (leftHandValue != null && !"".equals(leftHandValue)) {
+			return leftHandTypedValue;
 		}
 		else {
 			TypedValue result = this.children[1].getValueInternal(state);
@@ -64,7 +85,7 @@ public class Elvis extends SpelNodeImpl {
 
 	@Override
 	public String toStringAST() {
-		return getChild(0).toStringAST() + " ?: " + getChild(1).toStringAST();
+		return "(" + getChild(0).toStringAST() + " ?: " + getChild(1).toStringAST() + ")";
 	}
 
 	@Override
@@ -118,7 +139,7 @@ public class Elvis extends SpelNodeImpl {
 				this.exitTypeDescriptor = conditionDescriptor;
 			}
 			else {
-				// Use the easiest to compute common super type
+				// Use the easiest to compute common supertype
 				this.exitTypeDescriptor = "Ljava/lang/Object";
 			}
 		}

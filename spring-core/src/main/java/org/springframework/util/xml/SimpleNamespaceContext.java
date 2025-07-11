@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,12 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+
 import javax.xml.XMLConstants;
 import javax.xml.namespace.NamespaceContext;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -48,7 +50,7 @@ public class SimpleNamespaceContext implements NamespaceContext {
 
 	@Override
 	public String getNamespaceURI(String prefix) {
-		Assert.notNull(prefix, "No prefix given");
+		Assert.notNull(prefix, "'prefix' must not be null");
 		if (XMLConstants.XML_NS_PREFIX.equals(prefix)) {
 			return XMLConstants.XML_NS_URI;
 		}
@@ -65,8 +67,7 @@ public class SimpleNamespaceContext implements NamespaceContext {
 	}
 
 	@Override
-	@Nullable
-	public String getPrefix(String namespaceUri) {
+	public @Nullable String getPrefix(String namespaceUri) {
 		Set<String> prefixes = getPrefixesSet(namespaceUri);
 		return (!prefixes.isEmpty() ? prefixes.iterator().next() : null);
 	}
@@ -77,7 +78,7 @@ public class SimpleNamespaceContext implements NamespaceContext {
 	}
 
 	private Set<String> getPrefixesSet(String namespaceUri) {
-		Assert.notNull(namespaceUri, "No namespaceUri given");
+		Assert.notNull(namespaceUri, "'namespaceUri' must not be null");
 		if (this.defaultNamespaceUri.equals(namespaceUri)) {
 			return Collections.singleton(XMLConstants.DEFAULT_NS_PREFIX);
 		}
@@ -89,7 +90,7 @@ public class SimpleNamespaceContext implements NamespaceContext {
 		}
 		else {
 			Set<String> prefixes = this.namespaceUriToPrefixes.get(namespaceUri);
-			return (prefixes != null ?  Collections.unmodifiableSet(prefixes) : Collections.emptySet());
+			return (prefixes != null ? Collections.unmodifiableSet(prefixes) : Collections.emptySet());
 		}
 	}
 
@@ -113,11 +114,11 @@ public class SimpleNamespaceContext implements NamespaceContext {
 	/**
 	 * Bind the given prefix to the given namespace.
 	 * @param prefix the namespace prefix
-	 * @param namespaceUri the namespace uri
+	 * @param namespaceUri the namespace URI
 	 */
 	public void bindNamespaceUri(String prefix, String namespaceUri) {
-		Assert.notNull(prefix, "No prefix given");
-		Assert.notNull(namespaceUri, "No namespaceUri given");
+		Assert.notNull(prefix, "'prefix' must not be null");
+		Assert.notNull(namespaceUri, "'namespaceUri' must not be null");
 		if (XMLConstants.DEFAULT_NS_PREFIX.equals(prefix)) {
 			this.defaultNamespaceUri = namespaceUri;
 		}

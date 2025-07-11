@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,30 +17,37 @@
 package org.springframework.web.util;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.ReadListener;
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
+
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpMethod;
-import org.springframework.lang.Nullable;
+import org.springframework.http.MediaType;
+import org.springframework.util.FastByteArrayOutputStream;
 
 /**
- * {@link javax.servlet.http.HttpServletRequest} wrapper that caches all content read from
+ * {@link jakarta.servlet.http.HttpServletRequest} wrapper that caches all content read from
  * the {@linkplain #getInputStream() input stream} and {@linkplain #getReader() reader},
  * and allows this content to be retrieved via a {@link #getContentAsByteArray() byte array}.
  *
- * <p>Used e.g. by {@link org.springframework.web.filter.AbstractRequestLoggingFilter}.
- * Note: As of Spring Framework 5.0, this wrapper is built on the Servlet 3.1 API.
+ * <p>This class acts as an interceptor that only caches content as it is being
+ * read but otherwise does not cause content to be read. That means if the request
+ * content is not consumed, then the content is not cached, and cannot be
+ * retrieved via {@link #getContentAsByteArray()}.
+ *
+ * <p>Used, for example, by {@link org.springframework.web.filter.AbstractRequestLoggingFilter}.
  *
  * @author Juergen Hoeller
  * @author Brian Clozel
@@ -49,43 +56,31 @@ import org.springframework.lang.Nullable;
  */
 public class ContentCachingRequestWrapper extends HttpServletRequestWrapper {
 
-	private static final String FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
+	private final FastByteArrayOutputStream cachedContent;
 
+	private final @Nullable Integer contentCacheLimit;
 
-	private final ByteArrayOutputStream cachedContent;
+	private @Nullable ServletInputStream inputStream;
 
-	@Nullable
-	private final Integer contentCacheLimit;
-
-	@Nullable
-	private ServletInputStream inputStream;
-
-	@Nullable
-	private BufferedReader reader;
+	private @Nullable BufferedReader reader;
 
 
 	/**
 	 * Create a new ContentCachingRequestWrapper for the given servlet request.
 	 * @param request the original servlet request
-	 */
-	public ContentCachingRequestWrapper(HttpServletRequest request) {
-		super(request);
-		int contentLength = request.getContentLength();
-		this.cachedContent = new ByteArrayOutputStream(contentLength >= 0 ? contentLength : 1024);
-		this.contentCacheLimit = null;
-	}
-
-	/**
-	 * Create a new ContentCachingRequestWrapper for the given servlet request.
-	 * @param request the original servlet request
-	 * @param contentCacheLimit the maximum number of bytes to cache per request
+	 * @param cacheLimit the maximum number of bytes to cache per request;
+	 * no limit is set if the value is 0 or less. It is recommended to set a
+	 * concrete limit in order to avoid using too much memory.
 	 * @since 4.3.6
 	 * @see #handleContentOverflow(int)
 	 */
-	public ContentCachingRequestWrapper(HttpServletRequest request, int contentCacheLimit) {
+	public ContentCachingRequestWrapper(HttpServletRequest request, int cacheLimit) {
 		super(request);
-		this.cachedContent = new ByteArrayOutputStream(contentCacheLimit);
-		this.contentCacheLimit = contentCacheLimit;
+		int contentLength = request.getContentLength();
+		this.cachedContent = (contentLength > 0 ?
+				new FastByteArrayOutputStream((cacheLimit > 0 ? Math.min(contentLength, cacheLimit) : contentLength)) :
+				new FastByteArrayOutputStream());
+		this.contentCacheLimit = (cacheLimit > 0 ? cacheLimit : null);
 	}
 
 
@@ -146,7 +141,7 @@ public class ContentCachingRequestWrapper extends HttpServletRequestWrapper {
 
 	private boolean isFormPost() {
 		String contentType = getContentType();
-		return (contentType != null && contentType.contains(FORM_CONTENT_TYPE) &&
+		return (contentType != null && contentType.contains(MediaType.APPLICATION_FORM_URLENCODED_VALUE) &&
 				HttpMethod.POST.matches(getMethod()));
 	}
 
@@ -183,10 +178,28 @@ public class ContentCachingRequestWrapper extends HttpServletRequestWrapper {
 	/**
 	 * Return the cached request content as a byte array.
 	 * <p>The returned array will never be larger than the content cache limit.
+	 * <p><strong>Note:</strong> The byte array returned from this method
+	 * reflects the amount of content that has been read at the time when it
+	 * is called. If the application does not read the content, this method
+	 * returns an empty array.
 	 * @see #ContentCachingRequestWrapper(HttpServletRequest, int)
 	 */
 	public byte[] getContentAsByteArray() {
 		return this.cachedContent.toByteArray();
+	}
+
+	/**
+	 * Return the cached request content as a String, using the configured
+	 * {@link Charset}.
+	 * <p><strong>Note:</strong> The String returned from this method
+	 * reflects the amount of content that has been read at the time when it
+	 * is called. If the application does not read the content, this method
+	 * returns an empty String.
+	 * @since 6.1
+	 * @see #getContentAsByteArray()
+	 */
+	public String getContentAsString() {
+		return this.cachedContent.toString(Charset.forName(getCharacterEncoding()));
 	}
 
 	/**
@@ -235,7 +248,7 @@ public class ContentCachingRequestWrapper extends HttpServletRequestWrapper {
 			return count;
 		}
 
-		private void writeToCache(final byte[] b, final int off, int count) {
+		private void writeToCache(final byte[] b, final int off, int count) throws IOException{
 			if (!this.overflow && count > 0) {
 				if (contentCacheLimit != null &&
 						count + cachedContent.size() > contentCacheLimit) {

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,31 +21,34 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.MediaType;
-import org.springframework.lang.Nullable;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+import org.springframework.util.CollectionUtils;
 
 /**
  * An implementation of {@code MediaTypeFileExtensionResolver} that maintains
  * lookups between file extensions and MediaTypes in both directions.
  *
  * <p>Initially created with a map of file extensions and media types.
- * Subsequently subclasses can use {@link #addMapping} to add more mappings.
+ * Subsequently, subclasses can use {@link #addMapping} to add more mappings.
  *
  * @author Rossen Stoyanchev
+ * @author Juergen Hoeller
  * @since 3.2
  */
 public class MappingMediaTypeFileExtensionResolver implements MediaTypeFileExtensionResolver {
 
 	private final ConcurrentMap<String, MediaType> mediaTypes = new ConcurrentHashMap<>(64);
 
-	private final MultiValueMap<MediaType, String> fileExtensions = new LinkedMultiValueMap<>();
+	private final ConcurrentMap<MediaType, List<String>> fileExtensions = new ConcurrentHashMap<>(64);
 
-	private final List<String> allFileExtensions = new ArrayList<>();
+	private final List<String> allFileExtensions = new CopyOnWriteArrayList<>();
 
 
 	/**
@@ -53,12 +56,14 @@ public class MappingMediaTypeFileExtensionResolver implements MediaTypeFileExten
 	 */
 	public MappingMediaTypeFileExtensionResolver(@Nullable Map<String, MediaType> mediaTypes) {
 		if (mediaTypes != null) {
+			Set<String> allFileExtensions = CollectionUtils.newHashSet(mediaTypes.size());
 			mediaTypes.forEach((extension, mediaType) -> {
-				String lowerCaseExtension = extension.toLowerCase(Locale.ENGLISH);
+				String lowerCaseExtension = extension.toLowerCase(Locale.ROOT);
 				this.mediaTypes.put(lowerCaseExtension, mediaType);
-				this.fileExtensions.add(mediaType, lowerCaseExtension);
-				this.allFileExtensions.add(lowerCaseExtension);
+				addFileExtension(mediaType, lowerCaseExtension);
+				allFileExtensions.add(lowerCaseExtension);
 			});
+			this.allFileExtensions.addAll(allFileExtensions);
 		}
 	}
 
@@ -77,9 +82,14 @@ public class MappingMediaTypeFileExtensionResolver implements MediaTypeFileExten
 	protected void addMapping(String extension, MediaType mediaType) {
 		MediaType previous = this.mediaTypes.putIfAbsent(extension, mediaType);
 		if (previous == null) {
-			this.fileExtensions.add(mediaType, extension);
+			addFileExtension(mediaType, extension);
 			this.allFileExtensions.add(extension);
 		}
+	}
+
+	private void addFileExtension(MediaType mediaType, String extension) {
+		this.fileExtensions.computeIfAbsent(mediaType, key -> new CopyOnWriteArrayList<>())
+				.add(extension);
 	}
 
 
@@ -96,11 +106,10 @@ public class MappingMediaTypeFileExtensionResolver implements MediaTypeFileExten
 
 	/**
 	 * Use this method for a reverse lookup from extension to MediaType.
-	 * @return a MediaType for the key, or {@code null} if none found
+	 * @return a MediaType for the extension, or {@code null} if none found
 	 */
-	@Nullable
-	protected MediaType lookupMediaType(String extension) {
-		return this.mediaTypes.get(extension.toLowerCase(Locale.ENGLISH));
+	protected @Nullable MediaType lookupMediaType(String extension) {
+		return this.mediaTypes.get(extension.toLowerCase(Locale.ROOT));
 	}
 
 }

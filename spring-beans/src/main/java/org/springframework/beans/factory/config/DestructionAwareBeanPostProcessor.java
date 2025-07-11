@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,7 +31,7 @@ public interface DestructionAwareBeanPostProcessor extends BeanPostProcessor {
 
 	/**
 	 * Apply this BeanPostProcessor to the given bean instance before its
-	 * destruction, e.g. invoking custom destruction callbacks.
+	 * destruction, for example, invoking custom destruction callbacks.
 	 * <p>Like DisposableBean's {@code destroy} and a custom destroy method, this
 	 * callback will only apply to beans which the container fully manages the
 	 * lifecycle for. This is usually the case for singletons and scoped beans.

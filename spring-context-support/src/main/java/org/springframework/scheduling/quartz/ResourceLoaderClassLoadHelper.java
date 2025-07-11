@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,12 +22,12 @@ import java.net.URL;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.quartz.spi.ClassLoadHelper;
 
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
@@ -44,8 +44,7 @@ public class ResourceLoaderClassLoadHelper implements ClassLoadHelper {
 
 	protected static final Log logger = LogFactory.getLog(ResourceLoaderClassLoadHelper.class);
 
-	@Nullable
-	private ResourceLoader resourceLoader;
+	private @Nullable ResourceLoader resourceLoader;
 
 
 	/**
@@ -82,13 +81,13 @@ public class ResourceLoaderClassLoadHelper implements ClassLoadHelper {
 	}
 
 	@SuppressWarnings("unchecked")
+	@Override
 	public <T> Class<? extends T> loadClass(String name, Class<T> clazz) throws ClassNotFoundException {
 		return (Class<? extends T>) loadClass(name);
 	}
 
 	@Override
-	@Nullable
-	public URL getResource(String name) {
+	public @Nullable URL getResource(String name) {
 		Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
 		Resource resource = this.resourceLoader.getResource(name);
 		if (resource.exists()) {
@@ -108,8 +107,7 @@ public class ResourceLoaderClassLoadHelper implements ClassLoadHelper {
 	}
 
 	@Override
-	@Nullable
-	public InputStream getResourceAsStream(String name) {
+	public @Nullable InputStream getResourceAsStream(String name) {
 		Assert.state(this.resourceLoader != null, "ResourceLoaderClassLoadHelper not initialized");
 		Resource resource = this.resourceLoader.getResource(name);
 		if (resource.exists()) {

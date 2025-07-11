@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,12 +19,12 @@ package org.springframework.http.converter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
@@ -32,7 +32,6 @@ import org.springframework.http.HttpLogging;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
 import org.springframework.http.StreamingHttpOutputMessage;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -55,8 +54,7 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 
 	private List<MediaType> supportedMediaTypes = Collections.emptyList();
 
-	@Nullable
-	private Charset defaultCharset;
+	private @Nullable Charset defaultCharset;
 
 
 	/**
@@ -100,12 +98,12 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 	 */
 	public void setSupportedMediaTypes(List<MediaType> supportedMediaTypes) {
 		Assert.notEmpty(supportedMediaTypes, "MediaType List must not be empty");
-		this.supportedMediaTypes = new ArrayList<>(supportedMediaTypes);
+		this.supportedMediaTypes = List.copyOf(supportedMediaTypes);
 	}
 
 	@Override
 	public List<MediaType> getSupportedMediaTypes() {
-		return Collections.unmodifiableList(this.supportedMediaTypes);
+		return this.supportedMediaTypes;
 	}
 
 	/**
@@ -120,8 +118,7 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 	 * Return the default character set, if any.
 	 * @since 4.3
 	 */
-	@Nullable
-	public Charset getDefaultCharset() {
+	public @Nullable Charset getDefaultCharset() {
 		return this.defaultCharset;
 	}
 
@@ -210,18 +207,27 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 		final HttpHeaders headers = outputMessage.getHeaders();
 		addDefaultHeaders(headers, t, contentType);
 
-		if (outputMessage instanceof StreamingHttpOutputMessage) {
-			StreamingHttpOutputMessage streamingOutputMessage = (StreamingHttpOutputMessage) outputMessage;
-			streamingOutputMessage.setBody(outputStream -> writeInternal(t, new HttpOutputMessage() {
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingOutputMessage) {
+			streamingOutputMessage.setBody(new StreamingHttpOutputMessage.Body() {
 				@Override
-				public OutputStream getBody() {
-					return outputStream;
+				public void writeTo(OutputStream outputStream) throws IOException {
+					writeInternal(t, new HttpOutputMessage() {
+						@Override
+						public OutputStream getBody() {
+							return outputStream;
+						}
+						@Override
+						public HttpHeaders getHeaders() {
+							return headers;
+						}
+					});
 				}
+
 				@Override
-				public HttpHeaders getHeaders() {
-					return headers;
+				public boolean repeatable() {
+					return supportsRepeatableWrites(t);
 				}
-			}));
+			});
 		}
 		else {
 			writeInternal(t, outputMessage);
@@ -239,7 +245,7 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 	protected void addDefaultHeaders(HttpHeaders headers, T t, @Nullable MediaType contentType) throws IOException {
 		if (headers.getContentType() == null) {
 			MediaType contentTypeToUse = contentType;
-			if (contentType == null || contentType.isWildcardType() || contentType.isWildcardSubtype()) {
+			if (contentType == null || !contentType.isConcrete()) {
 				contentTypeToUse = getDefaultContentType(t);
 			}
 			else if (MediaType.APPLICATION_OCTET_STREAM.equals(contentType)) {
@@ -256,7 +262,7 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 				headers.setContentType(contentTypeToUse);
 			}
 		}
-		if (headers.getContentLength() < 0 && !headers.containsKey(HttpHeaders.TRANSFER_ENCODING)) {
+		if (headers.getContentLength() < 0 && !headers.containsHeader(HttpHeaders.TRANSFER_ENCODING)) {
 			Long contentLength = getContentLength(t, headers.getContentType());
 			if (contentLength != null) {
 				headers.setContentLength(contentLength);
@@ -273,8 +279,7 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 	 * @param t the type to return the content type for
 	 * @return the content type, or {@code null} if not known
 	 */
-	@Nullable
-	protected MediaType getDefaultContentType(T t) throws IOException {
+	protected @Nullable MediaType getDefaultContentType(T t) throws IOException {
 		List<MediaType> mediaTypes = getSupportedMediaTypes();
 		return (!mediaTypes.isEmpty() ? mediaTypes.get(0) : null);
 	}
@@ -286,9 +291,22 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 	 * @param t the type to return the content length for
 	 * @return the content length, or {@code null} if not known
 	 */
-	@Nullable
-	protected Long getContentLength(T t, @Nullable MediaType contentType) throws IOException {
+	protected @Nullable Long getContentLength(T t, @Nullable MediaType contentType) throws IOException {
 		return null;
+	}
+
+	/**
+	 * Indicates whether this message converter can
+	 * {@linkplain #write(Object, MediaType, HttpOutputMessage) write} the
+	 * given object multiple times.
+	 * <p>The default implementation returns {@code false}.
+	 * @param t the object t
+	 * @return {@code true} if {@code t} can be written repeatedly;
+	 * {@code false} otherwise
+	 * @since 6.1
+	 */
+	protected boolean supportsRepeatableWrites(T t) {
+		return false;
 	}
 
 

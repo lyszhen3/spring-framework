@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +20,11 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Properties;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.env.PropertiesPropertySource;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
-import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -45,8 +46,7 @@ import org.springframework.util.StringUtils;
 public class ResourcePropertySource extends PropertiesPropertySource {
 
 	/** The original resource name, if different from the given name. */
-	@Nullable
-	private final String resourceName;
+	private final @Nullable String resourceName;
 
 
 	/**
@@ -111,7 +111,7 @@ public class ResourcePropertySource extends PropertiesPropertySource {
 	 * Create a PropertySource having the given name based on Properties loaded from
 	 * the given resource location. The default thread context class loader will be
 	 * used to load the resource (assuming the location string is prefixed with
-	 * {@code classpath:}.
+	 * {@code classpath:}).
 	 */
 	public ResourcePropertySource(String name, String location) throws IOException {
 		this(name, new DefaultResourceLoader().getResource(location));

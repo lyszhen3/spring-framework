@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,14 +16,13 @@
 
 package org.springframework.web.server.handler;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -49,11 +48,9 @@ public class DefaultWebFilterChain implements WebFilterChain {
 
 	private final WebHandler handler;
 
-	@Nullable
-	private final WebFilter currentFilter;
+	private final @Nullable WebFilter currentFilter;
 
-	@Nullable
-	private final DefaultWebFilterChain next;
+	private final @Nullable DefaultWebFilterChain chain;
 
 
 	/**
@@ -68,7 +65,7 @@ public class DefaultWebFilterChain implements WebFilterChain {
 		this.handler = handler;
 		DefaultWebFilterChain chain = initChain(filters, handler);
 		this.currentFilter = chain.currentFilter;
-		this.next = chain.next;
+		this.chain = chain.chain;
 	}
 
 	private static DefaultWebFilterChain initChain(List<WebFilter> filters, WebHandler handler) {
@@ -84,24 +81,12 @@ public class DefaultWebFilterChain implements WebFilterChain {
 	 * Private constructor to represent one link in the chain.
 	 */
 	private DefaultWebFilterChain(List<WebFilter> allFilters, WebHandler handler,
-			@Nullable WebFilter currentFilter, @Nullable DefaultWebFilterChain next) {
+			@Nullable WebFilter currentFilter, @Nullable DefaultWebFilterChain chain) {
 
 		this.allFilters = allFilters;
 		this.currentFilter = currentFilter;
 		this.handler = handler;
-		this.next = next;
-	}
-
-	/**
-	 * Public constructor with the list of filters and the target handler to use.
-	 * @param handler the target handler
-	 * @param filters the filters ahead of the handler
-	 * @deprecated as of 5.1 this constructor is deprecated in favor of
-	 * {@link #DefaultWebFilterChain(WebHandler, List)}.
-	 */
-	@Deprecated
-	public DefaultWebFilterChain(WebHandler handler, WebFilter... filters) {
-		this(handler, Arrays.asList(filters));
+		this.chain = chain;
 	}
 
 
@@ -117,9 +102,13 @@ public class DefaultWebFilterChain implements WebFilterChain {
 	@Override
 	public Mono<Void> filter(ServerWebExchange exchange) {
 		return Mono.defer(() ->
-				this.currentFilter != null && this.next != null ?
-						this.currentFilter.filter(exchange, this.next) :
+				this.currentFilter != null && this.chain != null ?
+						invokeFilter(this.currentFilter, this.chain, exchange) :
 						this.handler.handle(exchange));
+	}
+
+	private Mono<Void> invokeFilter(WebFilter filter, DefaultWebFilterChain chain, ServerWebExchange exchange) {
+		return filter.filter(exchange, chain).checkpoint(filter.toString());
 	}
 
 }

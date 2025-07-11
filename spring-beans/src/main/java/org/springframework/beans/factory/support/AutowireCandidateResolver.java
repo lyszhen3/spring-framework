@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,11 @@
 
 package org.springframework.beans.factory.support;
 
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.config.DependencyDescriptor;
-import org.springframework.lang.Nullable;
 
 /**
  * Strategy interface for determining whether a specific bean definition
@@ -49,7 +51,7 @@ public interface AutowireCandidateResolver {
 	 * <p>The default implementation checks {@link DependencyDescriptor#isRequired()}.
 	 * @param descriptor the descriptor for the target method parameter or field
 	 * @return whether the descriptor is marked as required or possibly indicating
-	 * non-required status some other way (e.g. through a parameter annotation)
+	 * non-required status some other way (for example, through a parameter annotation)
 	 * @since 5.0
 	 * @see DependencyDescriptor#isRequired()
 	 */
@@ -72,6 +74,17 @@ public interface AutowireCandidateResolver {
 	}
 
 	/**
+	 * Determine whether a target bean name is suggested for the given dependency
+	 * (typically - but not necessarily - declared with a single-value qualifier).
+	 * @param descriptor the descriptor for the target method parameter or field
+	 * @return the qualifier value, if any
+	 * @since 6.2
+	 */
+	default @Nullable String getSuggestedName(DependencyDescriptor descriptor) {
+		return null;
+	}
+
+	/**
 	 * Determine whether a default value is suggested for the given dependency.
 	 * <p>The default implementation simply returns {@code null}.
 	 * @param descriptor the descriptor for the target method parameter or field
@@ -79,8 +92,7 @@ public interface AutowireCandidateResolver {
 	 * or {@code null} if none found
 	 * @since 3.0
 	 */
-	@Nullable
-	default Object getSuggestedValue(DependencyDescriptor descriptor) {
+	default @Nullable Object getSuggestedValue(DependencyDescriptor descriptor) {
 		return null;
 	}
 
@@ -94,9 +106,39 @@ public interface AutowireCandidateResolver {
 	 * or {@code null} if straight resolution is to be performed
 	 * @since 4.0
 	 */
-	@Nullable
-	default Object getLazyResolutionProxyIfNecessary(DependencyDescriptor descriptor, @Nullable String beanName) {
+	default @Nullable Object getLazyResolutionProxyIfNecessary(DependencyDescriptor descriptor, @Nullable String beanName) {
 		return null;
+	}
+
+	/**
+	 * Determine the proxy class for lazy resolution of the dependency target,
+	 * if demanded by the injection point.
+	 * <p>The default implementation simply returns {@code null}.
+	 * @param descriptor the descriptor for the target method parameter or field
+	 * @param beanName the name of the bean that contains the injection point
+	 * @return the lazy resolution proxy class for the dependency target, if any
+	 * @since 6.0
+	 */
+	default @Nullable Class<?> getLazyResolutionProxyClass(DependencyDescriptor descriptor, @Nullable String beanName) {
+		return null;
+	}
+
+	/**
+	 * Return a clone of this resolver instance if necessary, retaining its local
+	 * configuration and allowing for the cloned instance to get associated with
+	 * a new bean factory, or this original instance if there is no such state.
+	 * <p>The default implementation creates a separate instance via the default
+	 * class constructor, assuming no specific configuration state to copy.
+	 * Subclasses may override this with custom configuration state handling
+	 * or with standard {@link Cloneable} support (as implemented by Spring's
+	 * own configurable {@code AutowireCandidateResolver} variants), or simply
+	 * return {@code this} (as in {@link SimpleAutowireCandidateResolver}).
+	 * @since 5.2.7
+	 * @see GenericTypeAwareAutowireCandidateResolver#cloneIfNecessary()
+	 * @see DefaultListableBeanFactory#copyConfigurationFrom
+	 */
+	default AutowireCandidateResolver cloneIfNecessary() {
+		return BeanUtils.instantiateClass(getClass());
 	}
 
 }

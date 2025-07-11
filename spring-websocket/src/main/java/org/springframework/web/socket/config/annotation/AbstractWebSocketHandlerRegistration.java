@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -36,7 +37,7 @@ import org.springframework.web.socket.sockjs.transport.handler.WebSocketTranspor
 
 /**
  * Base class for {@link WebSocketHandlerRegistration WebSocketHandlerRegistrations} that gathers all the configuration
- * options but allows sub-classes to put together the actual HTTP request mappings.
+ * options but allows subclasses to put together the actual HTTP request mappings.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
@@ -47,15 +48,15 @@ public abstract class AbstractWebSocketHandlerRegistration<M> implements WebSock
 
 	private final MultiValueMap<WebSocketHandler, String> handlerMap = new LinkedMultiValueMap<>();
 
-	@Nullable
-	private HandshakeHandler handshakeHandler;
+	private @Nullable HandshakeHandler handshakeHandler;
 
 	private final List<HandshakeInterceptor> interceptors = new ArrayList<>();
 
 	private final List<String> allowedOrigins = new ArrayList<>();
 
-	@Nullable
-	private SockJsServiceRegistration sockJsServiceRegistration;
+	private final List<String> allowedOriginPatterns = new ArrayList<>();
+
+	private @Nullable SockJsServiceRegistration sockJsServiceRegistration;
 
 
 	@Override
@@ -72,8 +73,7 @@ public abstract class AbstractWebSocketHandlerRegistration<M> implements WebSock
 		return this;
 	}
 
-	@Nullable
-	protected HandshakeHandler getHandshakeHandler() {
+	protected @Nullable HandshakeHandler getHandshakeHandler() {
 		return this.handshakeHandler;
 	}
 
@@ -95,6 +95,15 @@ public abstract class AbstractWebSocketHandlerRegistration<M> implements WebSock
 	}
 
 	@Override
+	public WebSocketHandlerRegistration setAllowedOriginPatterns(String... allowedOriginPatterns) {
+		this.allowedOriginPatterns.clear();
+		if (!ObjectUtils.isEmpty(allowedOriginPatterns)) {
+			this.allowedOriginPatterns.addAll(Arrays.asList(allowedOriginPatterns));
+		}
+		return this;
+	}
+
+	@Override
 	public SockJsServiceRegistration withSockJS() {
 		this.sockJsServiceRegistration = new SockJsServiceRegistration();
 		HandshakeInterceptor[] interceptors = getInterceptors();
@@ -108,13 +117,21 @@ public abstract class AbstractWebSocketHandlerRegistration<M> implements WebSock
 		if (!this.allowedOrigins.isEmpty()) {
 			this.sockJsServiceRegistration.setAllowedOrigins(StringUtils.toStringArray(this.allowedOrigins));
 		}
+		if (!this.allowedOriginPatterns.isEmpty()) {
+			this.sockJsServiceRegistration.setAllowedOriginPatterns(
+					StringUtils.toStringArray(this.allowedOriginPatterns));
+		}
 		return this.sockJsServiceRegistration;
 	}
 
 	protected HandshakeInterceptor[] getInterceptors() {
 		List<HandshakeInterceptor> interceptors = new ArrayList<>(this.interceptors.size() + 1);
 		interceptors.addAll(this.interceptors);
-		interceptors.add(new OriginHandshakeInterceptor(this.allowedOrigins));
+		OriginHandshakeInterceptor interceptor = new OriginHandshakeInterceptor(this.allowedOrigins);
+		if (!ObjectUtils.isEmpty(this.allowedOriginPatterns)) {
+			interceptor.setAllowedOriginPatterns(this.allowedOriginPatterns);
+		}
+		interceptors.add(interceptor);
 		return interceptors.toArray(new HandshakeInterceptor[0]);
 	}
 
@@ -124,8 +141,7 @@ public abstract class AbstractWebSocketHandlerRegistration<M> implements WebSock
 	 * if the application did not provide one. This should be done prior to
 	 * calling {@link #getMappings()}.
 	 */
-	@Nullable
-	protected SockJsServiceRegistration getSockJsServiceRegistration() {
+	protected @Nullable SockJsServiceRegistration getSockJsServiceRegistration() {
 		return this.sockJsServiceRegistration;
 	}
 

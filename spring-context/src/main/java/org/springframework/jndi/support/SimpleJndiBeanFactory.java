@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,8 +21,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanDefinitionStoreException;
@@ -34,7 +37,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.ResolvableType;
 import org.springframework.jndi.JndiLocatorSupport;
 import org.springframework.jndi.TypeMismatchNamingException;
-import org.springframework.lang.Nullable;
 
 /**
  * Simple JNDI-based implementation of Spring's
@@ -43,10 +45,10 @@ import org.springframework.lang.Nullable;
  * the {@link org.springframework.beans.factory.ListableBeanFactory} interface.
  *
  * <p>This factory resolves given bean names as JNDI names within the
- * Java EE application's "java:comp/env/" namespace. It caches the resolved
+ * Jakarta EE application's "java:comp/env/" namespace. It caches the resolved
  * types for all obtained objects, and optionally also caches shareable
  * objects (if they are explicitly marked as
- * {@link #addShareableResource shareable resource}.
+ * {@link #addShareableResource shareable resource}).
  *
  * <p>The main intent of this factory is usage in combination with Spring's
  * {@link org.springframework.context.annotation.CommonAnnotationBeanPostProcessor},
@@ -130,7 +132,7 @@ public class SimpleJndiBeanFactory extends JndiLocatorSupport implements BeanFac
 	}
 
 	@Override
-	public Object getBean(String name, @Nullable Object... args) throws BeansException {
+	public Object getBean(String name, @Nullable Object @Nullable ... args) throws BeansException {
 		if (args != null) {
 			throw new UnsupportedOperationException(
 					"SimpleJndiBeanFactory does not support explicit bean creation arguments");
@@ -144,7 +146,7 @@ public class SimpleJndiBeanFactory extends JndiLocatorSupport implements BeanFac
 	}
 
 	@Override
-	public <T> T getBean(Class<T> requiredType, @Nullable Object... args) throws BeansException {
+	public <T> T getBean(Class<T> requiredType, @Nullable Object @Nullable ... args) throws BeansException {
 		if (args != null) {
 			throw new UnsupportedOperationException(
 					"SimpleJndiBeanFactory does not support explicit bean creation arguments");
@@ -154,18 +156,17 @@ public class SimpleJndiBeanFactory extends JndiLocatorSupport implements BeanFac
 
 	@Override
 	public <T> ObjectProvider<T> getBeanProvider(Class<T> requiredType) {
-		return new ObjectProvider<T>() {
+		return new ObjectProvider<>() {
 			@Override
 			public T getObject() throws BeansException {
 				return getBean(requiredType);
 			}
 			@Override
-			public T getObject(Object... args) throws BeansException {
+			public T getObject(@Nullable Object... args) throws BeansException {
 				return getBean(requiredType, args);
 			}
 			@Override
-			@Nullable
-			public T getIfAvailable() throws BeansException {
+			public @Nullable T getIfAvailable() throws BeansException {
 				try {
 					return getBean(requiredType);
 				}
@@ -177,8 +178,7 @@ public class SimpleJndiBeanFactory extends JndiLocatorSupport implements BeanFac
 				}
 			}
 			@Override
-			@Nullable
-			public T getIfUnique() throws BeansException {
+			public @Nullable T getIfUnique() throws BeansException {
 				try {
 					return getBean(requiredType);
 				}
@@ -232,8 +232,12 @@ public class SimpleJndiBeanFactory extends JndiLocatorSupport implements BeanFac
 	}
 
 	@Override
-	@Nullable
-	public Class<?> getType(String name) throws NoSuchBeanDefinitionException {
+	public @Nullable Class<?> getType(String name) throws NoSuchBeanDefinitionException {
+		return getType(name, true);
+	}
+
+	@Override
+	public @Nullable Class<?> getType(String name, boolean allowFactoryBeanInit) throws NoSuchBeanDefinitionException {
 		try {
 			return doGetType(name);
 		}
@@ -254,13 +258,12 @@ public class SimpleJndiBeanFactory extends JndiLocatorSupport implements BeanFac
 	@SuppressWarnings("unchecked")
 	private <T> T doGetSingleton(String name, @Nullable Class<T> requiredType) throws NamingException {
 		synchronized (this.singletonObjects) {
-			if (this.singletonObjects.containsKey(name)) {
-				Object jndiObject = this.singletonObjects.get(name);
-				if (requiredType != null && !requiredType.isInstance(jndiObject)) {
-					throw new TypeMismatchNamingException(
-							convertJndiName(name), requiredType, (jndiObject != null ? jndiObject.getClass() : null));
+			Object singleton = this.singletonObjects.get(name);
+			if (singleton != null) {
+				if (requiredType != null && !requiredType.isInstance(singleton)) {
+					throw new TypeMismatchNamingException(convertJndiName(name), requiredType, singleton.getClass());
 				}
-				return (T) jndiObject;
+				return (T) singleton;
 			}
 			T jndiObject = lookup(name, requiredType);
 			this.singletonObjects.put(name, jndiObject);
@@ -274,14 +277,12 @@ public class SimpleJndiBeanFactory extends JndiLocatorSupport implements BeanFac
 		}
 		else {
 			synchronized (this.resourceTypes) {
-				if (this.resourceTypes.containsKey(name)) {
-					return this.resourceTypes.get(name);
-				}
-				else {
-					Class<?> type = lookup(name, null).getClass();
+				Class<?> type = this.resourceTypes.get(name);
+				if (type == null) {
+					type = lookup(name, null).getClass();
 					this.resourceTypes.put(name, type);
-					return type;
 				}
+				return type;
 			}
 		}
 	}

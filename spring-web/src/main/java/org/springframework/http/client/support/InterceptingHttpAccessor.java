@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,11 +19,13 @@ package org.springframework.http.client.support;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
-import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -45,18 +47,22 @@ public abstract class InterceptingHttpAccessor extends HttpAccessor {
 
 	private final List<ClientHttpRequestInterceptor> interceptors = new ArrayList<>();
 
-	@Nullable
-	private volatile ClientHttpRequestFactory interceptingRequestFactory;
+	private volatile @Nullable ClientHttpRequestFactory interceptingRequestFactory;
 
 
 	/**
 	 * Set the request interceptors that this accessor should use.
-	 * <p>The interceptors will get sorted according to their order
-	 * once the {@link ClientHttpRequestFactory} will be built.
+	 * <p>The interceptors will get immediately sorted according to their
+	 * {@linkplain AnnotationAwareOrderComparator#sort(List) order}.
+	 * <p><strong>Note:</strong> This method does not support concurrent changes,
+	 * and in most cases should not be called after initialization on startup.
+	 * See also related note on {@link org.springframework.web.client.RestTemplate}
+	 * regarding concurrent configuration changes.
 	 * @see #getRequestFactory()
 	 * @see AnnotationAwareOrderComparator
 	 */
 	public void setInterceptors(List<ClientHttpRequestInterceptor> interceptors) {
+		Assert.noNullElements(interceptors, "'interceptors' must not contain null elements");
 		// Take getInterceptors() List as-is when passed in here
 		if (this.interceptors != interceptors) {
 			this.interceptors.clear();
@@ -66,16 +72,16 @@ public abstract class InterceptingHttpAccessor extends HttpAccessor {
 	}
 
 	/**
-	 * Return the request interceptors that this accessor uses.
-	 * <p>The returned {@link List} is active and may get appended to.
+	 * Get the request interceptors that this accessor uses.
+	 * <p>The returned {@link List} is active and may be modified. Note,
+	 * however, that the interceptors will not be resorted according to their
+	 * {@linkplain AnnotationAwareOrderComparator#sort(List) order} before the
+	 * {@link ClientHttpRequestFactory} is built.
 	 */
 	public List<ClientHttpRequestInterceptor> getInterceptors() {
 		return this.interceptors;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	@Override
 	public void setRequestFactory(ClientHttpRequestFactory requestFactory) {
 		super.setRequestFactory(requestFactory);
@@ -93,7 +99,8 @@ public abstract class InterceptingHttpAccessor extends HttpAccessor {
 		if (!CollectionUtils.isEmpty(interceptors)) {
 			ClientHttpRequestFactory factory = this.interceptingRequestFactory;
 			if (factory == null) {
-				factory = new InterceptingClientHttpRequestFactory(super.getRequestFactory(), interceptors);
+				factory = new InterceptingClientHttpRequestFactory(
+						super.getRequestFactory(), interceptors, getBufferingPredicate());
 				this.interceptingRequestFactory = factory;
 			}
 			return factory;

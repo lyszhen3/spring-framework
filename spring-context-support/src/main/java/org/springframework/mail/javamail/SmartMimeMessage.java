@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,10 @@
 
 package org.springframework.mail.javamail;
 
-import javax.activation.FileTypeMap;
-import javax.mail.Session;
-import javax.mail.internet.MimeMessage;
-
-import org.springframework.lang.Nullable;
+import jakarta.activation.FileTypeMap;
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Special subclass of the standard JavaMail {@link MimeMessage}, carrying a
@@ -34,16 +33,14 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 1.2
  * @see JavaMailSenderImpl#createMimeMessage()
- * @see MimeMessageHelper#getDefaultEncoding(javax.mail.internet.MimeMessage)
- * @see MimeMessageHelper#getDefaultFileTypeMap(javax.mail.internet.MimeMessage)
+ * @see MimeMessageHelper#getDefaultEncoding(jakarta.mail.internet.MimeMessage)
+ * @see MimeMessageHelper#getDefaultFileTypeMap(jakarta.mail.internet.MimeMessage)
  */
 class SmartMimeMessage extends MimeMessage {
 
-	@Nullable
-	private final String defaultEncoding;
+	private final @Nullable String defaultEncoding;
 
-	@Nullable
-	private final FileTypeMap defaultFileTypeMap;
+	private final @Nullable FileTypeMap defaultFileTypeMap;
 
 
 	/**
@@ -64,16 +61,14 @@ class SmartMimeMessage extends MimeMessage {
 	/**
 	 * Return the default encoding of this message, or {@code null} if none.
 	 */
-	@Nullable
-	public final String getDefaultEncoding() {
+	public final @Nullable String getDefaultEncoding() {
 		return this.defaultEncoding;
 	}
 
 	/**
 	 * Return the default FileTypeMap of this message, or {@code null} if none.
 	 */
-	@Nullable
-	public final FileTypeMap getDefaultFileTypeMap() {
+	public final @Nullable FileTypeMap getDefaultFileTypeMap() {
 		return this.defaultFileTypeMap;
 	}
 

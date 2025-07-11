@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,14 @@
 
 package org.springframework.aop.target;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.aop.support.DefaultIntroductionAdvisor;
 import org.springframework.aop.support.DelegatingIntroductionInterceptor;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.lang.Nullable;
 
 /**
  * Abstract base class for pooling {@link org.springframework.aop.TargetSource}
@@ -37,7 +38,7 @@ import org.springframework.lang.Nullable;
  * {@link AbstractPrototypeBasedTargetSource} can be used to create objects
  * in order to put them into the pool.
  *
- * <p>Subclasses must also implement some of the monitoring methods from the
+ * <p>Subclasses must also implement some monitoring methods from the
  * {@link PoolingConfig} interface. The {@link #getPoolingConfigMixin()} method
  * makes these stats available on proxied objects through an IntroductionAdvisor.
  *
@@ -101,8 +102,7 @@ public abstract class AbstractPoolingTargetSource extends AbstractPrototypeBased
 	 * APIs, so we're forgiving with our exception signature
 	 */
 	@Override
-	@Nullable
-	public abstract Object getTarget() throws Exception;
+	public abstract @Nullable Object getTarget() throws Exception;
 
 	/**
 	 * Return the given object to the pool.
@@ -116,7 +116,7 @@ public abstract class AbstractPoolingTargetSource extends AbstractPrototypeBased
 
 
 	/**
-	 * Return an IntroductionAdvisor that providing a mixin
+	 * Return an IntroductionAdvisor that provides a mixin
 	 * exposing statistics about the pool maintained by this object.
 	 */
 	public DefaultIntroductionAdvisor getPoolingConfigMixin() {

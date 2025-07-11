@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,7 +45,7 @@ public class UndertowHttpHandlerAdapter implements io.undertow.server.HttpHandle
 
 	private final HttpHandler httpHandler;
 
-	private DataBufferFactory bufferFactory = new DefaultDataBufferFactory(false);
+	private DataBufferFactory bufferFactory = DefaultDataBufferFactory.sharedInstance;
 
 
 	public UndertowHttpHandlerAdapter(HttpHandler httpHandler) {
@@ -66,29 +66,31 @@ public class UndertowHttpHandlerAdapter implements io.undertow.server.HttpHandle
 
 	@Override
 	public void handleRequest(HttpServerExchange exchange) {
-		UndertowServerHttpRequest request = null;
-		try {
-			request = new UndertowServerHttpRequest(exchange, getDataBufferFactory());
-		}
-		catch (URISyntaxException ex) {
-			if (logger.isWarnEnabled()) {
-				logger.debug("Failed to get request URI: " + ex.getMessage());
+		exchange.dispatch(() -> {
+			UndertowServerHttpRequest request = null;
+			try {
+				request = new UndertowServerHttpRequest(exchange, getDataBufferFactory());
 			}
-			exchange.setStatusCode(400);
-			return;
-		}
-		ServerHttpResponse response = new UndertowServerHttpResponse(exchange, getDataBufferFactory(), request);
+			catch (URISyntaxException ex) {
+				if (logger.isWarnEnabled()) {
+					logger.debug("Failed to get request URI: " + ex.getMessage());
+				}
+				exchange.setStatusCode(400);
+				return;
+			}
+			ServerHttpResponse response = new UndertowServerHttpResponse(exchange, getDataBufferFactory(), request);
 
-		if (request.getMethod() == HttpMethod.HEAD) {
-			response = new HttpHeadResponseDecorator(response);
-		}
+			if (request.getMethod() == HttpMethod.HEAD) {
+				response = new HttpHeadResponseDecorator(response);
+			}
 
-		HandlerResultSubscriber resultSubscriber = new HandlerResultSubscriber(exchange, request);
-		this.httpHandler.handle(request, response).subscribe(resultSubscriber);
+			HandlerResultSubscriber resultSubscriber = new HandlerResultSubscriber(exchange, request);
+			this.httpHandler.handle(request, response).subscribe(resultSubscriber);
+		});
 	}
 
 
-	private class HandlerResultSubscriber implements Subscriber<Void> {
+	private static class HandlerResultSubscriber implements Subscriber<Void> {
 
 		private final HttpServerExchange exchange;
 

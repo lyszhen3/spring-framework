@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,80 +16,81 @@
 
 package org.springframework.beans.factory.config;
 
+import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Properties;
+import java.util.stream.Stream;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.tests.sample.beans.TestBean;
+import org.springframework.util.ReflectionUtils;
 
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
-import static org.springframework.beans.factory.support.BeanDefinitionBuilder.*;
-import static org.springframework.beans.factory.support.BeanDefinitionReaderUtils.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.springframework.beans.factory.support.BeanDefinitionBuilder.genericBeanDefinition;
+import static org.springframework.beans.factory.support.BeanDefinitionBuilder.rootBeanDefinition;
+import static org.springframework.beans.factory.support.BeanDefinitionReaderUtils.registerWithGeneratedName;
 
 /**
- * Unit tests for {@link PropertyPlaceholderConfigurer}.
+ * Tests for {@link PropertyPlaceholderConfigurer}.
  *
  * @author Chris Beams
+ * @author Sam Brannen
  */
-public class PropertyPlaceholderConfigurerTests {
+@SuppressWarnings({"deprecation", "removal"})
+class PropertyPlaceholderConfigurerTests {
 
 	private static final String P1 = "p1";
 	private static final String P1_LOCAL_PROPS_VAL = "p1LocalPropsVal";
 	private static final String P1_SYSTEM_PROPS_VAL = "p1SystemPropsVal";
-	private static final String P1_SYSTEM_ENV_VAL = "p1SystemEnvVal";
 
-	private DefaultListableBeanFactory bf;
-	private PropertyPlaceholderConfigurer ppc;
-	private Properties ppcProperties;
+	private final DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 
-	private AbstractBeanDefinition p1BeanDef;
+	private final PropertyPlaceholderConfigurer ppc = new PropertyPlaceholderConfigurer();
+
+	private final Properties ppcProperties = new Properties();
+
+	private AbstractBeanDefinition p1BeanDef = rootBeanDefinition(TestBean.class)
+			.addPropertyValue("name", "${" + P1 + "}")
+			.getBeanDefinition();
 
 
-	@Before
-	public void setup() {
-		p1BeanDef = rootBeanDefinition(TestBean.class)
-				.addPropertyValue("name", "${" + P1 + "}")
-				.getBeanDefinition();
-
-		bf = new DefaultListableBeanFactory();
-
-		ppcProperties = new Properties();
+	@BeforeEach
+	void setup() {
 		ppcProperties.setProperty(P1, P1_LOCAL_PROPS_VAL);
 		System.setProperty(P1, P1_SYSTEM_PROPS_VAL);
-		ppc = new PropertyPlaceholderConfigurer();
 		ppc.setProperties(ppcProperties);
-
 	}
 
-	@After
-	public void cleanup() {
+	@AfterEach
+	void cleanup() {
 		System.clearProperty(P1);
+		System.clearProperty(P1_SYSTEM_PROPS_VAL);
 	}
 
 
 	@Test
-	public void localPropertiesViaResource() {
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+	void localPropertiesViaResource() {
 		bf.registerBeanDefinition("testBean",
 				genericBeanDefinition(TestBean.class)
 					.addPropertyValue("name", "${my.name}")
 					.getBeanDefinition());
 
 		PropertyPlaceholderConfigurer pc = new PropertyPlaceholderConfigurer();
-		Resource resource = new ClassPathResource("PropertyPlaceholderConfigurerTests.properties", this.getClass());
+		Resource resource = new ClassPathResource("PropertyPlaceholderConfigurerTests.properties", getClass());
 		pc.setLocation(resource);
 		pc.postProcessBeanFactory(bf);
 	}
 
 	@Test
-	public void resolveFromSystemProperties() {
+	void resolveFromSystemProperties() {
 		System.setProperty("otherKey", "systemValue");
 		p1BeanDef = rootBeanDefinition(TestBean.class)
 				.addPropertyValue("name", "${" + P1 + "}")
@@ -98,46 +99,46 @@ public class PropertyPlaceholderConfigurerTests {
 		registerWithGeneratedName(p1BeanDef, bf);
 		ppc.postProcessBeanFactory(bf);
 		TestBean bean = bf.getBean(TestBean.class);
-		assertThat(bean.getName(), equalTo(P1_LOCAL_PROPS_VAL));
-		assertThat(bean.getSex(), equalTo("systemValue"));
+		assertThat(bean.getName()).isEqualTo(P1_LOCAL_PROPS_VAL);
+		assertThat(bean.getSex()).isEqualTo("systemValue");
 		System.clearProperty("otherKey");
 	}
 
 	@Test
-	public void resolveFromLocalProperties() {
+	void resolveFromLocalProperties() {
 		System.clearProperty(P1);
 		registerWithGeneratedName(p1BeanDef, bf);
 		ppc.postProcessBeanFactory(bf);
 		TestBean bean = bf.getBean(TestBean.class);
-		assertThat(bean.getName(), equalTo(P1_LOCAL_PROPS_VAL));
+		assertThat(bean.getName()).isEqualTo(P1_LOCAL_PROPS_VAL);
 	}
 
 	@Test
-	public void setSystemPropertiesMode_defaultIsFallback() {
+	void setSystemPropertiesMode_defaultIsFallback() {
 		registerWithGeneratedName(p1BeanDef, bf);
 		ppc.postProcessBeanFactory(bf);
 		TestBean bean = bf.getBean(TestBean.class);
-		assertThat(bean.getName(), equalTo(P1_LOCAL_PROPS_VAL));
+		assertThat(bean.getName()).isEqualTo(P1_LOCAL_PROPS_VAL);
 	}
 
 	@Test
-	public void setSystemSystemPropertiesMode_toOverride_andResolveFromSystemProperties() {
+	void setSystemSystemPropertiesMode_toOverride_andResolveFromSystemProperties() {
 		registerWithGeneratedName(p1BeanDef, bf);
 		ppc.setSystemPropertiesMode(PropertyPlaceholderConfigurer.SYSTEM_PROPERTIES_MODE_OVERRIDE);
 		ppc.postProcessBeanFactory(bf);
 		TestBean bean = bf.getBean(TestBean.class);
-		assertThat(bean.getName(), equalTo(P1_SYSTEM_PROPS_VAL));
+		assertThat(bean.getName()).isEqualTo(P1_SYSTEM_PROPS_VAL);
 	}
 
 	@Test
-	public void setSystemSystemPropertiesMode_toOverride_andSetSearchSystemEnvironment_toFalse() {
+	void setSystemSystemPropertiesMode_toOverride_andSetSearchSystemEnvironment_toFalse() {
 		registerWithGeneratedName(p1BeanDef, bf);
 		System.clearProperty(P1); // will now fall all the way back to system environment
 		ppc.setSearchSystemEnvironment(false);
 		ppc.setSystemPropertiesMode(PropertyPlaceholderConfigurer.SYSTEM_PROPERTIES_MODE_OVERRIDE);
 		ppc.postProcessBeanFactory(bf);
 		TestBean bean = bf.getBean(TestBean.class);
-		assertThat(bean.getName(), equalTo(P1_LOCAL_PROPS_VAL)); // has to resort to local props
+		assertThat(bean.getName()).isEqualTo(P1_LOCAL_PROPS_VAL); // has to resort to local props
 	}
 
 	/**
@@ -145,11 +146,10 @@ public class PropertyPlaceholderConfigurerTests {
 	 * settings regarding resolving properties from the environment.
 	 */
 	@Test
-	public void twoPlaceholderConfigurers_withConflictingSettings() {
+	void twoPlaceholderConfigurers_withConflictingSettings() {
 		String P2 = "p2";
 		String P2_LOCAL_PROPS_VAL = "p2LocalPropsVal";
 		String P2_SYSTEM_PROPS_VAL = "p2SystemPropsVal";
-		String P2_SYSTEM_ENV_VAL = "p2SystemEnvVal";
 
 		AbstractBeanDefinition p2BeanDef = rootBeanDefinition(TestBean.class)
 				.addPropertyValue("name", "${" + P1 + "}")
@@ -175,22 +175,20 @@ public class PropertyPlaceholderConfigurerTests {
 		ppc2.postProcessBeanFactory(bf);
 
 		TestBean p1Bean = bf.getBean("p1Bean", TestBean.class);
-		assertThat(p1Bean.getName(), equalTo(P1_LOCAL_PROPS_VAL));
+		assertThat(p1Bean.getName()).isEqualTo(P1_LOCAL_PROPS_VAL);
 
 		TestBean p2Bean = bf.getBean("p2Bean", TestBean.class);
-		assertThat(p2Bean.getName(), equalTo(P1_LOCAL_PROPS_VAL));
-		assertThat(p2Bean.getCountry(), equalTo(P2_SYSTEM_PROPS_VAL));
+		assertThat(p2Bean.getName()).isEqualTo(P1_LOCAL_PROPS_VAL);
+		assertThat(p2Bean.getCountry()).isEqualTo(P2_SYSTEM_PROPS_VAL);
 
 		System.clearProperty(P2);
 	}
 
 	@Test
-	public void customPlaceholderPrefixAndSuffix() {
-		PropertyPlaceholderConfigurer ppc = new PropertyPlaceholderConfigurer();
+	void customPlaceholderPrefixAndSuffix() {
 		ppc.setPlaceholderPrefix("@<");
 		ppc.setPlaceholderSuffix(">");
 
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		bf.registerBeanDefinition("testBean",
 				rootBeanDefinition(TestBean.class)
 				.addPropertyValue("name", "@<key1>")
@@ -203,49 +201,62 @@ public class PropertyPlaceholderConfigurerTests {
 		System.clearProperty("key1");
 		System.clearProperty("key2");
 
-		assertThat(bf.getBean(TestBean.class).getName(), is("systemKey1Value"));
-		assertThat(bf.getBean(TestBean.class).getSex(), is("${key2}"));
+		assertThat(bf.getBean(TestBean.class).getName()).isEqualTo("systemKey1Value");
+		assertThat(bf.getBean(TestBean.class).getSex()).isEqualTo("${key2}");
 	}
 
 	@Test
-	public void nullValueIsPreserved() {
-		PropertyPlaceholderConfigurer ppc = new PropertyPlaceholderConfigurer();
+	void nullValueIsPreserved() {
 		ppc.setNullValue("customNull");
 		System.setProperty("my.name", "customNull");
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		bf.registerBeanDefinition("testBean", rootBeanDefinition(TestBean.class)
 				.addPropertyValue("name", "${my.name}")
 				.getBeanDefinition());
 		ppc.postProcessBeanFactory(bf);
-		assertThat(bf.getBean(TestBean.class).getName(), nullValue());
+		assertThat(bf.getBean(TestBean.class).getName()).isNull();
 		System.clearProperty("my.name");
 	}
 
 	@Test
-	public void trimValuesIsOffByDefault() {
-		PropertyPlaceholderConfigurer ppc = new PropertyPlaceholderConfigurer();
+	void trimValuesIsOffByDefault() {
 		System.setProperty("my.name", " myValue  ");
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		bf.registerBeanDefinition("testBean", rootBeanDefinition(TestBean.class)
 				.addPropertyValue("name", "${my.name}")
 				.getBeanDefinition());
 		ppc.postProcessBeanFactory(bf);
-		assertThat(bf.getBean(TestBean.class).getName(), equalTo(" myValue  "));
+		assertThat(bf.getBean(TestBean.class).getName()).isEqualTo(" myValue  ");
 		System.clearProperty("my.name");
 	}
 
 	@Test
-	public void trimValuesIsApplied() {
-		PropertyPlaceholderConfigurer ppc = new PropertyPlaceholderConfigurer();
+	void trimValuesIsApplied() {
 		ppc.setTrimValues(true);
 		System.setProperty("my.name", " myValue  ");
-		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		bf.registerBeanDefinition("testBean", rootBeanDefinition(TestBean.class)
 				.addPropertyValue("name", "${my.name}")
 				.getBeanDefinition());
 		ppc.postProcessBeanFactory(bf);
-		assertThat(bf.getBean(TestBean.class).getName(), equalTo("myValue"));
+		assertThat(bf.getBean(TestBean.class).getName()).isEqualTo("myValue");
 		System.clearProperty("my.name");
+	}
+
+	/**
+	 * This test effectively verifies that the internal 'constants' map is properly
+	 * configured for all SYSTEM_PROPERTIES_MODE_ constants defined in
+	 * {@link PropertyPlaceholderConfigurer}.
+	 */
+	@Test
+	@SuppressWarnings("deprecation")
+	void setSystemPropertiesModeNameToAllSupportedValues() {
+		streamSystemPropertiesModeConstants()
+				.map(Field::getName)
+				.forEach(name -> assertThatNoException().as(name).isThrownBy(() -> ppc.setSystemPropertiesModeName(name)));
+	}
+
+	private static Stream<Field> streamSystemPropertiesModeConstants() {
+		return Arrays.stream(PropertyPlaceholderConfigurer.class.getFields())
+				.filter(ReflectionUtils::isPublicStaticFinal)
+				.filter(field -> field.getName().startsWith("SYSTEM_PROPERTIES_MODE_"));
 	}
 
 }

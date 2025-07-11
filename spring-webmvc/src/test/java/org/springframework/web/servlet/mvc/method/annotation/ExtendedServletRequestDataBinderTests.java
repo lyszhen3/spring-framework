@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,74 +16,191 @@
 
 package org.springframework.web.servlet.mvc.method.annotation;
 
-import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.Test;
+import jakarta.servlet.ServletRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import org.springframework.mock.web.test.MockHttpServletRequest;
-import org.springframework.tests.sample.beans.TestBean;
+import org.springframework.beans.MutablePropertyValues;
+import org.springframework.beans.testfixture.beans.TestBean;
+import org.springframework.core.ResolvableType;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.ServletRequestDataBinder;
-import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.BindParam;
+import org.springframework.web.bind.support.BindParamNameResolver;
 import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Test fixture for {@link ExtendedServletRequestDataBinder}.
+ * Tests for {@link ExtendedServletRequestDataBinder}.
  *
  * @author Rossen Stoyanchev
  */
-public class ExtendedServletRequestDataBinderTests {
+class ExtendedServletRequestDataBinderTests {
 
 	private MockHttpServletRequest request;
 
-	@Before
-	public void setup() {
+
+	@BeforeEach
+	void setup() {
 		this.request = new MockHttpServletRequest();
 	}
 
+
 	@Test
-	public void createBinder() throws Exception {
-		Map<String, String> uriTemplateVars = new HashMap<>();
-		uriTemplateVars.put("name", "nameValue");
-		uriTemplateVars.put("age", "25");
-		request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
+	void createBinderViaSetters() {
+		request.setAttribute(
+				HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE,
+				Map.of("name", "John", "age", "25"));
+
+		request.addHeader("Some-Int-Array", "1");
+		request.addHeader("Some-Int-Array", "2");
 
 		TestBean target = new TestBean();
-		WebDataBinder binder = new ExtendedServletRequestDataBinder(target, "");
-		((ServletRequestDataBinder) binder).bind(request);
+		ServletRequestDataBinder binder = new ExtendedServletRequestDataBinder(target, "");
+		binder.bind(request);
 
-		assertEquals("nameValue", target.getName());
-		assertEquals(25, target.getAge());
+		assertThat(target.getName()).isEqualTo("John");
+		assertThat(target.getAge()).isEqualTo(25);
+		assertThat(target.getSomeIntArray()).containsExactly(1, 2);
 	}
 
 	@Test
-	public void uriTemplateVarAndRequestParam() throws Exception {
-		request.addParameter("age", "35");
+	void createBinderViaConstructor() {
+		request.setAttribute(
+				HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE,
+				Map.of("name", "John", "age", "25"));
 
-		Map<String, String> uriTemplateVars = new HashMap<>();
-		uriTemplateVars.put("name", "nameValue");
-		uriTemplateVars.put("age", "25");
-		request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriTemplateVars);
+		request.addHeader("Some-Int-Array", "1");
+		request.addHeader("Some-Int-Array", "2");
 
-		TestBean target = new TestBean();
-		WebDataBinder binder = new ExtendedServletRequestDataBinder(target, "");
-		((ServletRequestDataBinder) binder).bind(request);
+		ServletRequestDataBinder binder = new ExtendedServletRequestDataBinder(null);
+		binder.setTargetType(ResolvableType.forClass(DataBean.class));
+		binder.setNameResolver(new BindParamNameResolver());
+		binder.construct(request);
 
-		assertEquals("nameValue", target.getName());
-		assertEquals(35, target.getAge());
+		DataBean bean = (DataBean) binder.getTarget();
+
+		assertThat(bean.name()).isEqualTo("John");
+		assertThat(bean.age()).isEqualTo(25);
+		assertThat(bean.someIntArray()).containsExactly(1, 2);
 	}
 
 	@Test
-	public void noUriTemplateVars() throws Exception {
-		TestBean target = new TestBean();
-		WebDataBinder binder = new ExtendedServletRequestDataBinder(target, "");
-		((ServletRequestDataBinder) binder).bind(request);
+	void uriVarsAndHeadersAddedConditionally() {
+		request.addParameter("name", "John");
+		request.addParameter("age", "25");
 
-		assertEquals(null, target.getName());
-		assertEquals(0, target.getAge());
+		request.addHeader("name", "Johnny");
+		request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("age", "26"));
+
+		TestBean target = new TestBean();
+		ServletRequestDataBinder binder = new ExtendedServletRequestDataBinder(target, "");
+		binder.bind(request);
+
+		assertThat(target.getName()).isEqualTo("John");
+		assertThat(target.getAge()).isEqualTo(25);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"Accept", "Authorization", "Connection",
+			"Cookie", "From", "Host", "Origin", "Priority", "Range", "Referer", "Upgrade"})
+	void filteredHeaders(String headerName) {
+		TestBinder binder = new TestBinder();
+
+		MutablePropertyValues mpvs = new MutablePropertyValues();
+		request.addHeader(headerName, "u1");
+		binder.addBindValues(mpvs, request);
+
+		assertThat(mpvs).isEmpty();
+	}
+
+	@Test
+	void headerPredicateWithConstructorArgs() {
+		ExtendedServletRequestDataBinder binder = new ExtendedServletRequestDataBinder(null);
+		binder.addHeaderPredicate(name -> !name.equalsIgnoreCase("Some-Int-Array"));
+		binder.setTargetType(ResolvableType.forClass(DataBean.class));
+		binder.setNameResolver(new BindParamNameResolver());
+
+		request.addHeader("Some-Int-Array", "1");
+		request.addHeader("Some-Int-Array", "2");
+
+		binder.construct(request);
+
+		DataBean bean = (DataBean) binder.getTarget();
+
+		assertThat(bean.someIntArray()).isNull();
+	}
+
+	@Test
+	void filteredPriorityHeaderForConstructorBinding() {
+		TestBinder binder = new TestBinder();
+		binder.setTargetType(ResolvableType.forClass(TestTarget.class));
+		request.addHeader("Priority", "u1");
+
+		binder.construct(request);
+		BindingResult result = binder.getBindingResult();
+		TestTarget target = (TestTarget) result.getTarget();
+
+		assertThat(target.priority).isNull();
+	}
+
+	@Test
+	void headerPredicate() {
+		TestBinder binder = new TestBinder();
+		binder.addHeaderPredicate(name -> !name.equalsIgnoreCase("Another-Int-Array"));
+
+		MutablePropertyValues mpvs = new MutablePropertyValues();
+		request.addHeader("Priority", "u1");
+		request.addHeader("Some-Int-Array", "1");
+		request.addHeader("Another-Int-Array", "1");
+
+		binder.addBindValues(mpvs, request);
+
+		assertThat(mpvs.size()).isEqualTo(1);
+		assertThat(mpvs.get("someIntArray")).isEqualTo("1");
+	}
+
+	@Test
+	void noUriTemplateVars() {
+		TestBean target = new TestBean();
+		ServletRequestDataBinder binder = new ExtendedServletRequestDataBinder(target, "");
+		binder.bind(request);
+
+		assertThat(target.getName()).isNull();
+		assertThat(target.getAge()).isEqualTo(0);
+	}
+
+
+	private record DataBean(String name, int age, @BindParam("Some-Int-Array") Integer[] someIntArray) {
+	}
+
+
+	private static class TestBinder extends ExtendedServletRequestDataBinder {
+
+		public TestBinder() {
+			super(null);
+		}
+
+		@Override
+		public void addBindValues(MutablePropertyValues mpvs, ServletRequest request) {
+			super.addBindValues(mpvs, request);
+		}
+	}
+
+	static class TestTarget {
+
+		final String priority;
+
+		public TestTarget(String priority) {
+			this.priority = priority;
+		}
+
 	}
 
 }

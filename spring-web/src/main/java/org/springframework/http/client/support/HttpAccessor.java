@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,13 +18,20 @@ package org.springframework.http.client.support;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BiPredicate;
 
 import org.apache.commons.logging.Log;
+import org.jspecify.annotations.Nullable;
 
+import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.http.HttpLogging;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInitializer;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.util.Assert;
 
@@ -34,10 +41,12 @@ import org.springframework.util.Assert;
  * such as the {@link ClientHttpRequestFactory} to operate on.
  *
  * <p>Not intended to be used directly.
- * See {@link org.springframework.web.client.RestTemplate} for an entry point.
+ *
+ * <p>See {@link org.springframework.web.client.RestTemplate} for an entry point.
  *
  * @author Arjen Poutsma
  * @author Juergen Hoeller
+ * @author Phillip Webb
  * @since 3.0
  * @see ClientHttpRequestFactory
  * @see org.springframework.web.client.RestTemplate
@@ -49,6 +58,10 @@ public abstract class HttpAccessor {
 
 	private ClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
 
+	private final List<ClientHttpRequestInitializer> clientHttpRequestInitializers = new ArrayList<>();
+
+	private @Nullable BiPredicate<URI, HttpMethod> bufferingPredicate;
+
 
 	/**
 	 * Set the request factory that this accessor uses for obtaining client request handles.
@@ -58,8 +71,8 @@ public abstract class HttpAccessor {
 	 * Configure the Apache HttpComponents or OkHttp request factory to enable PATCH.</b>
 	 * @see #createRequest(URI, HttpMethod)
 	 * @see SimpleClientHttpRequestFactory
-	 * @see org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory
-	 * @see org.springframework.http.client.OkHttp3ClientHttpRequestFactory
+	 * @see org.springframework.http.client.HttpComponentsClientHttpRequestFactory
+	 * @see org.springframework.http.client.JdkClientHttpRequestFactory
 	 */
 	public void setRequestFactory(ClientHttpRequestFactory requestFactory) {
 		Assert.notNull(requestFactory, "ClientHttpRequestFactory must not be null");
@@ -70,9 +83,58 @@ public abstract class HttpAccessor {
 	 * Return the request factory that this accessor uses for obtaining client request handles.
 	 */
 	public ClientHttpRequestFactory getRequestFactory() {
-		return this.requestFactory;
+		return (this.bufferingPredicate != null ?
+				new BufferingClientHttpRequestFactory(this.requestFactory, this.bufferingPredicate) :
+				this.requestFactory);
 	}
 
+	/**
+	 * Set the request initializers that this accessor should use.
+	 * <p>The initializers will get immediately sorted according to their
+	 * {@linkplain AnnotationAwareOrderComparator#sort(List) order}.
+	 * @since 5.2
+	 */
+	public void setClientHttpRequestInitializers(
+			List<ClientHttpRequestInitializer> clientHttpRequestInitializers) {
+
+		if (this.clientHttpRequestInitializers != clientHttpRequestInitializers) {
+			this.clientHttpRequestInitializers.clear();
+			this.clientHttpRequestInitializers.addAll(clientHttpRequestInitializers);
+			AnnotationAwareOrderComparator.sort(this.clientHttpRequestInitializers);
+		}
+	}
+
+	/**
+	 * Get the request initializers that this accessor uses.
+	 * <p>The returned {@link List} is active and may be modified. Note,
+	 * however, that the initializers will not be resorted according to their
+	 * {@linkplain AnnotationAwareOrderComparator#sort(List) order} before the
+	 * {@link ClientHttpRequest} is initialized.
+	 * @since 5.2
+	 * @see #setClientHttpRequestInitializers(List)
+	 */
+	public List<ClientHttpRequestInitializer> getClientHttpRequestInitializers() {
+		return this.clientHttpRequestInitializers;
+	}
+
+	/**
+	 * Enable buffering of request and response, aggregating all content before
+	 * it is sent, and making it possible to read the response body repeatedly.
+	 * @param predicate to determine whether to buffer for the given request
+	 * @since 7.0
+	 */
+	public void setBufferingPredicate(@Nullable BiPredicate<URI, HttpMethod> predicate) {
+		this.bufferingPredicate = predicate;
+	}
+
+	/**
+	 * Return the {@link #setBufferingPredicate(BiPredicate) configured} predicate
+	 * to determine whether to buffer request and response content.
+	 * @since 7.0
+	 */
+	public @Nullable BiPredicate<URI, HttpMethod> getBufferingPredicate() {
+		return this.bufferingPredicate;
+	}
 
 	/**
 	 * Create a new {@link ClientHttpRequest} via this template's {@link ClientHttpRequestFactory}.
@@ -85,10 +147,15 @@ public abstract class HttpAccessor {
 	 */
 	protected ClientHttpRequest createRequest(URI url, HttpMethod method) throws IOException {
 		ClientHttpRequest request = getRequestFactory().createRequest(url, method);
+		initialize(request);
 		if (logger.isDebugEnabled()) {
 			logger.debug("HTTP " + method.name() + " " + url);
 		}
 		return request;
+	}
+
+	private void initialize(ClientHttpRequest request) {
+		this.clientHttpRequestInitializers.forEach(initializer -> initializer.initialize(request));
 	}
 
 }

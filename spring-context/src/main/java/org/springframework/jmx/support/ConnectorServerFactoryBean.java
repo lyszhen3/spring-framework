@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
@@ -29,22 +30,23 @@ import javax.management.remote.JMXConnectorServerFactory;
 import javax.management.remote.JMXServiceURL;
 import javax.management.remote.MBeanServerForwarder;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.jmx.JmxException;
-import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 
 /**
  * {@link FactoryBean} that creates a JSR-160 {@link JMXConnectorServer},
- * optionally registers it with the {@link MBeanServer} and then starts it.
+ * optionally registers it with the {@link MBeanServer}, and then starts it.
  *
  * <p>The {@code JMXConnectorServer} can be started in a separate thread by setting the
  * {@code threaded} property to {@code true}. You can configure this thread to be a
  * daemon thread by setting the {@code daemon} property to {@code true}.
  *
- * <p>The {@code JMXConnectorServer} is correctly shutdown when an instance of this
+ * <p>The {@code JMXConnectorServer} is correctly shut down when an instance of this
  * class is destroyed on shutdown of the containing {@code ApplicationContext}.
  *
  * @author Rob Harrop
@@ -62,20 +64,17 @@ public class ConnectorServerFactoryBean extends MBeanRegistrationSupport
 
 	private String serviceUrl = DEFAULT_SERVICE_URL;
 
-	private Map<String, Object> environment = new HashMap<>();
+	private final Map<String, Object> environment = new HashMap<>();
 
-	@Nullable
-	private MBeanServerForwarder forwarder;
+	private @Nullable MBeanServerForwarder forwarder;
 
-	@Nullable
-	private ObjectName objectName;
+	private @Nullable ObjectName objectName;
 
 	private boolean threaded = false;
 
 	private boolean daemon = false;
 
-	@Nullable
-	private JMXConnectorServer connectorServer;
+	private @Nullable JMXConnectorServer connectorServer;
 
 
 	/**
@@ -206,8 +205,7 @@ public class ConnectorServerFactoryBean extends MBeanRegistrationSupport
 
 
 	@Override
-	@Nullable
-	public JMXConnectorServer getObject() {
+	public @Nullable JMXConnectorServer getObject() {
 		return this.connectorServer;
 	}
 

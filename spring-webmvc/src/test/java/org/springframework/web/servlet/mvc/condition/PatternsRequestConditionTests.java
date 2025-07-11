@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,200 +16,149 @@
 
 package org.springframework.web.servlet.mvc.condition;
 
-import java.util.Arrays;
-import java.util.List;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.Test;
 
-import org.junit.Test;
+import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
+import org.springframework.web.util.UrlPathHelper;
 
-import org.springframework.mock.web.test.MockHttpServletRequest;
-
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.STRING;
 
 /**
+ * Tests for {@link PatternsRequestCondition}.
+ *
  * @author Rossen Stoyanchev
  */
-public class PatternsRequestConditionTests {
+@SuppressWarnings("removal")
+class PatternsRequestConditionTests {
 
 	@Test
-	public void prependSlash() {
-		PatternsRequestCondition c = new PatternsRequestCondition("foo");
-		assertEquals("/foo", c.getPatterns().iterator().next());
+	void prependSlash() {
+		assertThat(new PatternsRequestCondition("foo").getPatterns()).containsExactly("/foo");
 	}
 
 	@Test
-	public void prependNonEmptyPatternsOnly() {
-		PatternsRequestCondition c = new PatternsRequestCondition("");
-		assertEquals("Do not prepend empty patterns (SPR-8255)", "", c.getPatterns().iterator().next());
+	void prependNonEmptyPatternsOnly() {
+		assertThat(new PatternsRequestCondition("").getPatterns()).first(STRING)
+				.as("Do not prepend empty patterns (SPR-8255)").isEmpty();
 	}
 
 	@Test
-	public void combineEmptySets() {
+	void getDirectUrls() {
+		PatternsRequestCondition condition = new PatternsRequestCondition("/something", "/else/**");
+		assertThat(condition.getDirectPaths()).containsExactly("/something");
+	}
+
+	@Test
+	void combineEmptySets() {
 		PatternsRequestCondition c1 = new PatternsRequestCondition();
 		PatternsRequestCondition c2 = new PatternsRequestCondition();
+		PatternsRequestCondition c3 = c1.combine(c2);
 
-		assertEquals(new PatternsRequestCondition(""), c1.combine(c2));
+		assertThat(c1.getPatterns()).isSameAs(c2.getPatterns()).containsExactly("");
+		assertThat(c3.getPatterns()).containsExactly("", "/");
 	}
 
 	@Test
-	public void combineOnePatternWithEmptySet() {
+	void combineOnePatternWithEmptySet() {
 		PatternsRequestCondition c1 = new PatternsRequestCondition("/type1", "/type2");
 		PatternsRequestCondition c2 = new PatternsRequestCondition();
 
-		assertEquals(new PatternsRequestCondition("/type1", "/type2"), c1.combine(c2));
+		assertThat(c1.combine(c2)).isEqualTo(new PatternsRequestCondition("/type1", "/type2"));
 
 		c1 = new PatternsRequestCondition();
 		c2 = new PatternsRequestCondition("/method1", "/method2");
 
-		assertEquals(new PatternsRequestCondition("/method1", "/method2"), c1.combine(c2));
+		assertThat(c1.combine(c2)).isEqualTo(new PatternsRequestCondition("/method1", "/method2"));
 	}
 
 	@Test
-	public void combineMultiplePatterns() {
+	void combineMultiplePatterns() {
 		PatternsRequestCondition c1 = new PatternsRequestCondition("/t1", "/t2");
 		PatternsRequestCondition c2 = new PatternsRequestCondition("/m1", "/m2");
 
-		assertEquals(new PatternsRequestCondition("/t1/m1", "/t1/m2", "/t2/m1", "/t2/m2"), c1.combine(c2));
+		assertThat(c1.combine(c2)).isEqualTo(new PatternsRequestCondition("/t1/m1", "/t1/m2", "/t2/m1", "/t2/m2"));
 	}
 
 	@Test
-	public void matchDirectPath() {
+	void matchDirectPath() {
 		PatternsRequestCondition condition = new PatternsRequestCondition("/foo");
-		PatternsRequestCondition match = condition.getMatchingCondition(new MockHttpServletRequest("GET", "/foo"));
+		PatternsRequestCondition match = condition.getMatchingCondition(initRequest("/foo"));
 
-		assertNotNull(match);
+		assertThat(match).isNotNull();
 	}
 
 	@Test
-	public void matchPattern() {
+	void matchPattern() {
+		MockHttpServletRequest request = initRequest("/foo/bar");
+
 		PatternsRequestCondition condition = new PatternsRequestCondition("/foo/*");
-		PatternsRequestCondition match = condition.getMatchingCondition(new MockHttpServletRequest("GET", "/foo/bar"));
+		PatternsRequestCondition match = condition.getMatchingCondition(request);
 
-		assertNotNull(match);
+		assertThat(match).isNotNull();
 	}
 
 	@Test
-	public void matchSortPatterns() {
+	void matchSortPatterns() {
+		MockHttpServletRequest request = initRequest("/foo/bar");
+
 		PatternsRequestCondition condition = new PatternsRequestCondition("/**", "/foo/bar", "/foo/*");
-		PatternsRequestCondition match = condition.getMatchingCondition(new MockHttpServletRequest("GET", "/foo/bar"));
+		PatternsRequestCondition match = condition.getMatchingCondition(request);
 		PatternsRequestCondition expected = new PatternsRequestCondition("/foo/bar", "/foo/*", "/**");
 
-		assertEquals(expected, match);
+		assertThat(match).isEqualTo(expected);
 	}
 
 	@Test
-	public void matchSuffixPattern() {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/foo.html");
+	void matchPatternContainsExtension() {
+		MockHttpServletRequest request = initRequest("/foo.html");
+		PatternsRequestCondition match = new PatternsRequestCondition("/foo.jpg").getMatchingCondition(request);
 
-		PatternsRequestCondition condition = new PatternsRequestCondition("/{foo}");
-		PatternsRequestCondition match = condition.getMatchingCondition(request);
-
-		assertNotNull(match);
-		assertEquals("/{foo}.*", match.getPatterns().iterator().next());
-
-		boolean useSuffixPatternMatch = false;
-		condition = new PatternsRequestCondition(new String[] {"/{foo}"}, null, null, useSuffixPatternMatch, false);
-		match = condition.getMatchingCondition(request);
-
-		assertNotNull(match);
-		assertEquals("/{foo}", match.getPatterns().iterator().next());
+		assertThat(match).isNull();
 	}
 
-	// SPR-8410
-
-	@Test
-	public void matchSuffixPatternUsingFileExtensions() {
-		String[] patterns = new String[] {"/jobs/{jobName}"};
-		List<String> extensions = Arrays.asList("json");
-		PatternsRequestCondition condition = new PatternsRequestCondition(patterns, null, null, true, false, extensions);
-
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/jobs/my.job");
-		PatternsRequestCondition match = condition.getMatchingCondition(request);
-
-		assertNotNull(match);
-		assertEquals("/jobs/{jobName}", match.getPatterns().iterator().next());
-
-		request = new MockHttpServletRequest("GET", "/jobs/my.job.json");
-		match = condition.getMatchingCondition(request);
-
-		assertNotNull(match);
-		assertEquals("/jobs/{jobName}.json", match.getPatterns().iterator().next());
+	@Test // gh-22543
+	void matchWithEmptyPatterns() {
+		PatternsRequestCondition condition = new PatternsRequestCondition().combine(new PatternsRequestCondition());
+		assertThat(condition.getMatchingCondition(initRequest(""))).isNotNull();
+		assertThat(condition.getMatchingCondition(initRequest("/anything"))).isNull();
 	}
 
 	@Test
-	public void matchSuffixPatternUsingFileExtensions2() {
-		PatternsRequestCondition condition1 = new PatternsRequestCondition(
-				new String[] {"/prefix"}, null, null, true, false, Arrays.asList("json"));
-
-		PatternsRequestCondition condition2 = new PatternsRequestCondition(
-				new String[] {"/suffix"}, null, null, true, false, null);
-
-		PatternsRequestCondition combined = condition1.combine(condition2);
-
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/prefix/suffix.json");
-		PatternsRequestCondition match = combined.getMatchingCondition(request);
-
-		assertNotNull(match);
-	}
-
-	@Test
-	public void matchTrailingSlash() {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/foo/");
-
-		PatternsRequestCondition condition = new PatternsRequestCondition("/foo");
-		PatternsRequestCondition match = condition.getMatchingCondition(request);
-
-		assertNotNull(match);
-		assertEquals("Should match by default", "/foo/", match.getPatterns().iterator().next());
-
-		condition = new PatternsRequestCondition(new String[] {"/foo"}, null, null, false, true);
-		match = condition.getMatchingCondition(request);
-
-		assertNotNull(match);
-		assertEquals("Trailing slash should be insensitive to useSuffixPatternMatch settings (SPR-6164, SPR-5636)",
-				"/foo/", match.getPatterns().iterator().next());
-
-		condition = new PatternsRequestCondition(new String[] {"/foo"}, null, null, false, false);
-		match = condition.getMatchingCondition(request);
-
-		assertNull(match);
-	}
-
-	@Test
-	public void matchPatternContainsExtension() {
-		PatternsRequestCondition condition = new PatternsRequestCondition("/foo.jpg");
-		PatternsRequestCondition match = condition.getMatchingCondition(new MockHttpServletRequest("GET", "/foo.html"));
-
-		assertNull(match);
-	}
-
-	@Test
-	public void compareEqualPatterns() {
+	void compareEqualPatterns() {
 		PatternsRequestCondition c1 = new PatternsRequestCondition("/foo*");
 		PatternsRequestCondition c2 = new PatternsRequestCondition("/foo*");
 
-		assertEquals(0, c1.compareTo(c2, new MockHttpServletRequest("GET", "/foo")));
+		assertThat(c1.compareTo(c2, initRequest("/foo"))).isEqualTo(0);
 	}
 
 	@Test
-	public void comparePatternSpecificity() {
+	void comparePatternSpecificity() {
 		PatternsRequestCondition c1 = new PatternsRequestCondition("/fo*");
 		PatternsRequestCondition c2 = new PatternsRequestCondition("/foo");
 
-		assertEquals(1, c1.compareTo(c2, new MockHttpServletRequest("GET", "/foo")));
+		assertThat(c1.compareTo(c2, initRequest("/foo"))).isEqualTo(1);
 	}
 
 	@Test
-	public void compareNumberOfMatchingPatterns() throws Exception {
-		HttpServletRequest request = new MockHttpServletRequest("GET", "/foo.html");
+	void compareNumberOfMatchingPatterns() {
+		HttpServletRequest request = initRequest("/foo.html");
 
-		PatternsRequestCondition c1 = new PatternsRequestCondition("/foo", "*.jpeg");
-		PatternsRequestCondition c2 = new PatternsRequestCondition("/foo", "*.html");
+		PatternsRequestCondition c1 = new PatternsRequestCondition("/foo.html", "*.jpeg");
+		PatternsRequestCondition c2 = new PatternsRequestCondition("/foo.html", "*.html");
 
 		PatternsRequestCondition match1 = c1.getMatchingCondition(request);
 		PatternsRequestCondition match2 = c2.getMatchingCondition(request);
 
-		assertEquals(1, match1.compareTo(match2, request));
+		assertThat(match1.compareTo(match2, request)).isEqualTo(1);
+	}
+
+
+	private MockHttpServletRequest initRequest(String requestUri) {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", requestUri);
+		UrlPathHelper.defaultInstance.resolveAndCacheLookupPath(request);
+		return request;
 	}
 
 }

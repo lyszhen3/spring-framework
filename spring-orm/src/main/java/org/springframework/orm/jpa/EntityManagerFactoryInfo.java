@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,15 @@
 
 package org.springframework.orm.jpa;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.spi.PersistenceProvider;
-import javax.persistence.spi.PersistenceUnitInfo;
+import java.util.Map;
+
 import javax.sql.DataSource;
 
-import org.springframework.lang.Nullable;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.spi.PersistenceProvider;
+import jakarta.persistence.spi.PersistenceUnitInfo;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Metadata interface for a Spring-managed JPA {@link EntityManagerFactory}.
@@ -37,20 +39,13 @@ import org.springframework.lang.Nullable;
 public interface EntityManagerFactoryInfo {
 
 	/**
-	 * Return the raw underlying EntityManagerFactory.
-	 * @return the unadorned EntityManagerFactory (never {@code null})
-	 */
-	EntityManagerFactory getNativeEntityManagerFactory();
-
-	/**
 	 * Return the underlying PersistenceProvider that the underlying
 	 * EntityManagerFactory was created with.
 	 * @return the PersistenceProvider used to create this EntityManagerFactory,
 	 * or {@code null} if the standard JPA provider autodetection process
 	 * was used to configure the EntityManagerFactory
 	 */
-	@Nullable
-	PersistenceProvider getPersistenceProvider();
+	@Nullable PersistenceProvider getPersistenceProvider();
 
 	/**
 	 * Return the PersistenceUnitInfo used to create this
@@ -59,8 +54,7 @@ public interface EntityManagerFactoryInfo {
 	 * or {@code null} if the in-container contract was not used to
 	 * configure the EntityManagerFactory
 	 */
-	@Nullable
-	PersistenceUnitInfo getPersistenceUnitInfo();
+	@Nullable PersistenceUnitInfo getPersistenceUnitInfo();
 
 	/**
 	 * Return the name of the persistence unit used to create this
@@ -69,40 +63,55 @@ public interface EntityManagerFactoryInfo {
 	 * {@code getPersistenceUnitName()} must be equal to the value returned by
 	 * {@code PersistenceUnitInfo.getPersistenceUnitName()}.
 	 * @see #getPersistenceUnitInfo()
-	 * @see javax.persistence.spi.PersistenceUnitInfo#getPersistenceUnitName()
+	 * @see jakarta.persistence.spi.PersistenceUnitInfo#getPersistenceUnitName()
 	 */
-	@Nullable
-	String getPersistenceUnitName();
+	@Nullable String getPersistenceUnitName();
 
 	/**
 	 * Return the JDBC DataSource that this EntityManagerFactory
 	 * obtains its JDBC Connections from.
 	 * @return the JDBC DataSource, or {@code null} if not known
 	 */
-	@Nullable
-	DataSource getDataSource();
+	@Nullable DataSource getDataSource();
 
 	/**
 	 * Return the (potentially vendor-specific) EntityManager interface
 	 * that this factory's EntityManagers will implement.
 	 * <p>A {@code null} return value suggests that autodetection is supposed
 	 * to happen: either based on a target {@code EntityManager} instance
-	 * or simply defaulting to {@code javax.persistence.EntityManager}.
+	 * or simply defaulting to {@code jakarta.persistence.EntityManager}.
 	 */
-	@Nullable
-	Class<? extends EntityManager> getEntityManagerInterface();
+	@Nullable Class<? extends EntityManager> getEntityManagerInterface();
 
 	/**
 	 * Return the vendor-specific JpaDialect implementation for this
 	 * EntityManagerFactory, or {@code null} if not known.
 	 */
-	@Nullable
-	JpaDialect getJpaDialect();
+	@Nullable JpaDialect getJpaDialect();
 
 	/**
 	 * Return the ClassLoader that the application's beans are loaded with.
 	 * <p>Proxies will be generated in this ClassLoader.
 	 */
 	ClassLoader getBeanClassLoader();
+
+	/**
+	 * Return the raw underlying EntityManagerFactory.
+	 * @return the unadorned EntityManagerFactory (never {@code null})
+	 */
+	EntityManagerFactory getNativeEntityManagerFactory();
+
+	/**
+	 * Create a native JPA EntityManager to be used as the framework-managed
+	 * resource behind an application-level EntityManager handle.
+	 * <p>This exposes a native {@code EntityManager} from the underlying
+	 * {@link #getNativeEntityManagerFactory() native EntityManagerFactory},
+	 * taking {@link JpaVendorAdapter#postProcessEntityManager(EntityManager)}
+	 * into account.
+	 * @since 5.3
+	 * @see #getNativeEntityManagerFactory()
+	 * @see EntityManagerFactory#createEntityManager()
+	 */
+	EntityManager createNativeEntityManager(@Nullable Map<?, ?> properties);
 
 }

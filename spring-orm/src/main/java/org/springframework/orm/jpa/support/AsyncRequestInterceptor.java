@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,10 +17,11 @@
 package org.springframework.orm.jpa.support;
 
 import java.util.concurrent.Callable;
-import javax.persistence.EntityManagerFactory;
 
+import jakarta.persistence.EntityManagerFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.orm.jpa.EntityManagerFactoryUtils;
 import org.springframework.orm.jpa.EntityManagerHolder;
@@ -72,7 +73,7 @@ class AsyncRequestInterceptor implements CallableProcessingInterceptor, Deferred
 	}
 
 	@Override
-	public <T> void postProcess(NativeWebRequest request, Callable<T> task, Object concurrentResult) {
+	public <T> void postProcess(NativeWebRequest request, Callable<T> task, @Nullable Object concurrentResult) {
 		TransactionSynchronizationManager.unbindResource(this.emFactory);
 	}
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +20,10 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.scope.ScopedObject;
 import org.springframework.core.InfrastructureProxy;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
@@ -40,15 +40,15 @@ public abstract class TransactionSynchronizationUtils {
 
 	private static final Log logger = LogFactory.getLog(TransactionSynchronizationUtils.class);
 
-	private static final boolean aopAvailable = ClassUtils.isPresent(
+	private static final boolean aopPresent = ClassUtils.isPresent(
 			"org.springframework.aop.scope.ScopedObject", TransactionSynchronizationUtils.class.getClassLoader());
 
 
 	/**
-	 * Check whether the given resource transaction managers refers to the given
+	 * Check whether the given resource transaction manager refers to the given
 	 * (underlying) resource factory.
 	 * @see ResourceTransactionManager#getResourceFactory()
-	 * @see org.springframework.core.InfrastructureProxy#getWrappedObject()
+	 * @see InfrastructureProxy#getWrappedObject()
 	 */
 	public static boolean sameResourceFactory(ResourceTransactionManager tm, Object resourceFactory) {
 		return unwrapResourceIfNecessary(tm.getResourceFactory()).equals(unwrapResourceIfNecessary(resourceFactory));
@@ -57,16 +57,17 @@ public abstract class TransactionSynchronizationUtils {
 	/**
 	 * Unwrap the given resource handle if necessary; otherwise return
 	 * the given handle as-is.
-	 * @see org.springframework.core.InfrastructureProxy#getWrappedObject()
+	 * @since 5.3.4
+	 * @see InfrastructureProxy#getWrappedObject()
 	 */
-	static Object unwrapResourceIfNecessary(Object resource) {
+	public static Object unwrapResourceIfNecessary(Object resource) {
 		Assert.notNull(resource, "Resource must not be null");
 		Object resourceRef = resource;
 		// unwrap infrastructure proxy
-		if (resourceRef instanceof InfrastructureProxy) {
-			resourceRef = ((InfrastructureProxy) resourceRef).getWrappedObject();
+		if (resourceRef instanceof InfrastructureProxy infrastructureProxy) {
+			resourceRef = infrastructureProxy.getWrappedObject();
 		}
-		if (aopAvailable) {
+		if (aopPresent) {
 			// now unwrap scoped proxy
 			resourceRef = ScopedProxyUnwrapper.unwrapIfNecessary(resourceRef);
 		}
@@ -80,8 +81,38 @@ public abstract class TransactionSynchronizationUtils {
 	 * @see TransactionSynchronization#flush()
 	 */
 	public static void triggerFlush() {
-		for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-			synchronization.flush();
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+				synchronization.flush();
+			}
+		}
+	}
+
+	/**
+	 * Trigger {@code flush} callbacks on all currently registered synchronizations.
+	 * @throws RuntimeException if thrown by a {@code savepoint} callback
+	 * @since 6.2
+	 * @see TransactionSynchronization#savepoint
+	 */
+	static void triggerSavepoint(Object savepoint) {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+				synchronization.savepoint(savepoint);
+			}
+		}
+	}
+
+	/**
+	 * Trigger {@code flush} callbacks on all currently registered synchronizations.
+	 * @throws RuntimeException if thrown by a {@code savepointRollback} callback
+	 * @since 6.2
+	 * @see TransactionSynchronization#savepointRollback
+	 */
+	static void triggerSavepointRollback(Object savepoint) {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+				synchronization.savepointRollback(savepoint);
+			}
 		}
 	}
 
@@ -106,8 +137,8 @@ public abstract class TransactionSynchronizationUtils {
 			try {
 				synchronization.beforeCompletion();
 			}
-			catch (Throwable tsex) {
-				logger.error("TransactionSynchronization.beforeCompletion threw exception", tsex);
+			catch (Throwable ex) {
+				logger.error("TransactionSynchronization.beforeCompletion threw exception", ex);
 			}
 		}
 	}
@@ -170,8 +201,8 @@ public abstract class TransactionSynchronizationUtils {
 				try {
 					synchronization.afterCompletion(completionStatus);
 				}
-				catch (Throwable tsex) {
-					logger.error("TransactionSynchronization.afterCompletion threw exception", tsex);
+				catch (Throwable ex) {
+					logger.error("TransactionSynchronization.afterCompletion threw exception", ex);
 				}
 			}
 		}
@@ -184,8 +215,8 @@ public abstract class TransactionSynchronizationUtils {
 	private static class ScopedProxyUnwrapper {
 
 		public static Object unwrapIfNecessary(Object resource) {
-			if (resource instanceof ScopedObject) {
-				return ((ScopedObject) resource).getTargetObject();
+			if (resource instanceof ScopedObject scopedObject) {
+				return scopedObject.getTargetObject();
 			}
 			else {
 				return resource;

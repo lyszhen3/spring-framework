@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,11 @@
 
 package org.springframework.web.jsf;
 
-import javax.faces.application.NavigationHandler;
-import javax.faces.context.FacesContext;
+import jakarta.faces.application.NavigationHandler;
+import jakarta.faces.context.FacesContext;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.lang.Nullable;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
@@ -79,8 +79,7 @@ public class DelegatingNavigationHandlerProxy extends NavigationHandler {
 	 */
 	public static final String DEFAULT_TARGET_BEAN_NAME = "jsfNavigationHandler";
 
-	@Nullable
-	private NavigationHandler originalNavigationHandler;
+	private @Nullable NavigationHandler originalNavigationHandler;
 
 
 	/**
@@ -110,8 +109,8 @@ public class DelegatingNavigationHandlerProxy extends NavigationHandler {
 	@Override
 	public void handleNavigation(FacesContext facesContext, String fromAction, String outcome) {
 		NavigationHandler handler = getDelegate(facesContext);
-		if (handler instanceof DecoratingNavigationHandler) {
-			((DecoratingNavigationHandler) handler).handleNavigation(
+		if (handler instanceof DecoratingNavigationHandler decoratingNavigationHandler) {
+			decoratingNavigationHandler.handleNavigation(
 					facesContext, fromAction, outcome, this.originalNavigationHandler);
 		}
 		else {

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,8 +20,8 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.StringUtils;
 
@@ -90,8 +90,7 @@ public abstract class AbstractHeaderMapper<T> implements HeaderMapper<T> {
 	 * Return the header value, or {@code null} if it does not exist
 	 * or does not match the requested {@code type}.
 	 */
-	@Nullable
-	protected <V> V getHeaderIfAvailable(Map<String, Object> headers, String name, Class<V> type) {
+	protected <V> @Nullable V getHeaderIfAvailable(Map<String, Object> headers, String name, Class<V> type) {
 		Object value = headers.get(name);
 		if (value == null) {
 			return null;

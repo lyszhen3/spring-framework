@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,8 +17,10 @@
 package org.springframework.beans.propertyeditors;
 
 import java.beans.PropertyEditorSupport;
+import java.util.HexFormat;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.StringUtils;
 
 /**
@@ -30,7 +32,7 @@ import org.springframework.util.StringUtils;
  * {@link org.springframework.beans.BeanWrapperImpl} will register this
  * editor by default.
  *
- * <p>Also supports conversion from a Unicode character sequence; e.g.
+ * <p>Also supports conversion from a Unicode character sequence; for example,
  * {@code u0041} ('A').
  *
  * @author Juergen Hoeller
@@ -82,7 +84,7 @@ public class CharacterEditor extends PropertyEditorSupport {
 			setAsUnicode(text);
 		}
 		else if (text.length() == 1) {
-			setValue(Character.valueOf(text.charAt(0)));
+			setValue(text.charAt(0));
 		}
 		else {
 			throw new IllegalArgumentException("String [" + text + "] with length " +
@@ -96,14 +98,13 @@ public class CharacterEditor extends PropertyEditorSupport {
 		return (value != null ? value.toString() : "");
 	}
 
-
-	private boolean isUnicodeCharacterSequence(String sequence) {
+	private static boolean isUnicodeCharacterSequence(String sequence) {
 		return (sequence.startsWith(UNICODE_PREFIX) && sequence.length() == UNICODE_LENGTH);
 	}
 
 	private void setAsUnicode(String text) {
-		int code = Integer.parseInt(text.substring(UNICODE_PREFIX.length()), 16);
-		setValue(Character.valueOf((char) code));
+		int code = HexFormat.fromHexDigits(text, UNICODE_PREFIX.length(), text.length());
+		setValue((char) code);
 	}
 
 }

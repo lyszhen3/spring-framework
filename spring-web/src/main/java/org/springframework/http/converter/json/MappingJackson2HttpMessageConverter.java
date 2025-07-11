@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,16 +17,18 @@
 package org.springframework.http.converter.json;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.MediaType;
-import org.springframework.lang.Nullable;
 
 /**
  * Implementation of {@link org.springframework.http.converter.HttpMessageConverter} that can read and
- * write JSON using <a href="http://wiki.fasterxml.com/JacksonHome">Jackson 2.x's</a> {@link ObjectMapper}.
+ * write JSON using <a href="https://github.com/FasterXML/jackson">Jackson 2.x's</a> {@link ObjectMapper}.
  *
  * <p>This converter can be used to bind to typed beans, or untyped {@code HashMap} instances.
  *
@@ -36,19 +38,23 @@ import org.springframework.lang.Nullable;
  *
  * <p>The default constructor uses the default configuration provided by {@link Jackson2ObjectMapperBuilder}.
  *
- * <p>Compatible with Jackson 2.9 and higher, as of Spring 5.0.
- *
  * @author Arjen Poutsma
  * @author Keith Donald
  * @author Rossen Stoyanchev
  * @author Juergen Hoeller
  * @author Sebastien Deleuze
  * @since 3.1.2
+ * @deprecated since 7.0 in favor of {@link JacksonJsonHttpMessageConverter}
  */
+@Deprecated(since = "7.0", forRemoval = true)
+@SuppressWarnings("removal")
 public class MappingJackson2HttpMessageConverter extends AbstractJackson2HttpMessageConverter {
 
-	@Nullable
-	private String jsonPrefix;
+	private static final List<MediaType> problemDetailMediaTypes =
+			Collections.singletonList(MediaType.APPLICATION_PROBLEM_JSON);
+
+
+	private @Nullable String jsonPrefix;
 
 
 	/**
@@ -79,7 +85,7 @@ public class MappingJackson2HttpMessageConverter extends AbstractJackson2HttpMes
 	}
 
 	/**
-	 * Indicate whether the JSON output by this view should be prefixed with ")]}', ". Default is false.
+	 * Indicate whether the JSON output by this view should be prefixed with ")]}', ". Default is {@code false}.
 	 * <p>Prefixing the JSON string in this manner is used to help prevent JSON Hijacking.
 	 * The prefix renders the string syntactically invalid as a script so that it cannot be hijacked.
 	 * This prefix should be stripped before parsing the string as JSON.
@@ -89,6 +95,11 @@ public class MappingJackson2HttpMessageConverter extends AbstractJackson2HttpMes
 		this.jsonPrefix = (prefixJson ? ")]}', " : null);
 	}
 
+
+	@Override
+	protected List<MediaType> getMediaTypesForProblemDetail() {
+		return problemDetailMediaTypes;
+	}
 
 	@Override
 	protected void writePrefix(JsonGenerator generator, Object object) throws IOException {

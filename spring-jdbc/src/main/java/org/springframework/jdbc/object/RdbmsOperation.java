@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,25 +18,26 @@ package org.springframework.jdbc.object;
 
 import java.sql.ResultSet;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
 import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameter;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * An "RDBMS operation" is a multi-threaded, reusable object representing a query,
+ * An "RDBMS operation" is a multithreaded, reusable object representing a query,
  * update, or stored procedure call. An RDBMS operation is <b>not</b> a command,
  * as a command is not reusable. However, execute methods may take commands as
  * arguments. Subclasses should be JavaBeans, allowing easy configuration.
@@ -72,13 +73,11 @@ public abstract class RdbmsOperation implements InitializingBean {
 
 	private boolean returnGeneratedKeys = false;
 
-	@Nullable
-	private String[] generatedKeysColumnNames;
+	private String @Nullable [] generatedKeysColumnNames;
 
-	@Nullable
-	private String sql;
+	private @Nullable String sql;
 
-	private final List<SqlParameter> declaredParameters = new LinkedList<>();
+	private final List<SqlParameter> declaredParameters = new ArrayList<>();
 
 	/**
 	 * Has this operation been compiled? Compilation means at
@@ -118,7 +117,7 @@ public abstract class RdbmsOperation implements InitializingBean {
 	 * large result sets: Setting this higher than the default value will increase
 	 * processing speed at the cost of memory consumption; setting this lower can
 	 * avoid transferring row data that will never be read by the application.
-	 * <p>Default is 0, indicating to use the driver's default.
+	 * <p>Default is -1, indicating to use the driver's default.
 	 * @see org.springframework.jdbc.core.JdbcTemplate#setFetchSize
 	 */
 	public void setFetchSize(int fetchSize) {
@@ -127,9 +126,9 @@ public abstract class RdbmsOperation implements InitializingBean {
 
 	/**
 	 * Set the maximum number of rows for this RDBMS operation. This is important
-	 * for processing subsets of large result sets, avoiding to read and hold
-	 * the entire result set in the database or in the JDBC driver.
-	 * <p>Default is 0, indicating to use the driver's default.
+	 * for processing subsets of large result sets, in order to avoid reading and
+	 * holding the entire result set in the database or in the JDBC driver.
+	 * <p>Default is -1, indicating to use the driver's default.
 	 * @see org.springframework.jdbc.core.JdbcTemplate#setMaxRows
 	 */
 	public void setMaxRows(int maxRows) {
@@ -138,7 +137,7 @@ public abstract class RdbmsOperation implements InitializingBean {
 
 	/**
 	 * Set the query timeout for statements that this RDBMS operation executes.
-	 * <p>Default is 0, indicating to use the JDBC driver's default.
+	 * <p>Default is -1, indicating to use the JDBC driver's default.
 	 * <p>Note: Any timeout specified here will be overridden by the remaining
 	 * transaction timeout when executing within a transaction that has a
 	 * timeout specified at the transaction level.
@@ -174,7 +173,7 @@ public abstract class RdbmsOperation implements InitializingBean {
 	public void setUpdatableResults(boolean updatableResults) {
 		if (isCompiled()) {
 			throw new InvalidDataAccessApiUsageException(
-					"The updateableResults flag must be set before the operation is compiled");
+					"The updatableResults flag must be set before the operation is compiled");
 		}
 		this.updatableResults = updatableResults;
 	}
@@ -211,7 +210,7 @@ public abstract class RdbmsOperation implements InitializingBean {
 	 * Set the column names of the auto-generated keys.
 	 * @see java.sql.Connection#prepareStatement(String, String[])
 	 */
-	public void setGeneratedKeysColumnNames(@Nullable String... names) {
+	public void setGeneratedKeysColumnNames(String @Nullable ... names) {
 		if (isCompiled()) {
 			throw new InvalidDataAccessApiUsageException(
 					"The column names for the generated keys must be set before the operation is compiled");
@@ -222,8 +221,7 @@ public abstract class RdbmsOperation implements InitializingBean {
 	/**
 	 * Return the column names of the auto generated keys.
 	 */
-	@Nullable
-	public String[] getGeneratedKeysColumnNames() {
+	public String @Nullable [] getGeneratedKeysColumnNames() {
 		return this.generatedKeysColumnNames;
 	}
 
@@ -238,8 +236,7 @@ public abstract class RdbmsOperation implements InitializingBean {
 	 * Subclasses can override this to supply dynamic SQL if they wish, but SQL is
 	 * normally set by calling the {@link #setSql} method or in a subclass constructor.
 	 */
-	@Nullable
-	public String getSql() {
+	public @Nullable String getSql() {
 		return this.sql;
 	}
 
@@ -263,7 +260,7 @@ public abstract class RdbmsOperation implements InitializingBean {
 	 * {@code java.sql.Types} class
 	 * @throws InvalidDataAccessApiUsageException if the operation is already compiled
 	 */
-	public void setTypes(@Nullable int[] types) throws InvalidDataAccessApiUsageException {
+	public void setTypes(int @Nullable [] types) throws InvalidDataAccessApiUsageException {
 		if (isCompiled()) {
 			throw new InvalidDataAccessApiUsageException("Cannot add parameters once query is compiled");
 		}
@@ -386,10 +383,10 @@ public abstract class RdbmsOperation implements InitializingBean {
 	 * Validate the parameters passed to an execute method based on declared parameters.
 	 * Subclasses should invoke this method before every {@code executeQuery()}
 	 * or {@code update()} method.
-	 * @param parameters parameters supplied (may be {@code null})
+	 * @param parameters the parameters supplied (may be {@code null})
 	 * @throws InvalidDataAccessApiUsageException if the parameters are invalid
 	 */
-	protected void validateParameters(@Nullable Object[] parameters) throws InvalidDataAccessApiUsageException {
+	protected void validateParameters(Object @Nullable [] parameters) throws InvalidDataAccessApiUsageException {
 		checkCompiled();
 		int declaredInParameters = 0;
 		for (SqlParameter param : this.declaredParameters) {

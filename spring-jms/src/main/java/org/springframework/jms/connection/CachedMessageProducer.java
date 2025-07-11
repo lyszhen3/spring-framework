@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,17 +16,16 @@
 
 package org.springframework.jms.connection;
 
-import javax.jms.CompletionListener;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.QueueSender;
-import javax.jms.Topic;
-import javax.jms.TopicPublisher;
-
-import org.springframework.lang.Nullable;
+import jakarta.jms.CompletionListener;
+import jakarta.jms.Destination;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
+import jakarta.jms.MessageProducer;
+import jakarta.jms.Queue;
+import jakarta.jms.QueueSender;
+import jakarta.jms.Topic;
+import jakarta.jms.TopicPublisher;
+import org.jspecify.annotations.Nullable;
 
 /**
  * JMS MessageProducer decorator that adapts calls to a shared MessageProducer
@@ -39,14 +38,11 @@ class CachedMessageProducer implements MessageProducer, QueueSender, TopicPublis
 
 	private final MessageProducer target;
 
-	@Nullable
-	private Boolean originalDisableMessageID;
+	private @Nullable Boolean originalDisableMessageID;
 
-	@Nullable
-	private Boolean originalDisableMessageTimestamp;
+	private @Nullable Boolean originalDisableMessageTimestamp;
 
-	@Nullable
-	private Long originalDeliveryDelay;
+	private @Nullable Long originalDeliveryDelay;
 
 	private int deliveryMode;
 
@@ -89,6 +85,7 @@ class CachedMessageProducer implements MessageProducer, QueueSender, TopicPublis
 		return this.target.getDisableMessageTimestamp();
 	}
 
+	@Override
 	public void setDeliveryDelay(long deliveryDelay) throws JMSException {
 		if (this.originalDeliveryDelay == null) {
 			this.originalDeliveryDelay = this.target.getDeliveryDelay();
@@ -96,6 +93,7 @@ class CachedMessageProducer implements MessageProducer, QueueSender, TopicPublis
 		this.target.setDeliveryDelay(deliveryDelay);
 	}
 
+	@Override
 	public long getDeliveryDelay() throws JMSException {
 		return this.target.getDeliveryDelay();
 	}

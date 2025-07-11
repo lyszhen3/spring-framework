@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,10 +18,11 @@ package org.springframework.web.context.support;
 
 import java.util.HashSet;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
 
-import org.springframework.lang.Nullable;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -37,11 +38,9 @@ public class ContextExposingHttpServletRequest extends HttpServletRequestWrapper
 
 	private final WebApplicationContext webApplicationContext;
 
-	@Nullable
-	private final Set<String> exposedContextBeanNames;
+	private final @Nullable Set<String> exposedContextBeanNames;
 
-	@Nullable
-	private Set<String> explicitAttributes;
+	private @Nullable Set<String> explicitAttributes;
 
 
 	/**
@@ -80,8 +79,7 @@ public class ContextExposingHttpServletRequest extends HttpServletRequestWrapper
 
 
 	@Override
-	@Nullable
-	public Object getAttribute(String name) {
+	public @Nullable Object getAttribute(String name) {
 		if ((this.explicitAttributes == null || !this.explicitAttributes.contains(name)) &&
 				(this.exposedContextBeanNames == null || this.exposedContextBeanNames.contains(name)) &&
 				this.webApplicationContext.containsBean(name)) {

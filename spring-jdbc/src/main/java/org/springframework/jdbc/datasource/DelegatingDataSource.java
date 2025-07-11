@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,12 +18,16 @@ package org.springframework.jdbc.datasource;
 
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.ConnectionBuilder;
 import java.sql.SQLException;
+import java.sql.ShardingKeyBuilder;
 import java.util.logging.Logger;
+
 import javax.sql.DataSource;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -40,8 +44,7 @@ import org.springframework.util.Assert;
  */
 public class DelegatingDataSource implements DataSource, InitializingBean {
 
-	@Nullable
-	private DataSource targetDataSource;
+	private @Nullable DataSource targetDataSource;
 
 
 	/**
@@ -70,8 +73,7 @@ public class DelegatingDataSource implements DataSource, InitializingBean {
 	/**
 	 * Return the target DataSource that this DataSource should delegate to.
 	 */
-	@Nullable
-	public DataSource getTargetDataSource() {
+	public @Nullable DataSource getTargetDataSource() {
 		return this.targetDataSource;
 	}
 
@@ -104,13 +106,13 @@ public class DelegatingDataSource implements DataSource, InitializingBean {
 	}
 
 	@Override
-	public PrintWriter getLogWriter() throws SQLException {
-		return obtainTargetDataSource().getLogWriter();
+	public ConnectionBuilder createConnectionBuilder() throws SQLException {
+		return obtainTargetDataSource().createConnectionBuilder();
 	}
 
 	@Override
-	public void setLogWriter(PrintWriter out) throws SQLException {
-		obtainTargetDataSource().setLogWriter(out);
+	public ShardingKeyBuilder createShardingKeyBuilder() throws SQLException {
+		return obtainTargetDataSource().createShardingKeyBuilder();
 	}
 
 	@Override
@@ -123,10 +125,20 @@ public class DelegatingDataSource implements DataSource, InitializingBean {
 		obtainTargetDataSource().setLoginTimeout(seconds);
 	}
 
+	@Override
+	public PrintWriter getLogWriter() throws SQLException {
+		return obtainTargetDataSource().getLogWriter();
+	}
 
-	//---------------------------------------------------------------------
-	// Implementation of JDBC 4.0's Wrapper interface
-	//---------------------------------------------------------------------
+	@Override
+	public void setLogWriter(PrintWriter out) throws SQLException {
+		obtainTargetDataSource().setLogWriter(out);
+	}
+
+	@Override
+	public Logger getParentLogger() {
+		return Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+	}
 
 	@Override
 	@SuppressWarnings("unchecked")
@@ -140,16 +152,6 @@ public class DelegatingDataSource implements DataSource, InitializingBean {
 	@Override
 	public boolean isWrapperFor(Class<?> iface) throws SQLException {
 		return (iface.isInstance(this) || obtainTargetDataSource().isWrapperFor(iface));
-	}
-
-
-	//---------------------------------------------------------------------
-	// Implementation of JDBC 4.1's getParentLogger method
-	//---------------------------------------------------------------------
-
-	@Override
-	public Logger getParentLogger() {
-		return Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,10 @@
 
 package org.springframework.beans.factory.annotation;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.wiring.BeanWiringInfo;
 import org.springframework.beans.factory.wiring.BeanWiringInfoResolver;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
@@ -38,8 +39,7 @@ import org.springframework.util.ClassUtils;
 public class AnnotationBeanWiringInfoResolver implements BeanWiringInfoResolver {
 
 	@Override
-	@Nullable
-	public BeanWiringInfo resolveWiringInfo(Object beanInstance) {
+	public @Nullable BeanWiringInfo resolveWiringInfo(Object beanInstance) {
 		Assert.notNull(beanInstance, "Bean instance must not be null");
 		Configurable annotation = beanInstance.getClass().getAnnotation(Configurable.class);
 		return (annotation != null ? buildWiringInfo(beanInstance, annotation) : null);
@@ -56,7 +56,7 @@ public class AnnotationBeanWiringInfoResolver implements BeanWiringInfoResolver 
 			// Autowiring by name or by type
 			return new BeanWiringInfo(annotation.autowire().value(), annotation.dependencyCheck());
 		}
-		else if (!"".equals(annotation.value())) {
+		else if (!annotation.value().isEmpty()) {
 			// Explicitly specified bean name for bean definition to take property values from
 			return new BeanWiringInfo(annotation.value(), false);
 		}

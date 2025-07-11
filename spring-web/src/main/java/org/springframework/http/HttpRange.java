@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,13 +20,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.StringJoiner;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -38,7 +40,7 @@ import org.springframework.util.StringUtils;
  * @author Arjen Poutsma
  * @author Juergen Hoeller
  * @since 4.2
- * @see <a href="http://tools.ietf.org/html/rfc7233">HTTP/1.1: Range Requests</a>
+ * @see <a href="https://tools.ietf.org/html/rfc7233">HTTP/1.1: Range Requests</a>
  * @see HttpHeaders#setRange(List)
  * @see HttpHeaders#getRange()
  */
@@ -65,19 +67,8 @@ public abstract class HttpRange {
 		long contentLength = getLengthFor(resource);
 		long start = getRangeStart(contentLength);
 		long end = getRangeEnd(contentLength);
+		Assert.isTrue(start < contentLength, () -> "'position' exceeds the resource length " + contentLength);
 		return new ResourceRegion(resource, start, end - start + 1);
-	}
-
-	private static long getLengthFor(Resource resource) {
-		long contentLength;
-		try {
-			contentLength = resource.contentLength();
-			Assert.isTrue(contentLength > 0, "Resource content length should be > 0");
-		}
-		catch (IOException ex) {
-			throw new IllegalArgumentException("Failed to obtain Resource content length", ex);
-		}
-		return contentLength;
 	}
 
 	/**
@@ -99,7 +90,7 @@ public abstract class HttpRange {
 	 * Create an {@code HttpRange} from the given position to the end.
 	 * @param firstBytePos the first byte position
 	 * @return a byte range that ranges from {@code firstPos} till the end
-	 * @see <a href="http://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
+	 * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
 	 */
 	public static HttpRange createByteRange(long firstBytePos) {
 		return new ByteRange(firstBytePos, null);
@@ -110,7 +101,7 @@ public abstract class HttpRange {
 	 * @param firstBytePos the first byte position
 	 * @param lastBytePos the last byte position
 	 * @return a byte range that ranges from {@code firstPos} till {@code lastPos}
-	 * @see <a href="http://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
+	 * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
 	 */
 	public static HttpRange createByteRange(long firstBytePos, long lastBytePos) {
 		return new ByteRange(firstBytePos, lastBytePos);
@@ -120,7 +111,7 @@ public abstract class HttpRange {
 	 * Create an {@code HttpRange} that ranges over the last given number of bytes.
 	 * @param suffixLength the number of bytes for the range
 	 * @return a byte range that ranges over the last {@code suffixLength} number of bytes
-	 * @see <a href="http://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
+	 * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
 	 */
 	public static HttpRange createSuffixRange(long suffixLength) {
 		return new SuffixByteRange(suffixLength);
@@ -131,8 +122,8 @@ public abstract class HttpRange {
 	 * <p>This method can be used to parse an {@code Range} header.
 	 * @param ranges the string to parse
 	 * @return the list of ranges
-	 * @throws IllegalArgumentException if the string cannot be parsed, or if
-	 * the number of ranges is greater than 100.
+	 * @throws IllegalArgumentException if the string cannot be parsed
+	 * or if the number of ranges is greater than 100
 	 */
 	public static List<HttpRange> parseRanges(@Nullable String ranges) {
 		if (!StringUtils.hasLength(ranges)) {
@@ -144,7 +135,9 @@ public abstract class HttpRange {
 		ranges = ranges.substring(BYTE_RANGE_PREFIX.length());
 
 		String[] tokens = StringUtils.tokenizeToStringArray(ranges, ",");
-		Assert.isTrue(tokens.length <= MAX_RANGES, () -> "Too many ranges " + tokens.length);
+		if (tokens.length > MAX_RANGES) {
+			throw new IllegalArgumentException("Too many ranges: " + tokens.length);
+		}
 		List<HttpRange> result = new ArrayList<>(tokens.length);
 		for (String token : tokens) {
 			result.add(parseRange(token));
@@ -156,9 +149,9 @@ public abstract class HttpRange {
 		Assert.hasLength(range, "Range String must not be empty");
 		int dashIdx = range.indexOf('-');
 		if (dashIdx > 0) {
-			long firstPos = Long.parseLong(range.substring(0, dashIdx));
+			long firstPos = Long.parseLong(range, 0, dashIdx, 10);
 			if (dashIdx < range.length() - 1) {
-				Long lastPos = Long.parseLong(range.substring(dashIdx + 1, range.length()));
+				Long lastPos = Long.parseLong(range, dashIdx + 1, range.length(), 10);
 				return new ByteRange(firstPos, lastPos);
 			}
 			else {
@@ -166,7 +159,7 @@ public abstract class HttpRange {
 			}
 		}
 		else if (dashIdx == 0) {
-			long suffixLength = Long.parseLong(range.substring(1));
+			long suffixLength = Long.parseLong(range, 1, range.length(), 10);
 			return new SuffixByteRange(suffixLength);
 		}
 		else {
@@ -180,8 +173,7 @@ public abstract class HttpRange {
 	 * @param ranges the list of ranges
 	 * @param resource the resource to select the regions from
 	 * @return the list of regions for the given resource
-	 * @throws IllegalArgumentException if the sum of all ranges exceeds the
-	 * resource length.
+	 * @throws IllegalArgumentException if the sum of all ranges exceeds the resource length
 	 * @since 4.3
 	 */
 	public static List<ResourceRegion> toResourceRegions(List<HttpRange> ranges, Resource resource) {
@@ -194,12 +186,27 @@ public abstract class HttpRange {
 		}
 		if (ranges.size() > 1) {
 			long length = getLengthFor(resource);
-			long total = regions.stream().map(ResourceRegion::getCount).reduce(0L, (count, sum) -> sum + count);
-			Assert.isTrue(total < length,
-					() -> "The sum of all ranges (" + total + ") " +
-							"should be less than the resource length (" + length + ")");
+			long total = 0;
+			for (ResourceRegion region : regions) {
+				total += region.getCount();
+			}
+			if (total >= length) {
+				throw new IllegalArgumentException("The sum of all ranges (" + total +
+						") should be less than the resource length (" + length + ")");
+			}
 		}
 		return regions;
+	}
+
+	private static long getLengthFor(Resource resource) {
+		try {
+			long contentLength = resource.contentLength();
+			Assert.isTrue(contentLength > 0, "Resource content length should be > 0");
+			return contentLength;
+		}
+		catch (IOException ex) {
+			throw new IllegalArgumentException("Failed to obtain Resource content length", ex);
+		}
 	}
 
 	/**
@@ -210,13 +217,9 @@ public abstract class HttpRange {
 	 */
 	public static String toString(Collection<HttpRange> ranges) {
 		Assert.notEmpty(ranges, "Ranges Collection must not be empty");
-		StringBuilder builder = new StringBuilder(BYTE_RANGE_PREFIX);
-		for (Iterator<HttpRange> iterator = ranges.iterator(); iterator.hasNext(); ) {
-			HttpRange range = iterator.next();
-			builder.append(range);
-			if (iterator.hasNext()) {
-				builder.append(", ");
-			}
+		StringJoiner builder = new StringJoiner(", ", BYTE_RANGE_PREFIX, "");
+		for (HttpRange range : ranges) {
+			builder.add(range.toString());
 		}
 		return builder.toString();
 	}
@@ -224,7 +227,7 @@ public abstract class HttpRange {
 
 	/**
 	 * Represents an HTTP/1.1 byte range, with a first and optional last position.
-	 * @see <a href="http://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
+	 * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
 	 * @see HttpRange#createByteRange(long)
 	 * @see HttpRange#createByteRange(long, long)
 	 */
@@ -232,8 +235,7 @@ public abstract class HttpRange {
 
 		private final long firstPos;
 
-		@Nullable
-		private final Long lastPos;
+		private final @Nullable Long lastPos;
 
 		public ByteRange(long firstPos, @Nullable Long lastPos) {
 			assertPositions(firstPos, lastPos);
@@ -267,22 +269,15 @@ public abstract class HttpRange {
 		}
 
 		@Override
-		public boolean equals(Object other) {
-			if (this == other) {
-				return true;
-			}
-			if (!(other instanceof ByteRange)) {
-				return false;
-			}
-			ByteRange otherRange = (ByteRange) other;
-			return (this.firstPos == otherRange.firstPos &&
-					ObjectUtils.nullSafeEquals(this.lastPos, otherRange.lastPos));
+		public boolean equals(@Nullable Object other) {
+			return (this == other || (other instanceof ByteRange that &&
+					this.firstPos == that.firstPos &&
+					ObjectUtils.nullSafeEquals(this.lastPos, that.lastPos)));
 		}
 
 		@Override
 		public int hashCode() {
-			return (ObjectUtils.nullSafeHashCode(this.firstPos) * 31 +
-					ObjectUtils.nullSafeHashCode(this.lastPos));
+			return Objects.hash(this.firstPos, this.lastPos);
 		}
 
 		@Override
@@ -300,7 +295,7 @@ public abstract class HttpRange {
 
 	/**
 	 * Represents an HTTP/1.1 suffix byte range, with a number of suffix bytes.
-	 * @see <a href="http://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
+	 * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.1">Byte Ranges</a>
 	 * @see HttpRange#createSuffixRange(long)
 	 */
 	private static class SuffixByteRange extends HttpRange {
@@ -330,15 +325,9 @@ public abstract class HttpRange {
 		}
 
 		@Override
-		public boolean equals(Object other) {
-			if (this == other) {
-				return true;
-			}
-			if (!(other instanceof SuffixByteRange)) {
-				return false;
-			}
-			SuffixByteRange otherRange = (SuffixByteRange) other;
-			return (this.suffixLength == otherRange.suffixLength);
+		public boolean equals(@Nullable Object other) {
+			return (this == other || (other instanceof SuffixByteRange that &&
+					this.suffixLength == that.suffixLength));
 		}
 
 		@Override

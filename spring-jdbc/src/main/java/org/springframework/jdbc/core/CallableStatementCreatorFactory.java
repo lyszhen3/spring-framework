@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,17 +20,18 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.dao.InvalidDataAccessApiUsageException;
-import org.springframework.lang.Nullable;
 
 /**
  * Helper class that efficiently creates multiple {@link CallableStatementCreator}
- * objects with different parameters based on a SQL statement and a single
+ * objects with different parameters based on an SQL statement and a single
  * set of parameter declarations.
  *
  * @author Rod Johnson
@@ -57,7 +58,7 @@ public class CallableStatementCreatorFactory {
 	 */
 	public CallableStatementCreatorFactory(String callString) {
 		this.callString = callString;
-		this.declaredParameters = new LinkedList<>();
+		this.declaredParameters = new ArrayList<>();
 	}
 
 	/**
@@ -109,7 +110,7 @@ public class CallableStatementCreatorFactory {
 
 
 	/**
-	 * Return a new CallableStatementCreator instance given this parameters.
+	 * Return a new CallableStatementCreator instance given these parameters.
 	 * @param params list of parameters (may be {@code null})
 	 */
 	public CallableStatementCreator newCallableStatementCreator(@Nullable Map<String, ?> params) {
@@ -130,11 +131,9 @@ public class CallableStatementCreatorFactory {
 	 */
 	private class CallableStatementCreatorImpl implements CallableStatementCreator, SqlProvider, ParameterDisposer {
 
-		@Nullable
-		private ParameterMapper inParameterMapper;
+		private @Nullable ParameterMapper inParameterMapper;
 
-		@Nullable
-		private Map<String, ?> inParameters;
+		private @Nullable Map<String, ?> inParameters;
 
 		/**
 		 * Create a new CallableStatementCreatorImpl.

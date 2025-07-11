@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,9 @@
 
 package org.springframework.jdbc.core.namedparam;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.jdbc.support.JdbcUtils;
-import org.springframework.lang.Nullable;
 
 /**
  * Interface that defines common functionality for objects that can
@@ -63,8 +64,7 @@ public interface SqlParameterSource {
 	 * @return the value of the specified parameter
 	 * @throws IllegalArgumentException if there is no value for the requested parameter
 	 */
-	@Nullable
-	Object getValue(String paramName) throws IllegalArgumentException;
+	@Nullable Object getValue(String paramName) throws IllegalArgumentException;
 
 	/**
 	 * Determine the SQL type for the specified named parameter.
@@ -83,13 +83,12 @@ public interface SqlParameterSource {
 	 * @return the type name of the specified parameter,
 	 * or {@code null} if not known
 	 */
-	@Nullable
-	default String getTypeName(String paramName) {
+	default @Nullable String getTypeName(String paramName) {
 		return null;
 	}
 
 	/**
-	 * Extract all available parameter names if possible.
+	 * Enumerate all available parameter names if possible.
 	 * <p>This is an optional operation, primarily for use with
 	 * {@link org.springframework.jdbc.core.simple.SimpleJdbcInsert}
 	 * and {@link org.springframework.jdbc.core.simple.SimpleJdbcCall}.
@@ -97,8 +96,7 @@ public interface SqlParameterSource {
 	 * @since 5.0.3
 	 * @see SqlParameterSourceUtils#extractCaseInsensitiveParameterNames
 	 */
-	@Nullable
-	default String[] getParameterNames() {
+	default String @Nullable [] getParameterNames() {
 		return null;
 	}
 

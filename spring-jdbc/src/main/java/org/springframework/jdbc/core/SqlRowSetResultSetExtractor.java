@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package org.springframework.jdbc.core;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
 import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetFactory;
 import javax.sql.rowset.RowSetProvider;
@@ -78,7 +79,7 @@ public class SqlRowSetResultSetExtractor implements ResultSetExtractor<SqlRowSet
 	/**
 	 * Create a new {@link CachedRowSet} instance, to be populated by
 	 * the {@code createSqlRowSet} implementation.
-	 * <p>The default implementation uses JDBC 4.1's {@link RowSetFactory}.
+	 * <p>The default implementation uses JDBC's {@link RowSetFactory}.
 	 * @return a new CachedRowSet instance
 	 * @throws SQLException if thrown by JDBC methods
 	 * @see #createSqlRowSet

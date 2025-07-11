@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,7 @@
 
 package org.springframework.test.context.web;
 
-import javax.servlet.ServletContext;
-
+import jakarta.servlet.ServletContext;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -33,7 +32,6 @@ import org.springframework.test.context.TestContext;
 import org.springframework.test.context.TestExecutionListener;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
-import org.springframework.util.Assert;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -67,8 +65,14 @@ import org.springframework.web.context.request.ServletWebRequest;
 public class ServletTestExecutionListener extends AbstractTestExecutionListener {
 
 	/**
+	 * The {@link #getOrder() order} value for this listener: {@value}.
+	 * @since 6.2.3
+	 */
+	public static final int ORDER = 1000;
+
+	/**
 	 * Attribute name for a {@link TestContext} attribute which indicates
-	 * whether or not the {@code ServletTestExecutionListener} should {@linkplain
+	 * whether the {@code ServletTestExecutionListener} should {@linkplain
 	 * RequestContextHolder#resetRequestAttributes() reset} Spring Web's
 	 * {@code RequestContextHolder} in {@link #afterTestMethod(TestContext)}.
 	 * <p>Permissible values include {@link Boolean#TRUE} and {@link Boolean#FALSE}.
@@ -112,11 +116,14 @@ public class ServletTestExecutionListener extends AbstractTestExecutionListener 
 
 
 	/**
-	 * Returns {@code 1000}.
+	 * Returns {@value #ORDER}, which ensures that the {@code ServletTestExecutionListener}
+	 * is ordered before the
+	 * {@link org.springframework.test.context.support.DirtiesContextBeforeModesTestExecutionListener
+	 * DirtiesContextBeforeModesTestExecutionListener}.
 	 */
 	@Override
 	public final int getOrder() {
-		return 1000;
+		return ORDER;
 	}
 
 	/**
@@ -162,8 +169,11 @@ public class ServletTestExecutionListener extends AbstractTestExecutionListener 
 	@Override
 	public void afterTestMethod(TestContext testContext) throws Exception {
 		if (Boolean.TRUE.equals(testContext.getAttribute(RESET_REQUEST_CONTEXT_HOLDER_ATTRIBUTE))) {
-			if (logger.isDebugEnabled()) {
-				logger.debug(String.format("Resetting RequestContextHolder for test context %s.", testContext));
+			if (logger.isTraceEnabled()) {
+				logger.trace("Resetting RequestContextHolder for test context " + testContext);
+			}
+			else if (logger.isDebugEnabled()) {
+				logger.debug("Resetting RequestContextHolder for test class " + testContext.getTestClass().getName());
 			}
 			RequestContextHolder.resetRequestAttributes();
 			testContext.setAttribute(DependencyInjectionTestExecutionListener.REINJECT_DEPENDENCIES_ATTRIBUTE,
@@ -189,20 +199,23 @@ public class ServletTestExecutionListener extends AbstractTestExecutionListener 
 
 		ApplicationContext context = testContext.getApplicationContext();
 
-		if (context instanceof WebApplicationContext) {
-			WebApplicationContext wac = (WebApplicationContext) context;
+		if (context instanceof WebApplicationContext wac) {
 			ServletContext servletContext = wac.getServletContext();
-			Assert.state(servletContext instanceof MockServletContext, () -> String.format(
-						"The WebApplicationContext for test context %s must be configured with a MockServletContext.",
-						testContext));
-
-			if (logger.isDebugEnabled()) {
-				logger.debug(String.format(
-						"Setting up MockHttpServletRequest, MockHttpServletResponse, ServletWebRequest, and RequestContextHolder for test context %s.",
-						testContext));
+			if (!(servletContext instanceof MockServletContext mockServletContext)) {
+				throw new IllegalStateException(
+						"The WebApplicationContext for test context %s must be configured with a MockServletContext."
+							.formatted(testContext));
 			}
 
-			MockServletContext mockServletContext = (MockServletContext) servletContext;
+			if (logger.isTraceEnabled()) {
+				logger.trace("Setting up MockHttpServletRequest, MockHttpServletResponse, ServletWebRequest, " +
+						"and RequestContextHolder for test context " + testContext);
+			}
+			else if (logger.isDebugEnabled()) {
+				logger.debug("Setting up MockHttpServletRequest, MockHttpServletResponse, ServletWebRequest, " +
+						"and RequestContextHolder for test class " + testContext.getTestClass().getName());
+			}
+
 			MockHttpServletRequest request = new MockHttpServletRequest(mockServletContext);
 			request.setAttribute(CREATED_BY_THE_TESTCONTEXT_FRAMEWORK, Boolean.TRUE);
 			MockHttpServletResponse response = new MockHttpServletResponse();
@@ -212,9 +225,7 @@ public class ServletTestExecutionListener extends AbstractTestExecutionListener 
 			testContext.setAttribute(POPULATED_REQUEST_CONTEXT_HOLDER_ATTRIBUTE, Boolean.TRUE);
 			testContext.setAttribute(RESET_REQUEST_CONTEXT_HOLDER_ATTRIBUTE, Boolean.TRUE);
 
-			if (wac instanceof ConfigurableApplicationContext) {
-				@SuppressWarnings("resource")
-				ConfigurableApplicationContext configurableApplicationContext = (ConfigurableApplicationContext) wac;
+			if (wac instanceof ConfigurableApplicationContext configurableApplicationContext) {
 				ConfigurableListableBeanFactory bf = configurableApplicationContext.getBeanFactory();
 				bf.registerResolvableDependency(MockHttpServletResponse.class, response);
 				bf.registerResolvableDependency(ServletWebRequest.class, servletWebRequest);

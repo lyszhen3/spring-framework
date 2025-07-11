@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,11 +17,11 @@
 package org.springframework.aop.aspectj;
 
 import org.aopalliance.aop.Advice;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.Advisor;
 import org.springframework.aop.AfterAdvice;
 import org.springframework.aop.BeforeAdvice;
-import org.springframework.lang.Nullable;
 
 /**
  * Utility methods for dealing with AspectJ advisors.
@@ -59,14 +59,13 @@ public abstract class AspectJAopUtils {
 	 * If neither the advisor nor the advice have precedence information, this method
 	 * will return {@code null}.
 	 */
-	@Nullable
-	public static AspectJPrecedenceInformation getAspectJPrecedenceInformationFor(Advisor anAdvisor) {
-		if (anAdvisor instanceof AspectJPrecedenceInformation) {
-			return (AspectJPrecedenceInformation) anAdvisor;
+	public static @Nullable AspectJPrecedenceInformation getAspectJPrecedenceInformationFor(Advisor anAdvisor) {
+		if (anAdvisor instanceof AspectJPrecedenceInformation ajpi) {
+			return ajpi;
 		}
 		Advice advice = anAdvisor.getAdvice();
-		if (advice instanceof AspectJPrecedenceInformation) {
-			return (AspectJPrecedenceInformation) advice;
+		if (advice instanceof AspectJPrecedenceInformation ajpi) {
+			return ajpi;
 		}
 		return null;
 	}

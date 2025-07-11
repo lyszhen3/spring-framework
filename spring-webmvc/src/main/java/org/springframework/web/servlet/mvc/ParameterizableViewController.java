@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,12 +16,13 @@
 
 package org.springframework.web.servlet.mvc;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.lang.Nullable;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.support.RequestContextUtils;
@@ -38,11 +39,9 @@ import org.springframework.web.servlet.support.RequestContextUtils;
  */
 public class ParameterizableViewController extends AbstractController {
 
-	@Nullable
-	private Object view;
+	private @Nullable Object view;
 
-	@Nullable
-	private HttpStatus statusCode;
+	private @Nullable HttpStatusCode statusCode;
 
 	private boolean statusOnly;
 
@@ -65,10 +64,8 @@ public class ParameterizableViewController extends AbstractController {
 	 * Return the name of the view to delegate to, or {@code null} if using a
 	 * View instance.
 	 */
-	@Nullable
-	public String getViewName() {
-		if (this.view instanceof String) {
-			String viewName = (String) this.view;
+	public @Nullable String getViewName() {
+		if (this.view instanceof String viewName) {
 			if (getStatusCode() != null && getStatusCode().is3xxRedirection()) {
 				return viewName.startsWith("redirect:") ? viewName : "redirect:" + viewName;
 			}
@@ -93,23 +90,22 @@ public class ParameterizableViewController extends AbstractController {
 	 * to be resolved by the DispatcherServlet via a ViewResolver.
 	 * @since 4.1
 	 */
-	@Nullable
-	public View getView() {
-		return (this.view instanceof View ? (View) this.view : null);
+	public @Nullable View getView() {
+		return (this.view instanceof View v ? v : null);
 	}
 
 	/**
 	 * Configure the HTTP status code that this controller should set on the
 	 * response.
 	 * <p>When a "redirect:" prefixed view name is configured, there is no need
-	 * to set this property since RedirectView will do that. However this property
+	 * to set this property since RedirectView will do that. However, this property
 	 * may still be used to override the 3xx status code of {@code RedirectView}.
 	 * For full control over redirecting provide a {@code RedirectView} instance.
 	 * <p>If the status code is 204 and no view is configured, the request is
 	 * fully handled within the controller.
 	 * @since 4.1
 	 */
-	public void setStatusCode(@Nullable HttpStatus statusCode) {
+	public void setStatusCode(@Nullable HttpStatusCode statusCode) {
 		this.statusCode = statusCode;
 	}
 
@@ -117,8 +113,7 @@ public class ParameterizableViewController extends AbstractController {
 	 * Return the configured HTTP status code or {@code null}.
 	 * @since 4.1
 	 */
-	@Nullable
-	public HttpStatus getStatusCode() {
+	public @Nullable HttpStatusCode getStatusCode() {
 		return this.statusCode;
 	}
 
@@ -149,7 +144,7 @@ public class ParameterizableViewController extends AbstractController {
 	 * @see #getViewName()
 	 */
 	@Override
-	protected ModelAndView handleRequestInternal(HttpServletRequest request, HttpServletResponse response)
+	protected @Nullable ModelAndView handleRequestInternal(HttpServletRequest request, HttpServletResponse response)
 			throws Exception {
 
 		String viewName = getViewName();

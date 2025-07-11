@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -83,12 +83,13 @@ import org.springframework.stereotype.Component;
  *
  * <h3>Via component scanning</h3>
  *
- * <p>{@code @Configuration} is meta-annotated with {@link Component @Component}, therefore
- * {@code @Configuration} classes are candidates for component scanning (typically using
- * Spring XML's {@code <context:component-scan/>} element) and therefore may also take
- * advantage of {@link Autowired @Autowired}/{@link javax.inject.Inject @Inject}
- * like any regular {@code @Component}. In particular, if a single constructor is present
- * autowiring semantics will be applied transparently for that constructor:
+ * <p>Since {@code @Configuration} is meta-annotated with {@link Component @Component},
+ * {@code @Configuration} classes are candidates for component scanning &mdash;
+ * for example, using {@link ComponentScan @ComponentScan} or Spring XML's
+ * {@code <context:component-scan/>} element &mdash; and therefore may also take
+ * advantage of {@link Autowired @Autowired}/{@link jakarta.inject.Inject @Inject}
+ * like any regular {@code @Component}. In particular, if a single constructor is
+ * present, autowiring semantics will be applied transparently for that constructor:
  *
  * <pre class="code">
  * &#064;Configuration
@@ -104,8 +105,8 @@ import org.springframework.stereotype.Component;
  *
  * }</pre>
  *
- * <p>{@code @Configuration} classes may not only be bootstrapped using
- * component scanning, but may also themselves <em>configure</em> component scanning using
+ * <p>{@code @Configuration} classes may not only be bootstrapped using component
+ * scanning, but may also themselves <em>configure</em> component scanning using
  * the {@link ComponentScan @ComponentScan} annotation:
  *
  * <pre class="code">
@@ -129,7 +130,7 @@ import org.springframework.stereotype.Component;
  * &#064;Configuration
  * public class AppConfig {
  *
- *     &#064Autowired Environment env;
+ *     &#064;Autowired Environment env;
  *
  *     &#064;Bean
  *     public MyBean myBean() {
@@ -149,7 +150,7 @@ import org.springframework.stereotype.Component;
  * &#064;PropertySource("classpath:/com/acme/app.properties")
  * public class AppConfig {
  *
- *     &#064Inject Environment env;
+ *     &#064;Inject Environment env;
  *
  *     &#064;Bean
  *     public MyBean myBean() {
@@ -170,7 +171,7 @@ import org.springframework.stereotype.Component;
  * &#064;PropertySource("classpath:/com/acme/app.properties")
  * public class AppConfig {
  *
- *     &#064Value("${bean.name}") String beanName;
+ *     &#064;Value("${bean.name}") String beanName;
  *
  *     &#064;Bean
  *     public MyBean myBean() {
@@ -297,7 +298,7 @@ import org.springframework.stereotype.Component;
  * &#064;ImportResource("classpath:/com/acme/database-config.xml")
  * public class AppConfig {
  *
- *     &#064Inject DataSource dataSource; // from XML
+ *     &#064;Inject DataSource dataSource; // from XML
  *
  *     &#064;Bean
  *     public MyBean myBean() {
@@ -344,27 +345,28 @@ import org.springframework.stereotype.Component;
  *
  * <p>By default, {@code @Bean} methods will be <em>eagerly instantiated</em> at container
  * bootstrap time.  To avoid this, {@code @Configuration} may be used in conjunction with
- * the {@link Lazy @Lazy} annotation to indicate that all {@code @Bean} methods declared within
- * the class are by default lazily initialized. Note that {@code @Lazy} may be used on
- * individual {@code @Bean} methods as well.
+ * the {@link Lazy @Lazy} annotation to indicate that all {@code @Bean} methods declared
+ * within the class are by default lazily initialized. Note that {@code @Lazy} may be used
+ * on individual {@code @Bean} methods as well.
  *
  * <h2>Testing support for {@code @Configuration} classes</h2>
  *
  * <p>The Spring <em>TestContext framework</em> available in the {@code spring-test} module
  * provides the {@code @ContextConfiguration} annotation which can accept an array of
- * {@code @Configuration} {@code Class} objects:
+ * <em>component class</em> references &mdash; typically {@code @Configuration} or
+ * {@code @Component} classes.
  *
  * <pre class="code">
- * &#064;RunWith(SpringRunner.class)
+ * &#064;ExtendWith(SpringExtension.class)
  * &#064;ContextConfiguration(classes = {AppConfig.class, DatabaseConfig.class})
- * public class MyTests {
+ * class MyTests {
  *
  *     &#064;Autowired MyBean myBean;
  *
  *     &#064;Autowired DataSource dataSource;
  *
  *     &#064;Test
- *     public void test() {
+ *     void test() {
  *         // assertions against myBean ...
  *     }
  * }</pre>
@@ -391,7 +393,9 @@ import org.springframework.stereotype.Component;
  * <ul>
  * <li>Configuration classes must be provided as classes (i.e. not as instances returned
  * from factory methods), allowing for runtime enhancements through a generated subclass.
- * <li>Configuration classes must be non-final.
+ * <li>Configuration classes must be non-final (allowing for subclasses at runtime),
+ * unless the {@link #proxyBeanMethods() proxyBeanMethods} flag is set to {@code false}
+ * in which case no runtime-generated subclass is necessary.
  * <li>Configuration classes must be non-local (i.e. may not be declared within a method).
  * <li>Any nested configuration classes must be declared as {@code static}.
  * <li>{@code @Bean} methods may not in turn create further configuration classes
@@ -401,6 +405,7 @@ import org.springframework.stereotype.Component;
  *
  * @author Rod Johnson
  * @author Chris Beams
+ * @author Juergen Hoeller
  * @since 3.0
  * @see Bean
  * @see Profile
@@ -429,10 +434,47 @@ public @interface Configuration {
 	 * {@link AnnotationConfigApplicationContext}. If the {@code @Configuration} class
 	 * is registered as a traditional XML bean definition, the name/id of the bean
 	 * element will take precedence.
+	 * <p>Alias for {@link Component#value}.
 	 * @return the explicit component name, if any (or empty String otherwise)
-	 * @see org.springframework.beans.factory.support.DefaultBeanNameGenerator
+	 * @see AnnotationBeanNameGenerator
 	 */
 	@AliasFor(annotation = Component.class)
 	String value() default "";
+
+	/**
+	 * Specify whether {@code @Bean} methods should get proxied in order to enforce
+	 * bean lifecycle behavior, for example, to return shared singleton bean instances even
+	 * in case of direct {@code @Bean} method calls in user code. This feature
+	 * requires method interception, implemented through a runtime-generated CGLIB
+	 * subclass which comes with limitations such as the configuration class and
+	 * its methods not being allowed to declare {@code final}.
+	 * <p>The default is {@code true}, allowing for 'inter-bean references' via direct
+	 * method calls within the configuration class as well as for external calls to
+	 * this configuration's {@code @Bean} methods, for example, from another configuration class.
+	 * If this is not needed since each of this particular configuration's {@code @Bean}
+	 * methods is self-contained and designed as a plain factory method for container use,
+	 * switch this flag to {@code false} in order to avoid CGLIB subclass processing.
+	 * <p>Turning off bean method interception effectively processes {@code @Bean}
+	 * methods individually like when declared on non-{@code @Configuration} classes,
+	 * a.k.a. "@Bean Lite Mode" (see {@link Bean @Bean's javadoc}). It is therefore
+	 * behaviorally equivalent to removing the {@code @Configuration} stereotype.
+	 * @since 5.2
+	 */
+	boolean proxyBeanMethods() default true;
+
+	/**
+	 * Specify whether {@code @Bean} methods need to have unique method names,
+	 * raising an exception otherwise in order to prevent accidental overloading.
+	 * <p>The default is {@code true}, preventing accidental method overloads which
+	 * get interpreted as overloaded factory methods for the same bean definition
+	 * (as opposed to separate bean definitions with individual conditions etc).
+	 * Switch this flag to {@code false} in order to allow for method overloading
+	 * according to those semantics, accepting the risk for accidental overlaps.
+	 * @since 6.0
+	 * @deprecated as of 7.0, always relying on {@code @Bean} unique methods,
+	 * just possibly with {@code Optional}/{@code ObjectProvider} arguments
+	 */
+	@Deprecated(since = "7.0")
+	boolean enforceUniqueMethods() default true;
 
 }

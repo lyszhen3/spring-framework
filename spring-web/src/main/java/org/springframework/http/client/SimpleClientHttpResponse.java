@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,30 +19,30 @@ package org.springframework.http.client;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.lang.Nullable;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
 
 /**
  * {@link ClientHttpResponse} implementation that uses standard JDK facilities.
- * Obtained via {@link SimpleBufferingClientHttpRequest#execute()} and
- * {@link SimpleStreamingClientHttpRequest#execute()}.
+ * Obtained via {@link SimpleClientHttpRequest#execute()}.
  *
  * @author Arjen Poutsma
  * @author Brian Clozel
  * @since 3.0
  */
-final class SimpleClientHttpResponse extends AbstractClientHttpResponse {
+final class SimpleClientHttpResponse implements ClientHttpResponse {
 
 	private final HttpURLConnection connection;
 
-	@Nullable
-	private HttpHeaders headers;
+	private @Nullable HttpHeaders headers;
 
-	@Nullable
-	private InputStream responseStream;
+	private @Nullable InputStream responseStream;
 
 
 	SimpleClientHttpResponse(HttpURLConnection connection) {
@@ -51,13 +51,14 @@ final class SimpleClientHttpResponse extends AbstractClientHttpResponse {
 
 
 	@Override
-	public int getRawStatusCode() throws IOException {
-		return this.connection.getResponseCode();
+	public HttpStatusCode getStatusCode() throws IOException {
+		return HttpStatusCode.valueOf(this.connection.getResponseCode());
 	}
 
 	@Override
 	public String getStatusText() throws IOException {
-		return this.connection.getResponseMessage();
+		String result = this.connection.getResponseMessage();
+		return (result != null) ? result : "";
 	}
 
 	@Override
@@ -84,8 +85,15 @@ final class SimpleClientHttpResponse extends AbstractClientHttpResponse {
 
 	@Override
 	public InputStream getBody() throws IOException {
-		InputStream errorStream = this.connection.getErrorStream();
-		this.responseStream = (errorStream != null ? errorStream : this.connection.getInputStream());
+		if (this.responseStream == null) {
+			if (this.connection.getResponseCode() >= 400) {
+				InputStream errorStream = this.connection.getErrorStream();
+				this.responseStream = (errorStream != null) ? errorStream : InputStream.nullInputStream();
+			}
+			else {
+				this.responseStream = this.connection.getInputStream();
+			}
+		}
 		return this.responseStream;
 	}
 
@@ -95,6 +103,7 @@ final class SimpleClientHttpResponse extends AbstractClientHttpResponse {
 			if (this.responseStream == null) {
 				getBody();
 			}
+			Objects.requireNonNull(this.responseStream);
 			StreamUtils.drain(this.responseStream);
 			this.responseStream.close();
 		}

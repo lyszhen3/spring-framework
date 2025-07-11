@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,10 @@ package org.springframework.web.server;
 
 import java.lang.reflect.Method;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
-import org.springframework.lang.Nullable;
 
 /**
  * Exception for an {@link HttpStatus#INTERNAL_SERVER_ERROR} that exposes extra
@@ -33,11 +34,9 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public class ServerErrorException extends ResponseStatusException {
 
-	@Nullable
-	private final Method handlerMethod;
+	private final @Nullable Method handlerMethod;
 
-	@Nullable
-	private final MethodParameter parameter;
+	private final @Nullable MethodParameter parameter;
 
 
 	/**
@@ -45,7 +44,7 @@ public class ServerErrorException extends ResponseStatusException {
 	 * @since 5.0.5
 	 */
 	public ServerErrorException(String reason, @Nullable Throwable cause) {
-		super(HttpStatus.INTERNAL_SERVER_ERROR, reason, cause);
+		super(HttpStatus.INTERNAL_SERVER_ERROR, reason, cause, null, new Object[] {reason});
 		this.handlerMethod = null;
 		this.parameter = null;
 	}
@@ -55,7 +54,7 @@ public class ServerErrorException extends ResponseStatusException {
 	 * @since 5.0.5
 	 */
 	public ServerErrorException(String reason, Method handlerMethod, @Nullable Throwable cause) {
-		super(HttpStatus.INTERNAL_SERVER_ERROR, reason, cause);
+		super(HttpStatus.INTERNAL_SERVER_ERROR, reason, cause, null, new Object[] {reason});
 		this.handlerMethod = handlerMethod;
 		this.parameter = null;
 	}
@@ -64,29 +63,9 @@ public class ServerErrorException extends ResponseStatusException {
 	 * Constructor for a 500 error with a {@link MethodParameter} and an optional cause.
 	 */
 	public ServerErrorException(String reason, MethodParameter parameter, @Nullable Throwable cause) {
-		super(HttpStatus.INTERNAL_SERVER_ERROR, reason, cause);
+		super(HttpStatus.INTERNAL_SERVER_ERROR, reason, cause, null, new Object[] {reason});
 		this.handlerMethod = parameter.getMethod();
 		this.parameter = parameter;
-	}
-
-	/**
-	 * Constructor for a 500 error linked to a specific {@code MethodParameter}.
-	 * @deprecated in favor of {@link #ServerErrorException(String, MethodParameter, Throwable)}
-	 */
-	@Deprecated
-	public ServerErrorException(String reason, MethodParameter parameter) {
-		this(reason, parameter, null);
-	}
-
-	/**
-	 * Constructor for a 500 error with a reason only.
-	 * @deprecated in favor of {@link #ServerErrorException(String, Throwable)}
-	 */
-	@Deprecated
-	public ServerErrorException(String reason) {
-		super(HttpStatus.INTERNAL_SERVER_ERROR, reason, null);
-		this.handlerMethod = null;
-		this.parameter = null;
 	}
 
 
@@ -94,16 +73,14 @@ public class ServerErrorException extends ResponseStatusException {
 	 * Return the handler method associated with the error, if any.
 	 * @since 5.0.5
 	 */
-	@Nullable
-	public Method getHandlerMethod() {
+	public @Nullable Method getHandlerMethod() {
 		return this.handlerMethod;
 	}
 
 	/**
 	 * Return the specific method parameter associated with the error, if any.
 	 */
-	@Nullable
-	public MethodParameter getMethodParameter() {
+	public @Nullable MethodParameter getMethodParameter() {
 		return this.parameter;
 	}
 

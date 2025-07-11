@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +21,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.util.Hashtable;
 import java.util.List;
+
 import javax.management.DynamicMBean;
 import javax.management.JMX;
 import javax.management.MBeanParameterInfo;
@@ -31,9 +32,9 @@ import javax.management.ObjectName;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.jmx.MBeanServerNotFoundException;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -135,8 +136,7 @@ public abstract class JmxUtils {
 	 * @return the parameter types as classes
 	 * @throws ClassNotFoundException if a parameter type could not be resolved
 	 */
-	@Nullable
-	public static Class<?>[] parameterInfoToTypes(@Nullable MBeanParameterInfo[] paramInfo)
+	public static Class<?> @Nullable [] parameterInfoToTypes(MBeanParameterInfo @Nullable [] paramInfo)
 			throws ClassNotFoundException {
 
 		return parameterInfoToTypes(paramInfo, ClassUtils.getDefaultClassLoader());
@@ -150,9 +150,8 @@ public abstract class JmxUtils {
 	 * @return the parameter types as classes
 	 * @throws ClassNotFoundException if a parameter type could not be resolved
 	 */
-	@Nullable
-	public static Class<?>[] parameterInfoToTypes(
-			@Nullable MBeanParameterInfo[] paramInfo, @Nullable ClassLoader classLoader)
+	public static Class<?> @Nullable [] parameterInfoToTypes(
+			MBeanParameterInfo @Nullable [] paramInfo, @Nullable ClassLoader classLoader)
 			throws ClassNotFoundException {
 
 		Class<?>[] types = null;
@@ -168,7 +167,7 @@ public abstract class JmxUtils {
 	/**
 	 * Create a {@code String[]} representing the argument signature of a
 	 * method. Each element in the array is the fully qualified class name
-	 * of the corresponding argument in the methods signature.
+	 * of the corresponding argument in the method's signature.
 	 * @param method the method to build an argument signature for
 	 * @return the signature as array of argument types
 	 */
@@ -254,7 +253,7 @@ public abstract class JmxUtils {
 	 * Determine whether the given bean class qualifies as an MBean as-is.
 	 * <p>This implementation checks for {@link javax.management.DynamicMBean}
 	 * classes as well as classes with corresponding "*MBean" interface
-	 * (Standard MBeans) or corresponding "*MXBean" interface (Java 6 MXBeans).
+	 * (Standard MBeans) or corresponding "*MXBean" interface (Java MXBeans).
 	 * @param clazz the bean class to analyze
 	 * @return whether the class qualifies as an MBean
 	 * @see org.springframework.jmx.export.MBeanExporter#isMBean(Class)
@@ -272,8 +271,7 @@ public abstract class JmxUtils {
 	 * @param clazz the class to check
 	 * @return the Standard MBean interface for the given class
 	 */
-	@Nullable
-	public static Class<?> getMBeanInterface(@Nullable Class<?> clazz) {
+	public static @Nullable Class<?> getMBeanInterface(@Nullable Class<?> clazz) {
 		if (clazz == null || clazz.getSuperclass() == null) {
 			return null;
 		}
@@ -288,14 +286,13 @@ public abstract class JmxUtils {
 	}
 
 	/**
-	 * Return the Java 6 MXBean interface exists for the given class, if any
+	 * Return the Java MXBean interface for the given class, if any
 	 * (that is, an interface whose name ends with "MXBean" and/or
 	 * carries an appropriate MXBean annotation).
 	 * @param clazz the class to check
 	 * @return whether there is an MXBean interface for the given class
 	 */
-	@Nullable
-	public static Class<?> getMXBeanInterface(@Nullable Class<?> clazz) {
+	public static @Nullable Class<?> getMXBeanInterface(@Nullable Class<?> clazz) {
 		if (clazz == null || clazz.getSuperclass() == null) {
 			return null;
 		}

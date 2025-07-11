@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,20 +16,20 @@
 
 package org.springframework.jms.listener.endpoint;
 
-import javax.jms.Message;
-import javax.jms.MessageListener;
-import javax.resource.ResourceException;
-import javax.resource.spi.UnavailableException;
+import jakarta.jms.Message;
+import jakarta.jms.MessageListener;
+import jakarta.resource.ResourceException;
+import jakarta.resource.spi.UnavailableException;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.jca.endpoint.AbstractMessageEndpointFactory;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
  * JMS-specific implementation of the JCA 1.7
- * {@link javax.resource.spi.endpoint.MessageEndpointFactory} interface,
+ * {@link jakarta.resource.spi.endpoint.MessageEndpointFactory} interface,
  * providing transaction management capabilities for a JMS listener object
- * (e.g. a {@link javax.jms.MessageListener} object).
+ * (for example, a {@link jakarta.jms.MessageListener} object).
  *
  * <p>Uses a static endpoint implementation, simply wrapping the
  * specified message listener object and exposing all of its implemented
@@ -38,7 +38,7 @@ import org.springframework.util.Assert;
  * <p>Typically used with Spring's {@link JmsMessageEndpointManager},
  * but not tied to it. As a consequence, this endpoint factory could
  * also be used with programmatic endpoint management on a native
- * {@link javax.resource.spi.ResourceAdapter} instance.
+ * {@link jakarta.resource.spi.ResourceAdapter} instance.
  *
  * @author Juergen Hoeller
  * @author Stephane Nicoll
@@ -47,10 +47,9 @@ import org.springframework.util.Assert;
  * @see #setTransactionManager
  * @see JmsMessageEndpointManager
  */
-public class JmsMessageEndpointFactory extends AbstractMessageEndpointFactory  {
+public class JmsMessageEndpointFactory extends AbstractMessageEndpointFactory {
 
-	@Nullable
-	private MessageListener messageListener;
+	private @Nullable MessageListener messageListener;
 
 
 	/**

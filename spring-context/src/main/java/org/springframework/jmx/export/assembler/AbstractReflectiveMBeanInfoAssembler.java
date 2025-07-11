@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.management.Descriptor;
 import javax.management.JMException;
 import javax.management.MBeanOperationInfo;
@@ -27,13 +28,14 @@ import javax.management.MBeanParameterInfo;
 import javax.management.modelmbean.ModelMBeanAttributeInfo;
 import javax.management.modelmbean.ModelMBeanOperationInfo;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.jmx.support.JmxUtils;
-import org.springframework.lang.Nullable;
 
 /**
  * Builds on the {@link AbstractMBeanInfoAssembler} superclass to
@@ -42,7 +44,7 @@ import org.springframework.lang.Nullable;
  *
  * <p>The logic for creating MBean metadata from the reflective metadata
  * is contained in this class, but this class makes no decisions as to
- * which methods and properties are to be exposed. Instead it gives
+ * which methods and properties are to be exposed. Instead, it gives
  * subclasses a chance to 'vote' on each property or method through
  * the {@code includeXXX} methods.
  *
@@ -172,18 +174,16 @@ public abstract class AbstractReflectiveMBeanInfoAssembler extends AbstractMBean
 	/**
 	 * Default value for the JMX field "currencyTimeLimit".
 	 */
-	@Nullable
-	private Integer defaultCurrencyTimeLimit;
+	private @Nullable Integer defaultCurrencyTimeLimit;
 
 	/**
-	 * Indicates whether or not strict casing is being used for attributes.
+	 * Indicates whether strict casing is being used for attributes.
 	 */
 	private boolean useStrictCasing = true;
 
 	private boolean exposeClassDescriptor = false;
 
-	@Nullable
-	private ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
+	private @Nullable ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
 
 	/**
@@ -213,8 +213,7 @@ public abstract class AbstractReflectiveMBeanInfoAssembler extends AbstractMBean
 	/**
 	 * Return default value for the JMX field "currencyTimeLimit", if any.
 	 */
-	@Nullable
-	protected Integer getDefaultCurrencyTimeLimit() {
+	protected @Nullable Integer getDefaultCurrencyTimeLimit() {
 		return this.defaultCurrencyTimeLimit;
 	}
 
@@ -265,7 +264,7 @@ public abstract class AbstractReflectiveMBeanInfoAssembler extends AbstractMBean
 
 	/**
 	 * Set the ParameterNameDiscoverer to use for resolving method parameter
-	 * names if needed (e.g. for parameter names of MBean operation methods).
+	 * names if needed (for example, for parameter names of MBean operation methods).
 	 * <p>Default is a {@link DefaultParameterNameDiscoverer}.
 	 */
 	public void setParameterNameDiscoverer(@Nullable ParameterNameDiscoverer parameterNameDiscoverer) {
@@ -276,8 +275,7 @@ public abstract class AbstractReflectiveMBeanInfoAssembler extends AbstractMBean
 	 * Return the ParameterNameDiscoverer to use for resolving method parameter
 	 * names if needed (may be {@code null} in order to skip parameter detection).
 	 */
-	@Nullable
-	protected ParameterNameDiscoverer getParameterNameDiscoverer() {
+	protected @Nullable ParameterNameDiscoverer getParameterNameDiscoverer() {
 		return this.parameterNameDiscoverer;
 	}
 
@@ -510,7 +508,7 @@ public abstract class AbstractReflectiveMBeanInfoAssembler extends AbstractMBean
 	 */
 	protected MBeanParameterInfo[] getOperationParameters(Method method, String beanKey) {
 		ParameterNameDiscoverer paramNameDiscoverer = getParameterNameDiscoverer();
-		String[] paramNames = (paramNameDiscoverer != null ? paramNameDiscoverer.getParameterNames(method) : null);
+		@Nullable String[] paramNames = (paramNameDiscoverer != null ? paramNameDiscoverer.getParameterNames(method) : null);
 		if (paramNames == null) {
 			return new MBeanParameterInfo[0];
 		}

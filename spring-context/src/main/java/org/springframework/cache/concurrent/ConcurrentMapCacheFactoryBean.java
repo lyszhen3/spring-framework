@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,10 +18,11 @@ package org.springframework.cache.concurrent;
 
 import java.util.concurrent.ConcurrentMap;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -42,13 +43,11 @@ public class ConcurrentMapCacheFactoryBean
 
 	private String name = "";
 
-	@Nullable
-	private ConcurrentMap<Object, Object> store;
+	private @Nullable ConcurrentMap<Object, Object> store;
 
 	private boolean allowNullValues = true;
 
-	@Nullable
-	private ConcurrentMapCache cache;
+	private @Nullable ConcurrentMapCache cache;
 
 
 	/**
@@ -92,8 +91,7 @@ public class ConcurrentMapCacheFactoryBean
 
 
 	@Override
-	@Nullable
-	public ConcurrentMapCache getObject() {
+	public @Nullable ConcurrentMapCache getObject() {
 		return this.cache;
 	}
 

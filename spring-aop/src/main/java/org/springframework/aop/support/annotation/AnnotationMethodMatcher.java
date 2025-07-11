@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,17 +20,20 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.aop.support.AopUtils;
 import org.springframework.aop.support.StaticMethodMatcher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.util.Assert;
 
 /**
- * Simple MethodMatcher that looks for a specific Java 5 annotation
- * being present on a method (checking both the method on the invoked
- * interface, if any, and the corresponding method on the target class).
+ * Simple {@link org.springframework.aop.MethodMatcher MethodMatcher} that looks for
+ * a specific annotation being present on a method (checking both the method on the
+ * invoked interface, if any, and the corresponding method on the target class).
  *
  * @author Juergen Hoeller
+ * @author Sam Brannen
  * @since 2.0
  * @see AnnotationMatchingPointcut
  */
@@ -86,15 +89,10 @@ public class AnnotationMethodMatcher extends StaticMethodMatcher {
 	}
 
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof AnnotationMethodMatcher)) {
-			return false;
-		}
-		AnnotationMethodMatcher otherMm = (AnnotationMethodMatcher) other;
-		return this.annotationType.equals(otherMm.annotationType);
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof AnnotationMethodMatcher otherMm &&
+				this.annotationType.equals(otherMm.annotationType) &&
+				this.checkInherited == otherMm.checkInherited));
 	}
 
 	@Override

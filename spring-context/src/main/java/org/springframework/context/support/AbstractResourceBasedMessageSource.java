@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,9 +17,11 @@
 package org.springframework.context.support;
 
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Set;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
@@ -38,10 +40,11 @@ public abstract class AbstractResourceBasedMessageSource extends AbstractMessage
 
 	private final Set<String> basenameSet = new LinkedHashSet<>(4);
 
-	@Nullable
-	private String defaultEncoding;
+	private @Nullable String defaultEncoding;
 
 	private boolean fallbackToSystemLocale = true;
+
+	private @Nullable Locale defaultLocale;
 
 	private long cacheMillis = -1;
 
@@ -50,7 +53,7 @@ public abstract class AbstractResourceBasedMessageSource extends AbstractMessage
 	 * Set a single basename, following the basic ResourceBundle convention
 	 * of not specifying file extension or language codes. The resource location
 	 * format is up to the specific {@code MessageSource} implementation.
-	 * <p>Regular and XMl properties files are supported: e.g. "messages" will find
+	 * <p>Regular and XMl properties files are supported: for example, "messages" will find
 	 * a "messages.properties", "messages_en.properties" etc arrangement as well
 	 * as "messages.xml", "messages_en.xml" etc.
 	 * @param basename the single basename
@@ -66,7 +69,7 @@ public abstract class AbstractResourceBasedMessageSource extends AbstractMessage
 	 * Set an array of basenames, each following the basic ResourceBundle convention
 	 * of not specifying file extension or language codes. The resource location
 	 * format is up to the specific {@code MessageSource} implementation.
-	 * <p>Regular and XMl properties files are supported: e.g. "messages" will find
+	 * <p>Regular and XMl properties files are supported: for example, "messages" will find
 	 * a "messages.properties", "messages_en.properties" etc arrangement as well
 	 * as "messages.xml", "messages_en.xml" etc.
 	 * <p>The associated resource bundles will be checked sequentially when resolving
@@ -106,6 +109,7 @@ public abstract class AbstractResourceBasedMessageSource extends AbstractMessage
 	 * in the order of registration.
 	 * <p>Calling code may introspect this set as well as add or remove entries.
 	 * @since 4.3
+	 * @see #setBasenames
 	 * @see #addBasenames
 	 */
 	public Set<String> getBasenameSet() {
@@ -129,20 +133,20 @@ public abstract class AbstractResourceBasedMessageSource extends AbstractMessage
 	 * Return the default charset to use for parsing properties files, if any.
 	 * @since 4.3
 	 */
-	@Nullable
-	protected String getDefaultEncoding() {
+	protected @Nullable String getDefaultEncoding() {
 		return this.defaultEncoding;
 	}
 
 	/**
 	 * Set whether to fall back to the system Locale if no files for a specific
 	 * Locale have been found. Default is "true"; if this is turned off, the only
-	 * fallback will be the default file (e.g. "messages.properties" for
+	 * fallback will be the default file (for example, "messages.properties" for
 	 * basename "messages").
 	 * <p>Falling back to the system Locale is the default behavior of
 	 * {@code java.util.ResourceBundle}. However, this is often not desirable
 	 * in an application server environment, where the system Locale is not relevant
 	 * to the application at all: set this flag to "false" in such a scenario.
+	 * @see #setDefaultLocale
 	 */
 	public void setFallbackToSystemLocale(boolean fallbackToSystemLocale) {
 		this.fallbackToSystemLocale = fallbackToSystemLocale;
@@ -152,16 +156,51 @@ public abstract class AbstractResourceBasedMessageSource extends AbstractMessage
 	 * Return whether to fall back to the system Locale if no files for a specific
 	 * Locale have been found.
 	 * @since 4.3
+	 * @deprecated in favor of {@link #getDefaultLocale()}
 	 */
+	@Deprecated(since = "5.2.2")
 	protected boolean isFallbackToSystemLocale() {
 		return this.fallbackToSystemLocale;
 	}
 
 	/**
+	 * Specify a default Locale to fall back to, as an alternative to falling back
+	 * to the system Locale.
+	 * <p>Default is to fall back to the system Locale. You may override this with
+	 * a locally specified default Locale here, or enforce no fallback locale at all
+	 * through disabling {@link #setFallbackToSystemLocale "fallbackToSystemLocale"}.
+	 * @since 5.2.2
+	 * @see #setFallbackToSystemLocale
+	 * @see #getDefaultLocale()
+	 */
+	public void setDefaultLocale(@Nullable Locale defaultLocale) {
+		this.defaultLocale = defaultLocale;
+	}
+
+	/**
+	 * Determine a default Locale to fall back to: either a locally specified default
+	 * Locale or the system Locale, or {@code null} for no fallback locale at all.
+	 * @since 5.2.2
+	 * @see #setDefaultLocale
+	 * @see #setFallbackToSystemLocale
+	 * @see Locale#getDefault()
+	 */
+	protected @Nullable Locale getDefaultLocale() {
+		if (this.defaultLocale != null) {
+			return this.defaultLocale;
+		}
+		if (this.fallbackToSystemLocale) {
+			return Locale.getDefault();
+		}
+		return null;
+	}
+
+	/**
 	 * Set the number of seconds to cache loaded properties files.
 	 * <ul>
-	 * <li>Default is "-1", indicating to cache forever (just like
-	 * {@code java.util.ResourceBundle}).
+	 * <li>Default is "-1", indicating to cache forever (matching the default behavior
+	 * of {@code java.util.ResourceBundle}). Note that this constant follows Spring
+	 * conventions, not {@link java.util.ResourceBundle.Control#getTimeToLive}.
 	 * <li>A positive number will cache loaded properties files for the given
 	 * number of seconds. This is essentially the interval between refresh checks.
 	 * Note that a refresh attempt will first check the last-modified timestamp
@@ -177,15 +216,16 @@ public abstract class AbstractResourceBasedMessageSource extends AbstractMessage
 	 * a non-classpath location.
 	 */
 	public void setCacheSeconds(int cacheSeconds) {
-		this.cacheMillis = (cacheSeconds * 1000);
+		this.cacheMillis = cacheSeconds * 1000L;
 	}
 
 	/**
 	 * Set the number of milliseconds to cache loaded properties files.
 	 * Note that it is common to set seconds instead: {@link #setCacheSeconds}.
 	 * <ul>
-	 * <li>Default is "-1", indicating to cache forever (just like
-	 * {@code java.util.ResourceBundle}).
+	 * <li>Default is "-1", indicating to cache forever (matching the default behavior
+	 * of {@code java.util.ResourceBundle}). Note that this constant follows Spring
+	 * conventions, not {@link java.util.ResourceBundle.Control#getTimeToLive}.
 	 * <li>A positive number will cache loaded properties files for the given
 	 * number of milliseconds. This is essentially the interval between refresh checks.
 	 * Note that a refresh attempt will first check the last-modified timestamp

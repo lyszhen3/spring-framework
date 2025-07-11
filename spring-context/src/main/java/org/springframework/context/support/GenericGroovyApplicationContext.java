@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ package org.springframework.context.support;
 import groovy.lang.GroovyObject;
 import groovy.lang.GroovySystem;
 import groovy.lang.MetaClass;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
@@ -28,7 +29,6 @@ import org.springframework.beans.factory.groovy.GroovyBeanDefinitionReader;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.lang.Nullable;
 
 /**
  * An {@link org.springframework.context.ApplicationContext} implementation that extends
@@ -46,18 +46,18 @@ import org.springframework.lang.Nullable;
  *
  * def context = new GenericGroovyApplicationContext()
  * context.reader.beans {
- *     dataSource(BasicDataSource) {                  // <--- invokeMethod
+ *     dataSource(BasicDataSource) {                  // &lt;--- invokeMethod
  *         driverClassName = "org.hsqldb.jdbcDriver"
  *         url = "jdbc:hsqldb:mem:grailsDB"
- *         username = "sa"                            // <-- setProperty
+ *         username = "sa"                            // &lt;-- setProperty
  *         password = ""
  *         settings = [mynew:"setting"]
  *     }
  *     sessionFactory(SessionFactory) {
- *         dataSource = dataSource                    // <-- getProperty for retrieving references
+ *         dataSource = dataSource                    // &lt;-- getProperty for retrieving references
  *     }
  *     myService(MyService) {
- *         nestedBean = { AnotherBean bean ->         // <-- setProperty with closure for nested bean
+ *         nestedBean = { AnotherBean bean -&gt;         // &lt;-- setProperty with closure for nested bean
  *             dataSource = dataSource
  *         }
  *     }
@@ -66,7 +66,7 @@ import org.springframework.lang.Nullable;
  * </pre>
  *
  * <p>Alternatively, load a Groovy bean definition script like the following
- * from an external resource (e.g. an "applicationContext.groovy" file):
+ * from an external resource (for example, an "applicationContext.groovy" file):
  *
  * <pre class="code">
  * import org.hibernate.SessionFactory
@@ -84,7 +84,7 @@ import org.springframework.lang.Nullable;
  *         dataSource = dataSource
  *     }
  *     myService(MyService) {
- *         nestedBean = { AnotherBean bean ->
+ *         nestedBean = { AnotherBean bean -&gt;
  *             dataSource = dataSource
  *         }
  *     }
@@ -225,29 +225,33 @@ public class GenericGroovyApplicationContext extends GenericApplicationContext i
 
 	// Implementation of the GroovyObject interface
 
+	@Override
 	public void setMetaClass(MetaClass metaClass) {
 		this.metaClass = metaClass;
 	}
 
+	@Override
 	public MetaClass getMetaClass() {
 		return this.metaClass;
 	}
 
+	@Override
 	public Object invokeMethod(String name, Object args) {
 		return this.metaClass.invokeMethod(this, name, args);
 	}
 
+	@Override
 	public void setProperty(String property, Object newValue) {
-		if (newValue instanceof BeanDefinition) {
-			registerBeanDefinition(property, (BeanDefinition) newValue);
+		if (newValue instanceof BeanDefinition beanDefinition) {
+			registerBeanDefinition(property, beanDefinition);
 		}
 		else {
 			this.metaClass.setProperty(this, property, newValue);
 		}
 	}
 
-	@Nullable
-	public Object getProperty(String property) {
+	@Override
+	public @Nullable Object getProperty(String property) {
 		if (containsBean(property)) {
 			return getBean(property);
 		}

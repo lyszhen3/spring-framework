@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,11 +28,17 @@ import org.springframework.test.context.TestContextManager;
  * JUnit 4 execution chain by calling {@link TestContextManager#beforeTestExecution
  * beforeTestExecution()} on the supplied {@link TestContextManager}.
  *
+ * <p><strong>NOTE:</strong> This class requires JUnit 4.9 or higher.
+ *
  * @author Sam Brannen
  * @since 5.0
  * @see #evaluate()
  * @see RunAfterTestExecutionCallbacks
+ * @deprecated since Spring Framework 7.0 in favor of the
+ * {@link org.springframework.test.context.junit.jupiter.SpringExtension SpringExtension}
+ * and JUnit Jupiter
  */
+@Deprecated(since = "7.0")
 public class RunBeforeTestExecutionCallbacks extends Statement {
 
 	private final Statement next;

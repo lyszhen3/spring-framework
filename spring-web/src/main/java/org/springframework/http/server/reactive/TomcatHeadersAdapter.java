@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,25 +20,27 @@ import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.tomcat.util.buf.MessageBytes;
 import org.apache.tomcat.util.http.MimeHeaders;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.lang.Nullable;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
 
 /**
  * {@code MultiValueMap} implementation for wrapping Tomcat HTTP headers.
  *
  * @author Brian Clozel
+ * @author Sam Brannen
+ * @author Simon Baslé
  * @since 5.1.1
  */
 class TomcatHeadersAdapter implements MultiValueMap<String, String> {
@@ -83,7 +85,7 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 
 	@Override
 	public Map<String, String> toSingleValueMap() {
-		Map<String, String> singleValueMap = new LinkedHashMap<>(this.headers.size());
+		Map<String, String> singleValueMap = CollectionUtils.newLinkedHashMap(this.headers.size());
 		this.keySet().forEach(key -> singleValueMap.put(key, getFirst(key)));
 		return singleValueMap;
 	}
@@ -91,12 +93,11 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 	@Override
 	public int size() {
 		Enumeration<String> names = this.headers.names();
-		int size = 0;
+		Set<String> deduplicated = new LinkedHashSet<>();
 		while (names.hasMoreElements()) {
-			size++;
-			names.nextElement();
+			deduplicated.add(names.nextElement().toLowerCase(Locale.ROOT));
 		}
-		return size;
+		return deduplicated.size();
 	}
 
 	@Override
@@ -106,19 +107,19 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 
 	@Override
 	public boolean containsKey(Object key) {
-		if (key instanceof String) {
-			return (this.headers.findHeader((String) key, 0) != -1);
+		if (key instanceof String headerName) {
+			return (this.headers.findHeader(headerName, 0) != -1);
 		}
 		return false;
 	}
 
 	@Override
 	public boolean containsValue(Object value) {
-		if (value instanceof String) {
-			MessageBytes needle = MessageBytes.newInstance();
-			needle.setString((String) value);
+		if (value instanceof String text) {
+			MessageBytes messageBytes = MessageBytes.newInstance();
+			messageBytes.setString(text);
 			for (int i = 0; i < this.headers.size(); i++) {
-				if (this.headers.getValue(i).equals(needle)) {
+				if (this.headers.getValue(i).equals(messageBytes)) {
 					return true;
 				}
 			}
@@ -127,8 +128,7 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 	}
 
 	@Override
-	@Nullable
-	public List<String> get(Object key) {
+	public @Nullable List<String> get(Object key) {
 		if (containsKey(key)) {
 			return Collections.list(this.headers.values((String) key));
 		}
@@ -136,8 +136,7 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 	}
 
 	@Override
-	@Nullable
-	public List<String> put(String key, List<String> value) {
+	public @Nullable List<String> put(String key, List<String> value) {
 		List<String> previousValues = get(key);
 		this.headers.removeHeader(key);
 		value.forEach(v -> this.headers.addValue(key).setString(v));
@@ -145,11 +144,10 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 	}
 
 	@Override
-	@Nullable
-	public List<String> remove(Object key) {
-		if (key instanceof String) {
+	public @Nullable List<String> remove(Object key) {
+		if (key instanceof String headerName) {
 			List<String> previousValues = get(key);
-			this.headers.removeHeader((String) key);
+			this.headers.removeHeader(headerName);
 			return previousValues;
 		}
 		return null;
@@ -162,27 +160,22 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 
 	@Override
 	public void clear() {
-		this.headers.clear();
+		this.headers.recycle();
 	}
 
 	@Override
 	public Set<String> keySet() {
-		Set<String> result = new HashSet<>(8);
-		Enumeration<String> names = this.headers.names();
-		while (names.hasMoreElements()) {
-			result.add(names.nextElement());
-		}
-		return result;
+		return new HeaderNames();
 	}
 
 	@Override
 	public Collection<List<String>> values() {
-		return keySet().stream().map(this::get).collect(Collectors.toList());
+		return keySet().stream().map(this::get).toList();
 	}
 
 	@Override
 	public Set<Entry<String, List<String>>> entrySet() {
-		return new AbstractSet<Entry<String, List<String>>>() {
+		return new AbstractSet<>() {
 			@Override
 			public Iterator<Entry<String, List<String>>> iterator() {
 				return new EntryIterator();
@@ -190,7 +183,7 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 
 			@Override
 			public int size() {
-				return headers.size();
+				return TomcatHeadersAdapter.this.size();
 			}
 		};
 	}
@@ -204,7 +197,7 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 
 	private class EntryIterator implements Iterator<Entry<String, List<String>>> {
 
-		private Enumeration<String> names = headers.names();
+		private final Enumeration<String> names = headers.names();
 
 		@Override
 		public boolean hasNext() {
@@ -231,19 +224,77 @@ class TomcatHeadersAdapter implements MultiValueMap<String, String> {
 			return this.key;
 		}
 
-		@Nullable
 		@Override
-		public List<String> getValue() {
+		public @Nullable List<String> getValue() {
 			return get(this.key);
 		}
 
-		@Nullable
 		@Override
-		public List<String> setValue(List<String> value) {
+		public @Nullable List<String> setValue(List<String> value) {
 			List<String> previous = getValue();
 			headers.removeHeader(this.key);
 			addAll(this.key, value);
 			return previous;
+		}
+	}
+
+
+	private class HeaderNames extends AbstractSet<String> {
+
+		@Override
+		public Iterator<String> iterator() {
+			return new HeaderNamesIterator(headers.names());
+		}
+
+		@Override
+		public int size() {
+			Enumeration<String> names = headers.names();
+			int size = 0;
+			while (names.hasMoreElements()) {
+				names.nextElement();
+				size++;
+			}
+			return size;
+		}
+	}
+
+	private final class HeaderNamesIterator implements Iterator<String> {
+
+		private final Enumeration<String> enumeration;
+
+		private @Nullable String currentName;
+
+		private HeaderNamesIterator(Enumeration<String> enumeration) {
+			this.enumeration = enumeration;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return this.enumeration.hasMoreElements();
+		}
+
+		@Override
+		public String next() {
+			this.currentName = this.enumeration.nextElement();
+			return this.currentName;
+		}
+
+		@Override
+		public void remove() {
+			if (this.currentName == null) {
+				throw new IllegalStateException("No current Header in iterator");
+			}
+			//implement a mix of removeHeader(String) and removeHeader(int)
+			boolean found = false;
+			for (int i = 0; i < headers.size(); i++) {
+				if (headers.getName(i).equalsIgnoreCase(this.currentName)) {
+					headers.removeHeader(i--);
+					found = true;
+				}
+			}
+			if (!found) {
+				throw new IllegalStateException("Header not present: " + this.currentName);
+			}
 		}
 	}
 

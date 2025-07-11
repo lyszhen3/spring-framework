@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,18 +19,19 @@ package org.springframework.mock.web;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.AsyncContext;
-import javax.servlet.AsyncEvent;
-import javax.servlet.AsyncListener;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.AsyncEvent;
+import jakarta.servlet.AsyncListener;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.web.util.WebUtils;
 
@@ -44,15 +45,13 @@ public class MockAsyncContext implements AsyncContext {
 
 	private final HttpServletRequest request;
 
-	@Nullable
-	private final HttpServletResponse response;
+	private final @Nullable HttpServletResponse response;
 
 	private final List<AsyncListener> listeners = new ArrayList<>();
 
-	@Nullable
-	private String dispatchedPath;
+	private @Nullable String dispatchedPath;
 
-	private long timeout = 10 * 1000L;	// 10 seconds is Tomcat's default
+	private long timeout = 10 * 1000L;
 
 	private final List<Runnable> dispatchHandlers = new ArrayList<>();
 
@@ -81,8 +80,7 @@ public class MockAsyncContext implements AsyncContext {
 	}
 
 	@Override
-	@Nullable
-	public ServletResponse getResponse() {
+	public @Nullable ServletResponse getResponse() {
 		return this.response;
 	}
 
@@ -109,8 +107,7 @@ public class MockAsyncContext implements AsyncContext {
 		}
 	}
 
-	@Nullable
-	public String getDispatchedPath() {
+	public @Nullable String getDispatchedPath() {
 		return this.dispatchedPath;
 	}
 

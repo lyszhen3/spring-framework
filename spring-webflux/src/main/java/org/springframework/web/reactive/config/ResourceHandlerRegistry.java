@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,12 +22,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.lang.Nullable;
 import org.springframework.web.reactive.handler.AbstractUrlHandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
+import org.springframework.web.reactive.resource.ResourceTransformer;
 import org.springframework.web.reactive.resource.ResourceTransformerSupport;
 import org.springframework.web.reactive.resource.ResourceUrlProvider;
 import org.springframework.web.reactive.resource.ResourceWebHandler;
@@ -42,11 +44,11 @@ import org.springframework.web.server.WebHandler;
  *
  * <p>To create a resource handler, use {@link #addResourceHandler(String...)}
  * providing the URL path patterns for which the handler should be invoked to
- * serve static resources (e.g. {@code "/resources/**"}).
+ * serve static resources (for example, {@code "/resources/**"}).
  *
  * <p>Then use additional methods on the returned
  * {@link ResourceHandlerRegistration} to add one or more locations from which
- * to serve static content from (e.g. {{@code "/"},
+ * to serve static content from (for example, {{@code "/"},
  * {@code "classpath:/META-INF/public-web-resources/"}}) or to specify a cache
  * period for served resources.
  *
@@ -62,8 +64,7 @@ public class ResourceHandlerRegistry {
 
 	private int order = Ordered.LOWEST_PRECEDENCE - 1;
 
-	@Nullable
-	private ResourceUrlProvider resourceUrlProvider;
+	private @Nullable ResourceUrlProvider resourceUrlProvider;
 
 
 	/**
@@ -129,33 +130,34 @@ public class ResourceHandlerRegistry {
 	 * Return a handler mapping with the mapped resource handlers; or {@code null} in case
 	 * of no registrations.
 	 */
-	@Nullable
-	protected AbstractUrlHandlerMapping getHandlerMapping() {
+	protected @Nullable AbstractUrlHandlerMapping getHandlerMapping() {
 		if (this.registrations.isEmpty()) {
 			return null;
 		}
 		Map<String, WebHandler> urlMap = new LinkedHashMap<>();
 		for (ResourceHandlerRegistration registration : this.registrations) {
+			ResourceWebHandler handler = getRequestHandler(registration);
 			for (String pathPattern : registration.getPathPatterns()) {
-				ResourceWebHandler handler = registration.getRequestHandler();
-				handler.getResourceTransformers().forEach(transformer -> {
-					if (transformer instanceof ResourceTransformerSupport) {
-						((ResourceTransformerSupport) transformer).setResourceUrlProvider(this.resourceUrlProvider);
-					}
-				});
-				try {
-					handler.afterPropertiesSet();
-				}
-				catch (Throwable ex) {
-					throw new BeanInitializationException("Failed to init ResourceHttpRequestHandler", ex);
-				}
 				urlMap.put(pathPattern, handler);
 			}
 		}
-		SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
-		handlerMapping.setOrder(this.order);
-		handlerMapping.setUrlMap(urlMap);
-		return handlerMapping;
+		return new SimpleUrlHandlerMapping(urlMap, this.order);
+	}
+
+	private ResourceWebHandler getRequestHandler(ResourceHandlerRegistration registration) {
+		ResourceWebHandler handler = registration.getRequestHandler();
+		for (ResourceTransformer transformer : handler.getResourceTransformers()) {
+			if (transformer instanceof ResourceTransformerSupport resourceTransformerSupport) {
+				resourceTransformerSupport.setResourceUrlProvider(this.resourceUrlProvider);
+			}
+		}
+		try {
+			handler.afterPropertiesSet();
+		}
+		catch (Throwable ex) {
+			throw new BeanInitializationException("Failed to init ResourceHttpRequestHandler", ex);
+		}
+		return handler;
 	}
 
 }

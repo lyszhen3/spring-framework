@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package org.springframework.jmx.access;
 
 import java.io.IOException;
 import java.util.Map;
+
 import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
@@ -25,10 +26,10 @@ import javax.management.remote.JMXServiceURL;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.jmx.MBeanServerNotFoundException;
 import org.springframework.jmx.support.JmxUtils;
-import org.springframework.lang.Nullable;
 
 /**
  * Internal helper class for managing a JMX connector.
@@ -40,8 +41,7 @@ class ConnectorDelegate {
 
 	private static final Log logger = LogFactory.getLog(ConnectorDelegate.class);
 
-	@Nullable
-	private JMXConnector connector;
+	private @Nullable JMXConnector connector;
 
 
 	/**

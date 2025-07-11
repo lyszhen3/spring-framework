@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,8 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.AlternativeJdkIdGenerator;
 import org.springframework.util.Assert;
 import org.springframework.util.IdGenerator;
@@ -51,18 +51,19 @@ public abstract class AbstractWebSocketSession<T> implements NativeWebSocketSess
 
 	private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 
-	@Nullable
-	private T nativeSession;
+	private @Nullable T nativeSession;
 
 
 	/**
 	 * Create a new instance and associate the given attributes with it.
-	 * @param attributes attributes from the HTTP handshake to associate with the WebSocket
+	 * @param attributes the attributes from the HTTP handshake to associate with the WebSocket
 	 * session; the provided attributes are copied, the original map is not used.
 	 */
 	public AbstractWebSocketSession(@Nullable Map<String, Object> attributes) {
 		if (attributes != null) {
-			this.attributes.putAll(attributes);
+			attributes.entrySet().stream()
+					.filter(entry -> (entry.getKey() != null && entry.getValue() != null))
+					.forEach(entry -> this.attributes.put(entry.getKey(), entry.getValue()));
 		}
 	}
 
@@ -80,8 +81,7 @@ public abstract class AbstractWebSocketSession<T> implements NativeWebSocketSess
 
 	@SuppressWarnings("unchecked")
 	@Override
-	@Nullable
-	public <R> R getNativeSession(@Nullable Class<R> requiredType) {
+	public <R> @Nullable R getNativeSession(@Nullable Class<R> requiredType) {
 		return (requiredType == null || requiredType.isInstance(this.nativeSession) ? (R) this.nativeSession : null);
 	}
 
@@ -102,17 +102,17 @@ public abstract class AbstractWebSocketSession<T> implements NativeWebSocketSess
 			logger.trace("Sending " + message + ", " + this);
 		}
 
-		if (message instanceof TextMessage) {
-			sendTextMessage((TextMessage) message);
+		if (message instanceof TextMessage textMessage) {
+			sendTextMessage(textMessage);
 		}
-		else if (message instanceof BinaryMessage) {
-			sendBinaryMessage((BinaryMessage) message);
+		else if (message instanceof BinaryMessage binaryMessage) {
+			sendBinaryMessage(binaryMessage);
 		}
-		else if (message instanceof PingMessage) {
-			sendPingMessage((PingMessage) message);
+		else if (message instanceof PingMessage pingMessage) {
+			sendPingMessage(pingMessage);
 		}
-		else if (message instanceof PongMessage) {
-			sendPongMessage((PongMessage) message);
+		else if (message instanceof PongMessage pongMessage) {
+			sendPongMessage(pongMessage);
 		}
 		else {
 			throw new IllegalStateException("Unexpected WebSocketMessage type: " + message);

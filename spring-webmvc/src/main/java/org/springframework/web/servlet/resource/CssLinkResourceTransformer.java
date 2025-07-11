@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,10 +24,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import javax.servlet.http.HttpServletRequest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.io.Resource;
 import org.springframework.util.FileCopyUtils;
@@ -35,7 +36,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * A {@link ResourceTransformer} implementation that modifies links in a CSS
- * file to match the public URL paths that should be exposed to clients (e.g.
+ * file to match the public URL paths that should be exposed to clients (for example,
  * with an MD5 content-based hash inserted in the URL).
  *
  * <p>The implementation looks for links in CSS {@code @import} statements and
@@ -71,8 +72,7 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 
 		String filename = resource.getFilename();
 		if (!"css".equals(StringUtils.getFilenameExtension(filename)) ||
-				resource instanceof EncodedResourceResolver.EncodedResource ||
-				resource instanceof GzipResourceResolver.GzippedResource) {
+				resource instanceof EncodedResourceResolver.EncodedResource) {
 			return resource;
 		}
 
@@ -128,7 +128,7 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 	 */
 	protected abstract static class AbstractLinkParser implements LinkParser {
 
-		/** Return the keyword to use to search for links, e.g. "@import", "url(" */
+		/** Return the keyword to use to search for links, for example, "@import", "url(". */
 		protected abstract String getKeyword();
 
 		@Override
@@ -151,7 +151,6 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 				}
 				else {
 					position = extractLink(position, content, result);
-
 				}
 			}
 		}
@@ -164,7 +163,7 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 		}
 
 		/**
-		 * Invoked after a keyword match, after whitespaces removed, and when
+		 * Invoked after a keyword match, after whitespace has been removed, and when
 		 * the next char is neither a single nor double quote.
 		 */
 		protected abstract int extractLink(int index, String content, SortedSet<ContentChunkInfo> linksToAdd);
@@ -180,8 +179,8 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 
 		@Override
 		protected int extractLink(int index, String content, SortedSet<ContentChunkInfo> linksToAdd) {
-			if (content.substring(index, index + 4).equals("url(")) {
-				// Ignore, UrlLinkParser will take care
+			if (content.startsWith("url(", index)) {
+				// Ignore: UrlFunctionLinkParser will handle it.
 			}
 			else if (logger.isTraceEnabled()) {
 				logger.trace("Unexpected syntax for @import link at index " + index);
@@ -231,15 +230,9 @@ public class CssLinkResourceTransformer extends ResourceTransformerSupport {
 		}
 
 		@Override
-		public boolean equals(Object other) {
-			if (this == other) {
-				return true;
-			}
-			if (!(other instanceof ContentChunkInfo)) {
-				return false;
-			}
-			ContentChunkInfo otherCci = (ContentChunkInfo) other;
-			return (this.start == otherCci.start && this.end == otherCci.end);
+		public boolean equals(@Nullable Object other) {
+			return (this == other || (other instanceof ContentChunkInfo that &&
+					this.start == that.start && this.end == that.end));
 		}
 
 		@Override

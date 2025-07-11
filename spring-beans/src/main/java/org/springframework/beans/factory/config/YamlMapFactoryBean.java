@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,10 @@ package org.springframework.beans.factory.config;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.lang.Nullable;
 
 /**
  * Factory for a {@code Map} that reads from a YAML source, preserving the
@@ -64,7 +65,7 @@ import org.springframework.lang.Nullable;
  * Note that the value of "foo" in the first document is not simply replaced
  * with the value in the second, but its nested values are merged.
  *
- * <p>Requires SnakeYAML 1.18 or higher, as of Spring Framework 5.0.6.
+ * <p>Requires SnakeYAML 2.0 or higher, as of Spring Framework 6.1.
  *
  * @author Dave Syer
  * @author Juergen Hoeller
@@ -74,8 +75,7 @@ public class YamlMapFactoryBean extends YamlProcessor implements FactoryBean<Map
 
 	private boolean singleton = true;
 
-	@Nullable
-	private Map<String, Object> map;
+	private @Nullable Map<String, Object> map;
 
 
 	/**
@@ -99,8 +99,7 @@ public class YamlMapFactoryBean extends YamlProcessor implements FactoryBean<Map
 	}
 
 	@Override
-	@Nullable
-	public Map<String, Object> getObject() {
+	public @Nullable Map<String, Object> getObject() {
 		return (this.map != null ? this.map : createMap());
 	}
 
@@ -117,7 +116,7 @@ public class YamlMapFactoryBean extends YamlProcessor implements FactoryBean<Map
 	 * case of a shared singleton; else, on each {@link #getObject()} call.
 	 * <p>The default implementation returns the merged {@code Map} instance.
 	 * @return the object returned by this factory
-	 * @see #process(java.util.Map, MatchCallback)
+	 * @see #process(MatchCallback)
 	 */
 	protected Map<String, Object> createMap() {
 		Map<String, Object> result = new LinkedHashMap<>();
@@ -125,14 +124,13 @@ public class YamlMapFactoryBean extends YamlProcessor implements FactoryBean<Map
 		return result;
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	private void merge(Map<String, Object> output, Map<String, Object> map) {
 		map.forEach((key, value) -> {
 			Object existing = output.get(key);
-			if (value instanceof Map && existing instanceof Map) {
-				// Inner cast required by Eclipse IDE.
-				Map<String, Object> result = new LinkedHashMap<>((Map<String, Object>) existing);
-				merge(result, (Map) value);
+			if (value instanceof Map valueMap && existing instanceof Map existingMap) {
+				Map<String, Object> result = new LinkedHashMap<>(existingMap);
+				merge(result, valueMap);
 				output.put(key, result);
 			}
 			else {

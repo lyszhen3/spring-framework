@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,12 +19,13 @@ package org.springframework.web.servlet;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
 
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeansException;
@@ -39,7 +40,6 @@ import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceEditor;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -47,7 +47,7 @@ import org.springframework.web.context.support.ServletContextResourceLoader;
 import org.springframework.web.context.support.StandardServletEnvironment;
 
 /**
- * Simple extension of {@link javax.servlet.http.HttpServlet} which treats
+ * Simple extension of {@link jakarta.servlet.http.HttpServlet} which treats
  * its config parameters ({@code init-param} entries within the
  * {@code servlet} tag in {@code web.xml}) as bean properties.
  *
@@ -84,8 +84,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 	/** Logger available to subclasses. */
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private ConfigurableEnvironment environment;
+	private @Nullable ConfigurableEnvironment environment;
 
 	private final Set<String> requiredProperties = new HashSet<>(4);
 
@@ -196,8 +195,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 	 * @see #getServletConfig()
 	 */
 	@Override
-	@Nullable
-	public String getServletName() {
+	public @Nullable String getServletName() {
 		return (getServletConfig() != null ? getServletConfig().getServletName() : null);
 	}
 

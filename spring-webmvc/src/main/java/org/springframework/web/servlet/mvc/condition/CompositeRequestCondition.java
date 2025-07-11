@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,15 +20,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 
-import org.springframework.lang.Nullable;
+import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
 /**
  * Implements the {@link RequestCondition} contract by delegating to multiple
- * {@code RequestCondition} types and using a logical conjunction (' && ') to
+ * {@code RequestCondition} types and using a logical conjunction ({@code ' && '}) to
  * ensure all conditions match a given request.
  *
  * <p>When {@code CompositeRequestCondition} instances are combined or compared
@@ -132,8 +133,8 @@ public class CompositeRequestCondition extends AbstractRequestCondition<Composit
 
 	private void assertNumberOfConditions(CompositeRequestCondition other) {
 		Assert.isTrue(getLength() == other.getLength(),
-				"Cannot combine CompositeRequestConditions with a different number of conditions. " +
-				ObjectUtils.nullSafeToString(this.requestConditions) + " and  " +
+				() -> "Cannot combine CompositeRequestConditions with a different number of conditions. " +
+				ObjectUtils.nullSafeToString(this.requestConditions) + " and " +
 				ObjectUtils.nullSafeToString(other.requestConditions));
 	}
 
@@ -143,17 +144,17 @@ public class CompositeRequestCondition extends AbstractRequestCondition<Composit
 	 * <p>An empty {@code CompositeRequestCondition} matches to all requests.
 	 */
 	@Override
-	@Nullable
-	public CompositeRequestCondition getMatchingCondition(HttpServletRequest request) {
+	public @Nullable CompositeRequestCondition getMatchingCondition(HttpServletRequest request) {
 		if (isEmpty()) {
 			return this;
 		}
 		RequestConditionHolder[] matchingConditions = new RequestConditionHolder[getLength()];
 		for (int i = 0; i < getLength(); i++) {
-			matchingConditions[i] = this.requestConditions[i].getMatchingCondition(request);
-			if (matchingConditions[i] == null) {
+			RequestConditionHolder matchingCondition = this.requestConditions[i].getMatchingCondition(request);
+			if (matchingCondition == null) {
 				return null;
 			}
+			matchingConditions[i] = matchingCondition;
 		}
 		return new CompositeRequestCondition(matchingConditions);
 	}

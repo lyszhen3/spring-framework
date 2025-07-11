@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,12 +17,11 @@
 package org.springframework.jdbc.datasource;
 
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Savepoint;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.NestedTransactionNotSupportedException;
 import org.springframework.transaction.SavepointManager;
@@ -48,51 +47,81 @@ import org.springframework.util.Assert;
  */
 public abstract class JdbcTransactionObjectSupport implements SavepointManager, SmartTransactionObject {
 
-	private static final Log logger = LogFactory.getLog(JdbcTransactionObjectSupport.class);
+	private @Nullable ConnectionHolder connectionHolder;
 
+	private @Nullable Integer previousIsolationLevel;
 
-	@Nullable
-	private ConnectionHolder connectionHolder;
-
-	@Nullable
-	private Integer previousIsolationLevel;
+	private boolean readOnly = false;
 
 	private boolean savepointAllowed = false;
 
 
+	/**
+	 * Set the ConnectionHolder for this transaction object.
+	 */
 	public void setConnectionHolder(@Nullable ConnectionHolder connectionHolder) {
 		this.connectionHolder = connectionHolder;
 	}
 
+	/**
+	 * Return the ConnectionHolder for this transaction object.
+	 */
 	public ConnectionHolder getConnectionHolder() {
 		Assert.state(this.connectionHolder != null, "No ConnectionHolder available");
 		return this.connectionHolder;
 	}
 
+	/**
+	 * Check whether this transaction object has a ConnectionHolder.
+	 */
 	public boolean hasConnectionHolder() {
 		return (this.connectionHolder != null);
 	}
 
+	/**
+	 * Set the previous isolation level to retain, if any.
+	 */
 	public void setPreviousIsolationLevel(@Nullable Integer previousIsolationLevel) {
 		this.previousIsolationLevel = previousIsolationLevel;
 	}
 
-	@Nullable
-	public Integer getPreviousIsolationLevel() {
+	/**
+	 * Return the retained previous isolation level, if any.
+	 */
+	public @Nullable Integer getPreviousIsolationLevel() {
 		return this.previousIsolationLevel;
 	}
 
+	/**
+	 * Set the read-only status of this transaction.
+	 * The default is {@code false}.
+	 * @since 5.2.1
+	 */
+	public void setReadOnly(boolean readOnly) {
+		this.readOnly = readOnly;
+	}
+
+	/**
+	 * Return the read-only status of this transaction.
+	 * @since 5.2.1
+	 */
+	public boolean isReadOnly() {
+		return this.readOnly;
+	}
+
+	/**
+	 * Set whether savepoints are allowed within this transaction.
+	 * The default is {@code false}.
+	 */
 	public void setSavepointAllowed(boolean savepointAllowed) {
 		this.savepointAllowed = savepointAllowed;
 	}
 
+	/**
+	 * Return whether savepoints are allowed within this transaction.
+	 */
 	public boolean isSavepointAllowed() {
 		return this.savepointAllowed;
-	}
-
-	@Override
-	public void flush() {
-		// no-op
 	}
 
 
@@ -101,7 +130,7 @@ public abstract class JdbcTransactionObjectSupport implements SavepointManager, 
 	//---------------------------------------------------------------------
 
 	/**
-	 * This implementation creates a JDBC 3.0 Savepoint and returns it.
+	 * This implementation creates a JDBC Savepoint and returns it.
 	 * @see java.sql.Connection#setSavepoint
 	 */
 	@Override
@@ -124,7 +153,7 @@ public abstract class JdbcTransactionObjectSupport implements SavepointManager, 
 	}
 
 	/**
-	 * This implementation rolls back to the given JDBC 3.0 Savepoint.
+	 * This implementation rolls back to the given JDBC Savepoint.
 	 * @see java.sql.Connection#rollback(java.sql.Savepoint)
 	 */
 	@Override
@@ -140,7 +169,7 @@ public abstract class JdbcTransactionObjectSupport implements SavepointManager, 
 	}
 
 	/**
-	 * This implementation releases the given JDBC 3.0 Savepoint.
+	 * This implementation releases the given JDBC Savepoint.
 	 * @see java.sql.Connection#releaseSavepoint
 	 */
 	@Override
@@ -149,8 +178,18 @@ public abstract class JdbcTransactionObjectSupport implements SavepointManager, 
 		try {
 			conHolder.getConnection().releaseSavepoint((Savepoint) savepoint);
 		}
+		catch (SQLFeatureNotSupportedException ex) {
+			// typically on Oracle - ignore
+		}
+		catch (SQLException ex) {
+			// ignore Microsoft SQLServerException: This operation is not supported.
+			String msg = ex.getMessage();
+			if (msg == null || !msg.contains("not supported")) {
+				throw new TransactionSystemException("Could not explicitly release JDBC savepoint", ex);
+			}
+		}
 		catch (Throwable ex) {
-			logger.debug("Could not explicitly release JDBC savepoint", ex);
+			throw new TransactionSystemException("Could not explicitly release JDBC savepoint", ex);
 		}
 	}
 

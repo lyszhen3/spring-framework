@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,22 +21,23 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.servlet.ServletContext;
-import javax.websocket.DeploymentException;
-import javax.websocket.server.ServerContainer;
-import javax.websocket.server.ServerEndpoint;
-import javax.websocket.server.ServerEndpointConfig;
+
+import jakarta.servlet.ServletContext;
+import jakarta.websocket.DeploymentException;
+import jakarta.websocket.server.ServerContainer;
+import jakarta.websocket.server.ServerEndpoint;
+import jakarta.websocket.server.ServerEndpointConfig;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.web.context.support.WebApplicationObjectSupport;
 
 /**
- * Detects beans of type {@link javax.websocket.server.ServerEndpointConfig} and registers
- * with the standard Java WebSocket runtime. Also detects beans annotated with
+ * Detects beans of type {@link jakarta.websocket.server.ServerEndpointConfig} and registers
+ * with the standard Jakarta WebSocket runtime. Also detects beans annotated with
  * {@link ServerEndpoint} and registers them as well. Although not required, it is likely
  * annotated endpoints should have their {@code configurator} property set to
  * {@link SpringConfigurator}.
@@ -55,17 +56,15 @@ import org.springframework.web.context.support.WebApplicationObjectSupport;
 public class ServerEndpointExporter extends WebApplicationObjectSupport
 		implements InitializingBean, SmartInitializingSingleton {
 
-	@Nullable
-	private List<Class<?>> annotatedEndpointClasses;
+	private @Nullable List<Class<?>> annotatedEndpointClasses;
 
-	@Nullable
-	private ServerContainer serverContainer;
+	private @Nullable ServerContainer serverContainer;
 
 
 	/**
 	 * Explicitly list annotated endpoint types that should be registered on startup. This
 	 * can be done if you wish to turn off a Servlet container's scan for endpoints, which
-	 * goes through all 3rd party jars in the, and rely on Spring configuration instead.
+	 * goes through all 3rd party jars in the classpath, and rely on Spring configuration instead.
 	 * @param annotatedEndpointClasses {@link ServerEndpoint}-annotated types
 	 */
 	public void setAnnotatedEndpointClasses(Class<?>... annotatedEndpointClasses) {
@@ -83,8 +82,7 @@ public class ServerEndpointExporter extends WebApplicationObjectSupport
 	/**
 	 * Return the JSR-356 {@link ServerContainer} to use for endpoint registration.
 	 */
-	@Nullable
-	protected ServerContainer getServerContainer() {
+	protected @Nullable ServerContainer getServerContainer() {
 		return this.serverContainer;
 	}
 
@@ -92,7 +90,7 @@ public class ServerEndpointExporter extends WebApplicationObjectSupport
 	protected void initServletContext(ServletContext servletContext) {
 		if (this.serverContainer == null) {
 			this.serverContainer =
-					(ServerContainer) servletContext.getAttribute("javax.websocket.server.ServerContainer");
+					(ServerContainer) servletContext.getAttribute("jakarta.websocket.server.ServerContainer");
 		}
 	}
 
@@ -103,7 +101,7 @@ public class ServerEndpointExporter extends WebApplicationObjectSupport
 
 	@Override
 	public void afterPropertiesSet() {
-		Assert.state(getServerContainer() != null, "javax.websocket.server.ServerContainer not available");
+		Assert.state(getServerContainer() != null, "jakarta.websocket.server.ServerContainer not available");
 	}
 
 	@Override

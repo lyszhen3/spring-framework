@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.w3c.dom.Element;
 
 import org.springframework.beans.factory.config.TypedStringValue;
@@ -36,7 +37,6 @@ import org.springframework.cache.interceptor.CacheOperation;
 import org.springframework.cache.interceptor.CachePutOperation;
 import org.springframework.cache.interceptor.CacheableOperation;
 import org.springframework.cache.interceptor.NameMatchCacheOperationSource;
-import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 import org.springframework.util.xml.DomUtils;
 
@@ -111,13 +111,9 @@ class CacheAdviceParser extends AbstractSingleBeanDefinitionParser {
 			CacheableOperation.Builder builder = prop.merge(opElement,
 					parserContext.getReaderContext(), new CacheableOperation.Builder());
 			builder.setUnless(getAttributeValue(opElement, "unless", ""));
-			builder.setSync(Boolean.valueOf(getAttributeValue(opElement, "sync", "false")));
+			builder.setSync(Boolean.parseBoolean(getAttributeValue(opElement, "sync", "false")));
 
-			Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
-			if (col == null) {
-				col = new ArrayList<>(2);
-				cacheOpMap.put(nameHolder, col);
-			}
+			Collection<CacheOperation> col = cacheOpMap.computeIfAbsent(nameHolder, k -> new ArrayList<>(2));
 			col.add(builder.build());
 		}
 
@@ -132,19 +128,15 @@ class CacheAdviceParser extends AbstractSingleBeanDefinitionParser {
 
 			String wide = opElement.getAttribute("all-entries");
 			if (StringUtils.hasText(wide)) {
-				builder.setCacheWide(Boolean.valueOf(wide.trim()));
+				builder.setCacheWide(Boolean.parseBoolean(wide.trim()));
 			}
 
 			String after = opElement.getAttribute("before-invocation");
 			if (StringUtils.hasText(after)) {
-				builder.setBeforeInvocation(Boolean.valueOf(after.trim()));
+				builder.setBeforeInvocation(Boolean.parseBoolean(after.trim()));
 			}
 
-			Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
-			if (col == null) {
-				col = new ArrayList<>(2);
-				cacheOpMap.put(nameHolder, col);
-			}
+			Collection<CacheOperation> col = cacheOpMap.computeIfAbsent(nameHolder, k -> new ArrayList<>(2));
 			col.add(builder.build());
 		}
 
@@ -158,11 +150,7 @@ class CacheAdviceParser extends AbstractSingleBeanDefinitionParser {
 					parserContext.getReaderContext(), new CachePutOperation.Builder());
 			builder.setUnless(getAttributeValue(opElement, "unless", ""));
 
-			Collection<CacheOperation> col = cacheOpMap.get(nameHolder);
-			if (col == null) {
-				col = new ArrayList<>(2);
-				cacheOpMap.put(nameHolder, col);
-			}
+			Collection<CacheOperation> col = cacheOpMap.computeIfAbsent(nameHolder, k -> new ArrayList<>(2));
 			col.add(builder.build());
 		}
 
@@ -187,18 +175,17 @@ class CacheAdviceParser extends AbstractSingleBeanDefinitionParser {
 	 */
 	private static class Props {
 
-		private String key;
+		private final String key;
 
-		private String keyGenerator;
+		private final String keyGenerator;
 
-		private String cacheManager;
+		private final String cacheManager;
 
-		private String condition;
+		private final String condition;
 
-		private String method;
+		private final String method;
 
-		@Nullable
-		private String[] caches;
+		private String @Nullable [] caches;
 
 		Props(Element root) {
 			String defaultCache = root.getAttribute("cache");
@@ -243,8 +230,7 @@ class CacheAdviceParser extends AbstractSingleBeanDefinitionParser {
 			return builder;
 		}
 
-		@Nullable
-		String merge(Element element, ReaderContext readerCtx) {
+		@Nullable String merge(Element element, ReaderContext readerCtx) {
 			String method = element.getAttribute(METHOD_ATTRIBUTE);
 			if (StringUtils.hasText(method)) {
 				return method.trim();

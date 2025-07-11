@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,16 +16,17 @@
 
 package org.springframework.jdbc.object;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.PreparedStatementCreatorFactory;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
 import org.springframework.jdbc.core.namedparam.ParsedSql;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Operation object representing a SQL-based operation such as a query or update,
+ * Operation object representing an SQL-based operation such as a query or update,
  * as opposed to a stored procedure.
  *
  * <p>Configures a {@link org.springframework.jdbc.core.PreparedStatementCreatorFactory}
@@ -40,12 +41,10 @@ public abstract class SqlOperation extends RdbmsOperation {
 	 * Object enabling us to create PreparedStatementCreators efficiently,
 	 * based on this class's declared parameters.
 	 */
-	@Nullable
-	private PreparedStatementCreatorFactory preparedStatementFactory;
+	private @Nullable PreparedStatementCreatorFactory preparedStatementFactory;
 
 	/** Parsed representation of the SQL statement. */
-	@Nullable
-	private ParsedSql cachedSql;
+	private @Nullable ParsedSql cachedSql;
 
 	/** Monitor for locking the cached representation of the parsed SQL statement. */
 	private final Object parsedSqlMonitor = new Object();
@@ -95,7 +94,7 @@ public abstract class SqlOperation extends RdbmsOperation {
 	 * with the given parameters.
 	 * @param params the parameter array (may be {@code null})
 	 */
-	protected final PreparedStatementSetter newPreparedStatementSetter(@Nullable Object[] params) {
+	protected final PreparedStatementSetter newPreparedStatementSetter(@Nullable Object @Nullable [] params) {
 		Assert.state(this.preparedStatementFactory != null, "No PreparedStatementFactory available");
 		return this.preparedStatementFactory.newPreparedStatementSetter(params);
 	}
@@ -105,7 +104,7 @@ public abstract class SqlOperation extends RdbmsOperation {
 	 * with the given parameters.
 	 * @param params the parameter array (may be {@code null})
 	 */
-	protected final PreparedStatementCreator newPreparedStatementCreator(@Nullable Object[] params) {
+	protected final PreparedStatementCreator newPreparedStatementCreator(@Nullable Object @Nullable [] params) {
 		Assert.state(this.preparedStatementFactory != null, "No PreparedStatementFactory available");
 		return this.preparedStatementFactory.newPreparedStatementCreator(params);
 	}
@@ -117,7 +116,7 @@ public abstract class SqlOperation extends RdbmsOperation {
 	 * the factory's, for example because of named parameter expanding)
 	 * @param params the parameter array (may be {@code null})
 	 */
-	protected final PreparedStatementCreator newPreparedStatementCreator(String sqlToUse, @Nullable Object[] params) {
+	protected final PreparedStatementCreator newPreparedStatementCreator(String sqlToUse, @Nullable Object @Nullable [] params) {
 		Assert.state(this.preparedStatementFactory != null, "No PreparedStatementFactory available");
 		return this.preparedStatementFactory.newPreparedStatementCreator(sqlToUse, params);
 	}

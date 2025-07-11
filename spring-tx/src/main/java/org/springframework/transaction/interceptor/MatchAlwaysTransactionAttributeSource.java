@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +19,8 @@ package org.springframework.transaction.interceptor;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 
@@ -31,6 +32,7 @@ import org.springframework.util.ObjectUtils;
  * methods being handled by a transaction interceptor.
  *
  * @author Colin Sampaleanu
+ * @author Juergen Hoeller
  * @since 15.10.2003
  * @see org.springframework.transaction.interceptor.TransactionProxyFactoryBean
  * @see org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator
@@ -48,27 +50,23 @@ public class MatchAlwaysTransactionAttributeSource implements TransactionAttribu
 	 * @see org.springframework.transaction.interceptor.TransactionAttributeEditor
 	 */
 	public void setTransactionAttribute(TransactionAttribute transactionAttribute) {
+		if (transactionAttribute instanceof DefaultTransactionAttribute dta) {
+			dta.resolveAttributeStrings(null);
+		}
 		this.transactionAttribute = transactionAttribute;
 	}
 
 
 	@Override
-	@Nullable
-	public TransactionAttribute getTransactionAttribute(Method method, @Nullable Class<?> targetClass) {
+	public @Nullable TransactionAttribute getTransactionAttribute(Method method, @Nullable Class<?> targetClass) {
 		return (ClassUtils.isUserLevelMethod(method) ? this.transactionAttribute : null);
 	}
 
 
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof MatchAlwaysTransactionAttributeSource)) {
-			return false;
-		}
-		MatchAlwaysTransactionAttributeSource otherTas = (MatchAlwaysTransactionAttributeSource) other;
-		return ObjectUtils.nullSafeEquals(this.transactionAttribute, otherTas.transactionAttribute);
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof MatchAlwaysTransactionAttributeSource that &&
+				ObjectUtils.nullSafeEquals(this.transactionAttribute, that.transactionAttribute)));
 	}
 
 	@Override

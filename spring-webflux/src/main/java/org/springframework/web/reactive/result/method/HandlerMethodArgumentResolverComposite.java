@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +16,16 @@
 
 package org.springframework.web.reactive.result.method;
 
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.MethodParameter;
-import org.springframework.lang.Nullable;
 import org.springframework.web.reactive.BindingContext;
 import org.springframework.web.server.ServerWebExchange;
 
@@ -41,9 +39,7 @@ import org.springframework.web.server.ServerWebExchange;
  */
 class HandlerMethodArgumentResolverComposite implements HandlerMethodArgumentResolver {
 
-	protected final Log logger = LogFactory.getLog(getClass());
-
-	private final List<HandlerMethodArgumentResolver> argumentResolvers = new LinkedList<>();
+	private final List<HandlerMethodArgumentResolver> argumentResolvers = new ArrayList<>();
 
 	private final Map<MethodParameter, HandlerMethodArgumentResolver> argumentResolverCache =
 			new ConcurrentHashMap<>(256);
@@ -87,10 +83,11 @@ class HandlerMethodArgumentResolverComposite implements HandlerMethodArgumentRes
 	}
 
 	/**
-	 * Clear the list of configured resolvers.
+	 * Clear the list of configured resolvers and the resolver cache.
 	 */
 	public void clear() {
 		this.argumentResolvers.clear();
+		this.argumentResolverCache.clear();
 	}
 
 
@@ -116,9 +113,8 @@ class HandlerMethodArgumentResolverComposite implements HandlerMethodArgumentRes
 
 		HandlerMethodArgumentResolver resolver = getArgumentResolver(parameter);
 		if (resolver == null) {
-			throw new IllegalArgumentException(
-					"Unsupported parameter type [" + parameter.getParameterType().getName() + "]." +
-							" supportsParameter should be called first.");
+			throw new IllegalArgumentException("Unsupported parameter type [" +
+					parameter.getParameterType().getName() + "]. supportsParameter should be called first.");
 		}
 		return resolver.resolveArgument(parameter, bindingContext, exchange);
 	}
@@ -127,8 +123,7 @@ class HandlerMethodArgumentResolverComposite implements HandlerMethodArgumentRes
 	 * Find a registered {@link HandlerMethodArgumentResolver} that supports
 	 * the given method parameter.
 	 */
-	@Nullable
-	private HandlerMethodArgumentResolver getArgumentResolver(MethodParameter parameter) {
+	private @Nullable HandlerMethodArgumentResolver getArgumentResolver(MethodParameter parameter) {
 		HandlerMethodArgumentResolver result = this.argumentResolverCache.get(parameter);
 		if (result == null) {
 			for (HandlerMethodArgumentResolver methodArgumentResolver : this.argumentResolvers) {

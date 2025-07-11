@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,8 @@ package org.springframework.beans.factory.support;
 import java.lang.reflect.Method;
 import java.util.Properties;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.FactoryBean;
@@ -27,13 +29,12 @@ import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.DependencyDescriptor;
 import org.springframework.core.ResolvableType;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
 /**
  * Basic {@link AutowireCandidateResolver} that performs a full generic type
  * match with the candidate's type if the dependency is declared as a generic type
- * (e.g. Repository&lt;Customer&gt;).
+ * (for example, {@code Repository<Customer>}).
  *
  * <p>This is the base class for
  * {@link org.springframework.beans.factory.annotation.QualifierAnnotationAutowireCandidateResolver},
@@ -43,10 +44,9 @@ import org.springframework.util.ClassUtils;
  * @since 4.0
  */
 public class GenericTypeAwareAutowireCandidateResolver extends SimpleAutowireCandidateResolver
-		implements BeanFactoryAware {
+		implements BeanFactoryAware, Cloneable {
 
-	@Nullable
-	private BeanFactory beanFactory;
+	private @Nullable BeanFactory beanFactory;
 
 
 	@Override
@@ -54,8 +54,7 @@ public class GenericTypeAwareAutowireCandidateResolver extends SimpleAutowireCan
 		this.beanFactory = beanFactory;
 	}
 
-	@Nullable
-	protected final BeanFactory getBeanFactory() {
+	protected final @Nullable BeanFactory getBeanFactory() {
 		return this.beanFactory;
 	}
 
@@ -73,6 +72,7 @@ public class GenericTypeAwareAutowireCandidateResolver extends SimpleAutowireCan
 	 * Match the given dependency type with its generic type information against the given
 	 * candidate bean definition.
 	 */
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected boolean checkGenericTypeMatch(BeanDefinitionHolder bdHolder, DependencyDescriptor descriptor) {
 		ResolvableType dependencyType = descriptor.getResolvableType();
 		if (dependencyType.getType() instanceof Class) {
@@ -83,8 +83,8 @@ public class GenericTypeAwareAutowireCandidateResolver extends SimpleAutowireCan
 		ResolvableType targetType = null;
 		boolean cacheType = false;
 		RootBeanDefinition rbd = null;
-		if (bdHolder.getBeanDefinition() instanceof RootBeanDefinition) {
-			rbd = (RootBeanDefinition) bdHolder.getBeanDefinition();
+		if (bdHolder.getBeanDefinition() instanceof RootBeanDefinition rootBeanDef) {
+			rbd = rootBeanDef;
 		}
 		if (rbd != null) {
 			targetType = rbd.targetType;
@@ -128,34 +128,52 @@ public class GenericTypeAwareAutowireCandidateResolver extends SimpleAutowireCan
 		if (cacheType) {
 			rbd.targetType = targetType;
 		}
-		if (descriptor.fallbackMatchAllowed() &&
-				(targetType.hasUnresolvableGenerics() || targetType.resolve() == Properties.class)) {
-			// Fallback matches allow unresolvable generics, e.g. plain HashMap to Map<String,String>;
+
+		// Pre-declared target type: In case of a generic FactoryBean type,
+		// unwrap nested generic type when matching a non-FactoryBean type.
+		Class<?> targetClass = targetType.resolve();
+		if (targetClass != null && FactoryBean.class.isAssignableFrom(targetClass)) {
+			Class<?> classToMatch = dependencyType.resolve();
+			if (classToMatch != null && !FactoryBean.class.isAssignableFrom(classToMatch) &&
+					!classToMatch.isAssignableFrom(targetClass)) {
+				targetType = targetType.getGeneric();
+				if (descriptor.fallbackMatchAllowed()) {
+					// Matching the Class-based type determination for FactoryBean
+					// objects in the lazy-determination getType code path above.
+					targetType = ResolvableType.forClass(targetType.resolve());
+				}
+			}
+		}
+
+		if (descriptor.fallbackMatchAllowed()) {
+			// Fallback matches allow unresolvable generics, for example, plain HashMap to Map<String,String>;
 			// and pragmatically also java.util.Properties to any Map (since despite formally being a
 			// Map<Object,Object>, java.util.Properties is usually perceived as a Map<String,String>).
-			return true;
+			if (targetType.hasUnresolvableGenerics()) {
+				return dependencyType.isAssignableFromResolvedPart(targetType);
+			}
+			else if (targetType.resolve() == Properties.class) {
+				return true;
+			}
 		}
 		// Full check for complex generic type match...
 		return dependencyType.isAssignableFrom(targetType);
 	}
 
-	@Nullable
-	protected RootBeanDefinition getResolvedDecoratedDefinition(RootBeanDefinition rbd) {
+	protected @Nullable RootBeanDefinition getResolvedDecoratedDefinition(RootBeanDefinition rbd) {
 		BeanDefinitionHolder decDef = rbd.getDecoratedDefinition();
-		if (decDef != null && this.beanFactory instanceof ConfigurableListableBeanFactory) {
-			ConfigurableListableBeanFactory clbf = (ConfigurableListableBeanFactory) this.beanFactory;
+		if (decDef != null && this.beanFactory instanceof ConfigurableListableBeanFactory clbf) {
 			if (clbf.containsBeanDefinition(decDef.getBeanName())) {
 				BeanDefinition dbd = clbf.getMergedBeanDefinition(decDef.getBeanName());
-				if (dbd instanceof RootBeanDefinition) {
-					return (RootBeanDefinition) dbd;
+				if (dbd instanceof RootBeanDefinition rootBeanDef) {
+					return rootBeanDef;
 				}
 			}
 		}
 		return null;
 	}
 
-	@Nullable
-	protected ResolvableType getReturnTypeForFactoryMethod(RootBeanDefinition rbd, DependencyDescriptor descriptor) {
+	protected @Nullable ResolvableType getReturnTypeForFactoryMethod(RootBeanDefinition rbd, DependencyDescriptor descriptor) {
 		// Should typically be set for any kind of factory method, since the BeanFactory
 		// pre-resolves them before reaching out to the AutowireCandidateResolver...
 		ResolvableType returnType = rbd.factoryMethodReturnType;
@@ -175,6 +193,23 @@ public class GenericTypeAwareAutowireCandidateResolver extends SimpleAutowireCan
 			}
 		}
 		return null;
+	}
+
+
+	/**
+	 * This implementation clones all instance fields through standard
+	 * {@link Cloneable} support, allowing for subsequent reconfiguration
+	 * of the cloned instance through a fresh {@link #setBeanFactory} call.
+	 * @see #clone()
+	 */
+	@Override
+	public AutowireCandidateResolver cloneIfNecessary() {
+		try {
+			return (AutowireCandidateResolver) clone();
+		}
+		catch (CloneNotSupportedException ex) {
+			throw new IllegalStateException(ex);
+		}
 	}
 
 }

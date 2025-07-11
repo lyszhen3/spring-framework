@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  *  Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,6 +55,19 @@ public class MethodProxy {
 		proxy.sig1 = new Signature(name1, desc);
 		proxy.sig2 = new Signature(name2, desc);
 		proxy.createInfo = new CreateInfo(c1, c2);
+
+		// SPRING PATCH BEGIN
+		if (c1 != Object.class && c1.isAssignableFrom(c2.getSuperclass()) && !Factory.class.isAssignableFrom(c2)) {
+			// Try early initialization for overridden methods on specifically purposed subclasses
+			try {
+				proxy.init();
+			}
+			catch (CodeGenerationException ignored) {
+				// to be retried when actually needed later on (possibly not at all)
+			}
+		}
+		// SPRING PATCH END
+
 		return proxy;
 	}
 
@@ -221,8 +234,9 @@ public class MethodProxy {
 			throw ex.getTargetException();
 		}
 		catch (IllegalArgumentException ex) {
-			if (fastClassInfo.i1 < 0)
+			if (fastClassInfo.i1 < 0) {
 				throw new IllegalArgumentException("Protected method: " + sig1);
+			}
 			throw ex;
 		}
 	}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,12 +22,12 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.lang.Nullable;
 import org.springframework.util.MimeType;
 
 /**
@@ -40,9 +40,9 @@ import org.springframework.util.MimeType;
  */
 public abstract class AbstractDecoder<T> implements Decoder<T> {
 
-	protected Log logger = LogFactory.getLog(getClass());
-
 	private final List<MimeType> decodableMimeTypes;
+
+	protected Log logger = LogFactory.getLog(getClass());
 
 
 	protected AbstractDecoder(MimeType... supportedMimeTypes) {
@@ -78,7 +78,12 @@ public abstract class AbstractDecoder<T> implements Decoder<T> {
 		if (mimeType == null) {
 			return true;
 		}
-		return this.decodableMimeTypes.stream().anyMatch(candidate -> candidate.isCompatibleWith(mimeType));
+		for (MimeType candidate : this.decodableMimeTypes) {
+			if (candidate.isCompatibleWith(mimeType)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override

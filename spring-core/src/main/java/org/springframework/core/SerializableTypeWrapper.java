@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,6 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
@@ -30,7 +29,8 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.ReflectionUtils;
@@ -51,6 +51,7 @@ import org.springframework.util.ReflectionUtils;
  *
  * @author Phillip Webb
  * @author Juergen Hoeller
+ * @author Sam Brannen
  * @since 4.0
  */
 final class SerializableTypeWrapper {
@@ -68,8 +69,7 @@ final class SerializableTypeWrapper {
 	/**
 	 * Return a {@link Serializable} variant of {@link Field#getGenericType()}.
 	 */
-	@Nullable
-	public static Type forField(Field field) {
+	public static @Nullable Type forField(Field field) {
 		return forTypeProvider(new FieldTypeProvider(field));
 	}
 
@@ -77,8 +77,7 @@ final class SerializableTypeWrapper {
 	 * Return a {@link Serializable} variant of
 	 * {@link MethodParameter#getGenericParameterType()}.
 	 */
-	@Nullable
-	public static Type forMethodParameter(MethodParameter methodParameter) {
+	public static @Nullable Type forMethodParameter(MethodParameter methodParameter) {
 		return forTypeProvider(new MethodParameterTypeProvider(methodParameter));
 	}
 
@@ -89,9 +88,9 @@ final class SerializableTypeWrapper {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T extends Type> T unwrap(T type) {
-		Type unwrapped = type;
-		while (unwrapped instanceof SerializableTypeProxy) {
-			unwrapped = ((SerializableTypeProxy) type).getTypeProvider().getType();
+		Type unwrapped = null;
+		if (type instanceof SerializableTypeProxy proxy) {
+			unwrapped = proxy.getTypeProvider().getType();
 		}
 		return (unwrapped != null ? (T) unwrapped : type);
 	}
@@ -101,16 +100,15 @@ final class SerializableTypeWrapper {
 	 * <p>If type artifacts are generally not serializable in the current runtime
 	 * environment, this delegate will simply return the original {@code Type} as-is.
 	 */
-	@Nullable
-	static Type forTypeProvider(TypeProvider provider) {
+	static @Nullable Type forTypeProvider(TypeProvider provider) {
 		Type providedType = provider.getType();
 		if (providedType == null || providedType instanceof Serializable) {
-			// No serializable type wrapping necessary (e.g. for java.lang.Class)
+			// No serializable type wrapping necessary (for example, for java.lang.Class)
 			return providedType;
 		}
-		if (GraalDetector.inImageCode() || !Serializable.class.isAssignableFrom(Class.class)) {
+		if (NativeDetector.inNativeImage() || !Serializable.class.isAssignableFrom(Class.class)) {
 			// Let's skip any wrapping attempts if types are generally not serializable in
-			// the current runtime environment (even java.lang.Class itself, e.g. on Graal)
+			// the current runtime environment (even java.lang.Class itself, for example, on GraalVM native images)
 			return providedType;
 		}
 
@@ -154,15 +152,13 @@ final class SerializableTypeWrapper {
 		/**
 		 * Return the (possibly non {@link Serializable}) {@link Type}.
 		 */
-		@Nullable
-		Type getType();
+		@Nullable Type getType();
 
 		/**
 		 * Return the source of the type, or {@code null} if not known.
-		 * <p>The default implementations returns {@code null}.
+		 * <p>The default implementation returns {@code null}.
 		 */
-		@Nullable
-		default Object getSource() {
+		default @Nullable Object getSource() {
 			return null;
 		}
 	}
@@ -183,40 +179,45 @@ final class SerializableTypeWrapper {
 		}
 
 		@Override
-		@Nullable
-		public Object invoke(Object proxy, Method method, @Nullable Object[] args) throws Throwable {
-			if (method.getName().equals("equals") && args != null) {
-				Object other = args[0];
-				// Unwrap proxies for speed
-				if (other instanceof Type) {
-					other = unwrap((Type) other);
+		public @Nullable Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+			switch (method.getName()) {
+				case "equals" -> {
+					Object other = args[0];
+					// Unwrap proxies for speed
+					if (other instanceof Type otherType) {
+						other = unwrap(otherType);
+					}
+					return ObjectUtils.nullSafeEquals(this.provider.getType(), other);
 				}
-				return ObjectUtils.nullSafeEquals(this.provider.getType(), other);
-			}
-			else if (method.getName().equals("hashCode")) {
-				return ObjectUtils.nullSafeHashCode(this.provider.getType());
-			}
-			else if (method.getName().equals("getTypeProvider")) {
-				return this.provider;
+				case "hashCode" -> {
+					return ObjectUtils.nullSafeHashCode(this.provider.getType());
+				}
+				case "getTypeProvider" -> {
+					return this.provider;
+				}
 			}
 
-			if (Type.class == method.getReturnType() && args == null) {
+			if (Type.class == method.getReturnType() && ObjectUtils.isEmpty(args)) {
 				return forTypeProvider(new MethodInvokeTypeProvider(this.provider, method, -1));
 			}
-			else if (Type[].class == method.getReturnType() && args == null) {
-				Type[] result = new Type[((Type[]) method.invoke(this.provider.getType())).length];
+			else if (Type[].class == method.getReturnType() && ObjectUtils.isEmpty(args)) {
+				Object returnValue = ReflectionUtils.invokeMethod(method, this.provider.getType());
+				if (returnValue == null) {
+					return null;
+				}
+				@Nullable Type[] result = new Type[((Type[]) returnValue).length];
 				for (int i = 0; i < result.length; i++) {
 					result[i] = forTypeProvider(new MethodInvokeTypeProvider(this.provider, method, i));
 				}
 				return result;
 			}
 
-			try {
-				return method.invoke(this.provider.getType(), args);
+			Type type = this.provider.getType();
+			if (type instanceof TypeVariable<?> tv && method.getName().equals("getName")) {
+				// Avoid reflection for common comparison of type variables
+				return tv.getName();
 			}
-			catch (InvocationTargetException ex) {
-				throw ex.getTargetException();
-			}
+			return ReflectionUtils.invokeMethod(method, type, args);
 		}
 	}
 
@@ -267,8 +268,7 @@ final class SerializableTypeWrapper {
 	@SuppressWarnings("serial")
 	static class MethodParameterTypeProvider implements TypeProvider {
 
-		@Nullable
-		private final String methodName;
+		private final @Nullable String methodName;
 
 		private final Class<?>[] parameterTypes;
 
@@ -331,8 +331,7 @@ final class SerializableTypeWrapper {
 
 		private transient Method method;
 
-		@Nullable
-		private transient volatile Object result;
+		private transient volatile @Nullable Object result;
 
 		public MethodInvokeTypeProvider(TypeProvider provider, Method method, int index) {
 			this.provider = provider;
@@ -343,8 +342,7 @@ final class SerializableTypeWrapper {
 		}
 
 		@Override
-		@Nullable
-		public Type getType() {
+		public @Nullable Type getType() {
 			Object result = this.result;
 			if (result == null) {
 				// Lazy invocation of the target method on the provided type
@@ -352,12 +350,11 @@ final class SerializableTypeWrapper {
 				// Cache the result for further calls to getType()
 				this.result = result;
 			}
-			return (result instanceof Type[] ? ((Type[]) result)[this.index] : (Type) result);
+			return (result instanceof Type[] results ? results[this.index] : (Type) result);
 		}
 
 		@Override
-		@Nullable
-		public Object getSource() {
+		public @Nullable Object getSource() {
 			return null;
 		}
 

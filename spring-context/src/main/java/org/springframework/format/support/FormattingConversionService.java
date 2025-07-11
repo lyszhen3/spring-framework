@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.context.EmbeddedValueResolverAware;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.DecoratingProxy;
@@ -36,7 +38,8 @@ import org.springframework.format.Formatter;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.format.Parser;
 import org.springframework.format.Printer;
-import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.util.StringValueResolver;
 
@@ -51,8 +54,7 @@ import org.springframework.util.StringValueResolver;
 public class FormattingConversionService extends GenericConversionService
 		implements FormatterRegistry, EmbeddedValueResolverAware {
 
-	@Nullable
-	private StringValueResolver embeddedValueResolver;
+	private @Nullable StringValueResolver embeddedValueResolver;
 
 	private final Map<AnnotationConverterKey, GenericConverter> cachedPrinters = new ConcurrentHashMap<>(64);
 
@@ -64,6 +66,18 @@ public class FormattingConversionService extends GenericConversionService
 		this.embeddedValueResolver = resolver;
 	}
 
+
+	@Override
+	public void addPrinter(Printer<?> printer) {
+		Class<?> fieldType = getFieldType(printer, Printer.class);
+		addConverter(new PrinterConverter(fieldType, printer, this));
+	}
+
+	@Override
+	public void addParser(Parser<?> parser) {
+		Class<?> fieldType = getFieldType(parser, Parser.class);
+		addConverter(new ParserConverter(fieldType, parser, this));
+	}
 
 	@Override
 	public void addFormatter(Formatter<?> formatter) {
@@ -85,8 +99,9 @@ public class FormattingConversionService extends GenericConversionService
 	@Override
 	public void addFormatterForFieldAnnotation(AnnotationFormatterFactory<? extends Annotation> annotationFormatterFactory) {
 		Class<? extends Annotation> annotationType = getAnnotationType(annotationFormatterFactory);
-		if (this.embeddedValueResolver != null && annotationFormatterFactory instanceof EmbeddedValueResolverAware) {
-			((EmbeddedValueResolverAware) annotationFormatterFactory).setEmbeddedValueResolver(this.embeddedValueResolver);
+		if (this.embeddedValueResolver != null &&
+				annotationFormatterFactory instanceof EmbeddedValueResolverAware embeddedValueResolverAware) {
+			embeddedValueResolverAware.setEmbeddedValueResolver(this.embeddedValueResolver);
 		}
 		Set<Class<?>> fieldTypes = annotationFormatterFactory.getFieldTypes();
 		for (Class<?> fieldType : fieldTypes) {
@@ -97,15 +112,17 @@ public class FormattingConversionService extends GenericConversionService
 
 
 	static Class<?> getFieldType(Formatter<?> formatter) {
-		Class<?> fieldType = GenericTypeResolver.resolveTypeArgument(formatter.getClass(), Formatter.class);
-		if (fieldType == null && formatter instanceof DecoratingProxy) {
-			fieldType = GenericTypeResolver.resolveTypeArgument(
-					((DecoratingProxy) formatter).getDecoratedClass(), Formatter.class);
+		return getFieldType(formatter, Formatter.class);
+	}
+
+	private static <T> Class<?> getFieldType(T instance, Class<T> genericInterface) {
+		Class<?> fieldType = GenericTypeResolver.resolveTypeArgument(instance.getClass(), genericInterface);
+		if (fieldType == null && instance instanceof DecoratingProxy decoratingProxy) {
+			fieldType = GenericTypeResolver.resolveTypeArgument(decoratingProxy.getDecoratedClass(), genericInterface);
 		}
-		if (fieldType == null) {
-			throw new IllegalArgumentException("Unable to extract the parameterized field type from Formatter [" +
-					formatter.getClass().getName() + "]; does the class parameterize the <T> generic type?");
-		}
+		Assert.notNull(fieldType, () -> "Unable to extract the parameterized field type from " +
+					ClassUtils.getShortName(genericInterface) + " [" + instance.getClass().getName() +
+					"]; does the class parameterize the <T> generic type?");
 		return fieldType;
 	}
 
@@ -157,8 +174,7 @@ public class FormattingConversionService extends GenericConversionService
 			return this.printer.print(source, LocaleContextHolder.getLocale());
 		}
 
-		@Nullable
-		private Class<?> resolvePrinterObjectType(Printer<?> printer) {
+		private @Nullable Class<?> resolvePrinterObjectType(Printer<?> printer) {
 			return GenericTypeResolver.resolveTypeArgument(printer.getClass(), Printer.class);
 		}
 
@@ -189,8 +205,7 @@ public class FormattingConversionService extends GenericConversionService
 		}
 
 		@Override
-		@Nullable
-		public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
+		public @Nullable Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
 			String text = (String) source;
 			if (!StringUtils.hasText(text)) {
 				return null;
@@ -248,8 +263,7 @@ public class FormattingConversionService extends GenericConversionService
 
 		@Override
 		@SuppressWarnings("unchecked")
-		@Nullable
-		public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
+		public @Nullable Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
 			Annotation ann = sourceType.getAnnotation(this.annotationType);
 			if (ann == null) {
 				throw new IllegalStateException(
@@ -303,8 +317,7 @@ public class FormattingConversionService extends GenericConversionService
 
 		@Override
 		@SuppressWarnings("unchecked")
-		@Nullable
-		public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
+		public @Nullable Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
 			Annotation ann = targetType.getAnnotation(this.annotationType);
 			if (ann == null) {
 				throw new IllegalStateException(
@@ -349,12 +362,9 @@ public class FormattingConversionService extends GenericConversionService
 		}
 
 		@Override
-		public boolean equals(Object other) {
-			if (this == other) {
-				return true;
-			}
-			AnnotationConverterKey otherKey = (AnnotationConverterKey) other;
-			return (this.fieldType == otherKey.fieldType && this.annotation.equals(otherKey.annotation));
+		public boolean equals(@Nullable Object other) {
+			return (this == other || (other instanceof AnnotationConverterKey that &&
+					this.fieldType == that.fieldType && this.annotation.equals(that.annotation)));
 		}
 
 		@Override

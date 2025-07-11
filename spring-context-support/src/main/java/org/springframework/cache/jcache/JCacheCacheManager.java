@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,12 +18,14 @@ package org.springframework.cache.jcache;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
+
 import javax.cache.CacheManager;
 import javax.cache.Caching;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.cache.Cache;
 import org.springframework.cache.transaction.AbstractTransactionSupportingCacheManager;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -35,11 +37,11 @@ import org.springframework.util.Assert;
  * @author Juergen Hoeller
  * @author Stephane Nicoll
  * @since 3.2
+ * @see JCacheCache
  */
 public class JCacheCacheManager extends AbstractTransactionSupportingCacheManager {
 
-	@Nullable
-	private CacheManager cacheManager;
+	private @Nullable CacheManager cacheManager;
 
 	private boolean allowNullValues = true;
 
@@ -73,8 +75,7 @@ public class JCacheCacheManager extends AbstractTransactionSupportingCacheManage
 	/**
 	 * Return the backing JCache {@link CacheManager javax.cache.CacheManager}.
 	 */
-	@Nullable
-	public CacheManager getCacheManager() {
+	public @Nullable CacheManager getCacheManager() {
 		return this.cacheManager;
 	}
 
@@ -119,7 +120,7 @@ public class JCacheCacheManager extends AbstractTransactionSupportingCacheManage
 	}
 
 	@Override
-	protected Cache getMissingCache(String name) {
+	protected @Nullable Cache getMissingCache(String name) {
 		CacheManager cacheManager = getCacheManager();
 		Assert.state(cacheManager != null, "No CacheManager set");
 

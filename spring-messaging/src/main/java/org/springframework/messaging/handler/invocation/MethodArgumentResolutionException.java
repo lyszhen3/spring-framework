@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,8 @@
  */
 
 package org.springframework.messaging.handler.invocation;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.messaging.Message;
@@ -48,6 +50,17 @@ public class MethodArgumentResolutionException extends MessagingException {
 	 */
 	public MethodArgumentResolutionException(Message<?> message, MethodParameter parameter, String description) {
 		super(message, getMethodParameterMessage(parameter) + ": " + description);
+		this.parameter = parameter;
+	}
+
+	/**
+	 * Create a new instance providing the invalid {@code MethodParameter},
+	 * prepared description, and a cause.
+	 */
+	public MethodArgumentResolutionException(
+			Message<?> message, MethodParameter parameter, String description, @Nullable Throwable cause) {
+
+		super(message, getMethodParameterMessage(parameter) + ": " + description, cause);
 		this.parameter = parameter;
 	}
 

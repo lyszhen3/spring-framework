@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,8 @@ package org.springframework.cache.interceptor;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.cache.Cache;
 
@@ -34,7 +36,7 @@ class CacheExpressionRootObject {
 
 	private final Method method;
 
-	private final Object[] args;
+	private final @Nullable Object[] args;
 
 	private final Object target;
 
@@ -42,7 +44,7 @@ class CacheExpressionRootObject {
 
 
 	public CacheExpressionRootObject(
-			Collection<? extends Cache> caches, Method method, Object[] args, Object target, Class<?> targetClass) {
+			Collection<? extends Cache> caches, Method method, @Nullable Object[] args, Object target, Class<?> targetClass) {
 
 		this.method = method;
 		this.target = target;
@@ -64,7 +66,7 @@ class CacheExpressionRootObject {
 		return this.method.getName();
 	}
 
-	public Object[] getArgs() {
+	public @Nullable Object[] getArgs() {
 		return this.args;
 	}
 

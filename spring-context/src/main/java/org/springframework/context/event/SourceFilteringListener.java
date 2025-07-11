@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,12 @@
 
 package org.springframework.context.event;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.ResolvableType;
-import org.springframework.lang.Nullable;
 
 /**
  * {@link org.springframework.context.ApplicationListener} decorator that filters
@@ -34,12 +35,11 @@ import org.springframework.lang.Nullable;
  * @author Stephane Nicoll
  * @since 2.0.5
  */
-public class SourceFilteringListener implements GenericApplicationListener, SmartApplicationListener {
+public class SourceFilteringListener implements GenericApplicationListener {
 
 	private final Object source;
 
-	@Nullable
-	private GenericApplicationListener delegate;
+	private @Nullable GenericApplicationListener delegate;
 
 
 	/**
@@ -51,8 +51,8 @@ public class SourceFilteringListener implements GenericApplicationListener, Smar
 	 */
 	public SourceFilteringListener(Object source, ApplicationListener<?> delegate) {
 		this.source = source;
-		this.delegate = (delegate instanceof GenericApplicationListener ?
-				(GenericApplicationListener) delegate : new GenericApplicationListenerAdapter(delegate));
+		this.delegate = (delegate instanceof GenericApplicationListener gal ? gal :
+				new GenericApplicationListenerAdapter(delegate));
 	}
 
 	/**
@@ -80,11 +80,6 @@ public class SourceFilteringListener implements GenericApplicationListener, Smar
 	}
 
 	@Override
-	public boolean supportsEventType(Class<? extends ApplicationEvent> eventType) {
-		return supportsEventType(ResolvableType.forType(eventType));
-	}
-
-	@Override
 	public boolean supportsSourceType(@Nullable Class<?> sourceType) {
 		return (sourceType != null && sourceType.isInstance(this.source));
 	}
@@ -92,6 +87,11 @@ public class SourceFilteringListener implements GenericApplicationListener, Smar
 	@Override
 	public int getOrder() {
 		return (this.delegate != null ? this.delegate.getOrder() : Ordered.LOWEST_PRECEDENCE);
+	}
+
+	@Override
+	public String getListenerId() {
+		return (this.delegate != null ? this.delegate.getListenerId() : "");
 	}
 
 

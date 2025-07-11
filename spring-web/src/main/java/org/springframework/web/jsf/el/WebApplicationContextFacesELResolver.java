@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +16,15 @@
 
 package org.springframework.web.jsf.el;
 
-import java.beans.FeatureDescriptor;
-import java.util.Iterator;
-import javax.el.ELContext;
-import javax.el.ELException;
-import javax.el.ELResolver;
-import javax.faces.context.FacesContext;
-
+import jakarta.el.ELContext;
+import jakarta.el.ELException;
+import jakarta.el.ELResolver;
+import jakarta.faces.context.FacesContext;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeansException;
-import org.springframework.lang.Nullable;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.jsf.FacesContextUtils;
 
@@ -44,10 +41,10 @@ import org.springframework.web.jsf.FacesContextUtils;
  * <p>Configure this resolver in your {@code faces-config.xml} file as follows:
  *
  * <pre class="code">
- * &lt;application>
+ * &lt;application&gt;
  *   ...
- *   &lt;el-resolver>org.springframework.web.jsf.el.WebApplicationContextFacesELResolver&lt;/el-resolver>
- * &lt;/application></pre>
+ *   &lt;el-resolver&gt;org.springframework.web.jsf.el.WebApplicationContextFacesELResolver&lt;/el-resolver&gt;
+ * &lt;/application&gt;</pre>
  *
  * @author Juergen Hoeller
  * @since 2.5
@@ -67,11 +64,9 @@ public class WebApplicationContextFacesELResolver extends ELResolver {
 
 
 	@Override
-	@Nullable
-	public Object getValue(ELContext elContext, @Nullable Object base, Object property) throws ELException {
+	public @Nullable Object getValue(ELContext elContext, @Nullable Object base, Object property) throws ELException {
 		if (base != null) {
-			if (base instanceof WebApplicationContext) {
-				WebApplicationContext wac = (WebApplicationContext) base;
+			if (base instanceof WebApplicationContext wac) {
 				String beanName = property.toString();
 				if (logger.isTraceEnabled()) {
 					logger.trace("Attempting to resolve property '" + beanName + "' in root WebApplicationContext");
@@ -105,11 +100,9 @@ public class WebApplicationContextFacesELResolver extends ELResolver {
 	}
 
 	@Override
-	@Nullable
-	public Class<?> getType(ELContext elContext, @Nullable Object base, Object property) throws ELException {
+	public @Nullable Class<?> getType(ELContext elContext, @Nullable Object base, Object property) throws ELException {
 		if (base != null) {
-			if (base instanceof WebApplicationContext) {
-				WebApplicationContext wac = (WebApplicationContext) base;
+			if (base instanceof WebApplicationContext wac) {
 				String beanName = property.toString();
 				if (logger.isDebugEnabled()) {
 					logger.debug("Attempting to resolve property '" + beanName + "' in root WebApplicationContext");
@@ -156,12 +149,6 @@ public class WebApplicationContextFacesELResolver extends ELResolver {
 	}
 
 	@Override
-	@Nullable
-	public Iterator<FeatureDescriptor> getFeatureDescriptors(ELContext elContext, Object base) {
-		return null;
-	}
-
-	@Override
 	public Class<?> getCommonPropertyType(ELContext elContext, Object base) {
 		return Object.class;
 	}
@@ -175,8 +162,7 @@ public class WebApplicationContextFacesELResolver extends ELResolver {
 	 * @return the Spring web application context
 	 * @see org.springframework.web.jsf.FacesContextUtils#getWebApplicationContext
 	 */
-	@Nullable
-	protected WebApplicationContext getWebApplicationContext(ELContext elContext) {
+	protected @Nullable WebApplicationContext getWebApplicationContext(ELContext elContext) {
 		FacesContext facesContext = FacesContext.getCurrentInstance();
 		return FacesContextUtils.getRequiredWebApplicationContext(facesContext);
 	}

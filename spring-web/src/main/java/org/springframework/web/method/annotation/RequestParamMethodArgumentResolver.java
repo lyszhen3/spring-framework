@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,8 +20,11 @@ import java.beans.PropertyEditor;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.Part;
+import java.util.Optional;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -29,7 +32,6 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -50,8 +52,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 /**
  * Resolves method arguments annotated with @{@link RequestParam}, arguments of
  * type {@link MultipartFile} in conjunction with Spring's {@link MultipartResolver}
- * abstraction, and arguments of type {@code javax.servlet.http.Part} in conjunction
- * with Servlet 3.0 multipart requests. This resolver can also be created in default
+ * abstraction, and arguments of type {@code jakarta.servlet.http.Part} in conjunction
+ * with Servlet multipart requests. This resolver can also be created in default
  * resolution mode in which simple types (int, long, etc.) not annotated with
  * {@link RequestParam @RequestParam} are also treated as request parameters with
  * the parameter name derived from the argument name.
@@ -156,8 +158,7 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 	}
 
 	@Override
-	@Nullable
-	protected Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
+	protected @Nullable Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
 		HttpServletRequest servletRequest = request.getNativeRequest(HttpServletRequest.class);
 
 		if (servletRequest != null) {
@@ -177,6 +178,9 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 		}
 		if (arg == null) {
 			String[] paramValues = request.getParameterValues(name);
+			if (paramValues == null) {
+				paramValues = request.getParameterValues(name + "[]");
+			}
 			if (paramValues != null) {
 				arg = (paramValues.length == 1 ? paramValues[0] : paramValues);
 			}
@@ -186,6 +190,20 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 
 	@Override
 	protected void handleMissingValue(String name, MethodParameter parameter, NativeWebRequest request)
+			throws Exception {
+
+		handleMissingValueInternal(name, parameter, request, false);
+	}
+
+	@Override
+	protected void handleMissingValueAfterConversion(
+			String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
+
+		handleMissingValueInternal(name, parameter, request, true);
+	}
+
+	protected void handleMissingValueInternal(
+			String name, MethodParameter parameter, NativeWebRequest request, boolean missingAfterConversion)
 			throws Exception {
 
 		HttpServletRequest servletRequest = request.getNativeRequest(HttpServletRequest.class);
@@ -198,8 +216,7 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 			}
 		}
 		else {
-			throw new MissingServletRequestParameterException(name,
-					parameter.getNestedParameterType().getSimpleName());
+			throw new MissingServletRequestParameterException(name, parameter, missingAfterConversion);
 		}
 	}
 
@@ -213,9 +230,14 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 		}
 
 		RequestParam requestParam = parameter.getParameterAnnotation(RequestParam.class);
-		String name = (requestParam == null || StringUtils.isEmpty(requestParam.name()) ?
-				parameter.getParameterName() : requestParam.name());
+		String name = (requestParam != null && StringUtils.hasLength(requestParam.name()) ?
+				requestParam.name() : parameter.getParameterName());
 		Assert.state(name != null, "Unresolvable parameter name");
+
+		parameter = parameter.nestedIfOptional();
+		if (value instanceof Optional<?> optional) {
+			value = optional.orElse(null);
+		}
 
 		if (value == null) {
 			if (requestParam != null &&
@@ -224,8 +246,8 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 			}
 			builder.queryParam(name);
 		}
-		else if (value instanceof Collection) {
-			for (Object element : (Collection<?>) value) {
+		else if (value instanceof Collection<?> elements) {
+			for (Object element : elements) {
 				element = formatUriValue(conversionService, TypeDescriptor.nested(parameter, 1), element);
 				builder.queryParam(name, element);
 			}
@@ -235,15 +257,14 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 		}
 	}
 
-	@Nullable
-	protected String formatUriValue(
+	protected @Nullable String formatUriValue(
 			@Nullable ConversionService cs, @Nullable TypeDescriptor sourceType, @Nullable Object value) {
 
 		if (value == null) {
 			return null;
 		}
-		else if (value instanceof String) {
-			return (String) value;
+		else if (value instanceof String string) {
+			return string;
 		}
 		else if (cs != null) {
 			return (String) cs.convert(value, sourceType, STRING_TYPE_DESCRIPTOR);

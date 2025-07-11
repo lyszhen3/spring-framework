@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +20,9 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.transform.sax.SAXSource;
 
+import org.jspecify.annotations.Nullable;
 import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
-
-import org.springframework.lang.Nullable;
 
 /**
  * Implementation of the {@code Source} tagging interface for StAX readers. Can be constructed with
@@ -47,11 +46,9 @@ import org.springframework.lang.Nullable;
  */
 class StaxSource extends SAXSource {
 
-	@Nullable
-	private XMLEventReader eventReader;
+	private @Nullable XMLEventReader eventReader;
 
-	@Nullable
-	private XMLStreamReader streamReader;
+	private @Nullable XMLStreamReader streamReader;
 
 
 	/**
@@ -86,8 +83,7 @@ class StaxSource extends SAXSource {
 	 * @return the StAX event reader used by this source
 	 * @see StaxSource#StaxSource(javax.xml.stream.XMLEventReader)
 	 */
-	@Nullable
-	XMLEventReader getXMLEventReader() {
+	@Nullable XMLEventReader getXMLEventReader() {
 		return this.eventReader;
 	}
 
@@ -98,8 +94,7 @@ class StaxSource extends SAXSource {
 	 * @return the StAX event reader used by this source
 	 * @see StaxSource#StaxSource(javax.xml.stream.XMLEventReader)
 	 */
-	@Nullable
-	XMLStreamReader getXMLStreamReader() {
+	@Nullable XMLStreamReader getXMLStreamReader() {
 		return this.streamReader;
 	}
 

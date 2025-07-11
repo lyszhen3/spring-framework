@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,10 +18,11 @@ package org.springframework.web.servlet.tags;
 
 import java.beans.PropertyEditor;
 import java.io.IOException;
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.tagext.TagSupport;
 
-import org.springframework.lang.Nullable;
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.tagext.TagSupport;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.web.util.TagUtils;
 
 /**
@@ -87,12 +88,10 @@ import org.springframework.web.util.TagUtils;
 public class TransformTag extends HtmlEscapingAwareTag {
 
 	/** the value to transform using the appropriate property editor. */
-	@Nullable
-	private Object value;
+	private @Nullable Object value;
 
 	/** the variable to put the result in. */
-	@Nullable
-	private String var;
+	private @Nullable String var;
 
 	/** the scope of the variable the result will be put in. */
 	private String scope = TagUtils.SCOPE_PAGE;
@@ -113,7 +112,7 @@ public class TransformTag extends HtmlEscapingAwareTag {
 	 * Set PageContext attribute name under which to expose
 	 * a variable that contains the result of the transformation.
 	 * @see #setScope
-	 * @see javax.servlet.jsp.PageContext#setAttribute
+	 * @see jakarta.servlet.jsp.PageContext#setAttribute
 	 */
 	public void setVar(String var) {
 		this.var = var;
@@ -124,7 +123,7 @@ public class TransformTag extends HtmlEscapingAwareTag {
 	 * Default is SCOPE_PAGE ("page").
 	 * @see #setVar
 	 * @see org.springframework.web.util.TagUtils#SCOPE_PAGE
-	 * @see javax.servlet.jsp.PageContext#setAttribute
+	 * @see jakarta.servlet.jsp.PageContext#setAttribute
 	 */
 	public void setScope(String scope) {
 		this.scope = scope;
@@ -134,10 +133,10 @@ public class TransformTag extends HtmlEscapingAwareTag {
 	@Override
 	protected final int doStartTagInternal() throws JspException {
 		if (this.value != null) {
-			// Find the containing EditorAwareTag (e.g. BindTag), if applicable.
+			// Find the containing EditorAwareTag (for example, BindTag), if applicable.
 			EditorAwareTag tag = (EditorAwareTag) TagSupport.findAncestorWithClass(this, EditorAwareTag.class);
 			if (tag == null) {
-				throw new JspException("TransformTag can only be used within EditorAwareTag (e.g. BindTag)");
+				throw new JspException("TransformTag can only be used within EditorAwareTag (for example, BindTag)");
 			}
 
 			// OK, let's obtain the editor...

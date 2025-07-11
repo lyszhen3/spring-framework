@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +16,18 @@
 
 package org.springframework.web.reactive.result.method.annotation;
 
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ReactiveAdapter;
 import org.springframework.core.ReactiveAdapterRegistry;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.ValueConstants;
+import org.springframework.web.server.MissingRequestValueException;
 import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.ServerWebInputException;
 
 /**
  * Resolves method arguments annotated with an @{@link RequestAttribute}.
@@ -37,7 +37,6 @@ import org.springframework.web.server.ServerWebInputException;
  * @see SessionAttributeMethodArgumentResolver
  */
 public class RequestAttributeMethodArgumentResolver extends AbstractNamedValueSyncArgumentResolver {
-
 
 	/**
 	 * Create a new {@link RequestAttributeMethodArgumentResolver} instance.
@@ -67,7 +66,7 @@ public class RequestAttributeMethodArgumentResolver extends AbstractNamedValueSy
 	}
 
 	@Override
-	protected Object resolveNamedValue(String name, MethodParameter parameter, ServerWebExchange exchange) {
+	protected @Nullable Object resolveNamedValue(String name, MethodParameter parameter, ServerWebExchange exchange) {
 		Object value = exchange.getAttribute(name);
 		ReactiveAdapter toAdapter = getAdapterRegistry().getAdapter(parameter.getParameterType());
 		if (toAdapter != null) {
@@ -91,9 +90,8 @@ public class RequestAttributeMethodArgumentResolver extends AbstractNamedValueSy
 
 	@Override
 	protected void handleMissingValue(String name, MethodParameter parameter) {
-		String type = parameter.getNestedParameterType().getSimpleName();
-		String reason = "Missing request attribute '" + name + "' of type " + type;
-		throw new ServerWebInputException(reason, parameter);
+		throw new MissingRequestValueException(
+				name, parameter.getNestedParameterType(), "request attribute", parameter);
 	}
 
 }

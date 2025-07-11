@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,13 @@
 
 package org.springframework.util;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Helper class for resolving placeholders in texts. Usually applied to file paths.
  *
  * <p>A text may contain {@code ${...}} placeholders, to be resolved as system properties:
- * e.g. {@code ${user.dir}}. Default values can be supplied using the ":" separator
+ * for example, {@code ${user.dir}}. Default values can be supplied using the ":" separator
  * between key and value.
  *
  * @author Juergen Hoeller
@@ -35,21 +35,29 @@ import org.springframework.lang.Nullable;
  */
 public abstract class SystemPropertyUtils {
 
-	/** Prefix for system property placeholders: "${". */
+	/** Prefix for property placeholders: {@value}. */
 	public static final String PLACEHOLDER_PREFIX = "${";
 
-	/** Suffix for system property placeholders: "}". */
+	/** Suffix for property placeholders: {@value}. */
 	public static final String PLACEHOLDER_SUFFIX = "}";
 
-	/** Value separator for system property placeholders: ":". */
+	/** Value separator for property placeholders: {@value}. */
 	public static final String VALUE_SEPARATOR = ":";
+
+	/**
+	 * Escape character for property placeholders: {@code '\'}.
+	 * @since 6.2
+	 */
+	public static final Character ESCAPE_CHARACTER = '\\';
 
 
 	private static final PropertyPlaceholderHelper strictHelper =
-			new PropertyPlaceholderHelper(PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX, VALUE_SEPARATOR, false);
+			new PropertyPlaceholderHelper(PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX, VALUE_SEPARATOR,
+					ESCAPE_CHARACTER, false);
 
 	private static final PropertyPlaceholderHelper nonStrictHelper =
-			new PropertyPlaceholderHelper(PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX, VALUE_SEPARATOR, true);
+			new PropertyPlaceholderHelper(PLACEHOLDER_PREFIX, PLACEHOLDER_SUFFIX, VALUE_SEPARATOR,
+					ESCAPE_CHARACTER, true);
 
 
 	/**
@@ -78,6 +86,9 @@ public abstract class SystemPropertyUtils {
 	 * and the "ignoreUnresolvablePlaceholders" flag is {@code false}
 	 */
 	public static String resolvePlaceholders(String text, boolean ignoreUnresolvablePlaceholders) {
+		if (text.isEmpty()) {
+			return text;
+		}
 		PropertyPlaceholderHelper helper = (ignoreUnresolvablePlaceholders ? nonStrictHelper : strictHelper);
 		return helper.replacePlaceholders(text, new SystemPropertyPlaceholderResolver(text));
 	}
@@ -96,8 +107,7 @@ public abstract class SystemPropertyUtils {
 		}
 
 		@Override
-		@Nullable
-		public String resolvePlaceholder(String placeholderName) {
+		public @Nullable String resolvePlaceholder(String placeholderName) {
 			try {
 				String propVal = System.getProperty(placeholderName);
 				if (propVal == null) {

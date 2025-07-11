@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,8 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.ReflectionUtils;
 
 /**
@@ -35,8 +36,9 @@ import org.springframework.util.ReflectionUtils;
  * (package {@code org.jboss.vfs}) and is in particular compatible with
  * JBoss AS 7 and WildFly 8+.
  *
- * <p>Thanks go to Marius Bogoevici for the initial patch.
- * <b>Note:</b> This is an internal class and should not be used outside the framework.
+ * <p>Thanks go to Marius Bogoevici for the initial implementation.
+ *
+ * <p><b>Note:</b> This is an internal class and should not be used outside the framework.
  *
  * @author Costin Leau
  * @author Juergen Hoeller
@@ -102,8 +104,8 @@ public abstract class VfsUtils {
 		}
 		catch (InvocationTargetException ex) {
 			Throwable targetEx = ex.getTargetException();
-			if (targetEx instanceof IOException) {
-				throw (IOException) targetEx;
+			if (targetEx instanceof IOException ioException) {
+				throw ioException;
 			}
 			ReflectionUtils.handleInvocationTargetException(ex);
 		}
@@ -183,13 +185,11 @@ public abstract class VfsUtils {
 		return invokeVfsMethod(VFS_METHOD_GET_ROOT_URL, null, url);
 	}
 
-	@Nullable
-	protected static Object doGetVisitorAttributes() {
+	protected static @Nullable Object doGetVisitorAttributes() {
 		return ReflectionUtils.getField(VISITOR_ATTRIBUTES_FIELD_RECURSE, null);
 	}
 
-	@Nullable
-	protected static String doGetPath(Object resource) {
+	protected static @Nullable String doGetPath(Object resource) {
 		return (String) ReflectionUtils.invokeMethod(VIRTUAL_FILE_METHOD_GET_PATH_NAME, resource);
 	}
 

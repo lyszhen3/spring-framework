@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,8 @@ package org.springframework.transaction.interceptor;
 
 import java.util.Properties;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.aop.Pointcut;
 import org.springframework.aop.framework.AbstractSingletonProxyFactoryBean;
 import org.springframework.aop.framework.ProxyFactory;
@@ -26,7 +28,6 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.ListableBeanFactory;
-import org.springframework.lang.Nullable;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
@@ -39,10 +40,10 @@ import org.springframework.transaction.PlatformTransactionManager;
  * typical case of declarative transaction demarcation: namely, wrapping a singleton
  * target object with a transactional proxy, proxying all the interfaces that the target
  * implements. However, in Spring versions 2.0 and beyond, the functionality provided here
- * is superseded by the more convenient {@code tx:} XML namespace. See the <a
- * href="http://bit.ly/qUwvwz">declarative transaction management</a> section of the
- * Spring reference documentation to understand the modern options for managing
- * transactions in Spring applications. For these reasons, <strong>users should favor of
+ * is superseded by the more convenient {@code tx:} XML namespace. See the
+ * <a href="https://docs.spring.io/spring/docs/current/spring-framework-reference/data-access.html#transaction-declarative">declarative transaction management</a>
+ * section of the Spring reference documentation to understand modern options for managing
+ * transactions in Spring applications. For these reasons, <strong>users should favor
  * the {@code tx:} XML namespace as well as
  * the @{@link org.springframework.transaction.annotation.Transactional Transactional}
  * and @{@link org.springframework.transaction.annotation.EnableTransactionManagement
@@ -79,7 +80,7 @@ import org.springframework.transaction.PlatformTransactionManager;
  * deriving concrete child bean definitions for specific target objects.
  * This reduces the per-bean definition effort to a minimum.
  *
- * <pre code="class">
+ * <pre class="code">
  * &lt;bean id="baseTransactionProxy" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
  *     abstract="true"&gt;
  *   &lt;property name="transactionManager" ref="transactionManager"/&gt;
@@ -117,8 +118,7 @@ public class TransactionProxyFactoryBean extends AbstractSingletonProxyFactoryBe
 
 	private final TransactionInterceptor transactionInterceptor = new TransactionInterceptor();
 
-	@Nullable
-	private Pointcut pointcut;
+	private @Nullable Pointcut pointcut;
 
 
 	/**
@@ -133,7 +133,7 @@ public class TransactionProxyFactoryBean extends AbstractSingletonProxyFactoryBe
 	/**
 	 * Set properties with method names as keys and transaction attribute
 	 * descriptors (parsed via TransactionAttributeEditor) as values:
-	 * e.g. key = "myMethod", value = "PROPAGATION_REQUIRED,readOnly".
+	 * for example, key = "myMethod", value = "PROPAGATION_REQUIRED,readOnly".
 	 * <p>Note: Method names are always applied to the target class,
 	 * no matter if defined in an interface or the class itself.
 	 * <p>Internally, a NameMatchTransactionAttributeSource will be

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,10 +18,12 @@ package org.springframework.util.xml;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 import javax.xml.namespace.QName;
 import javax.xml.stream.Location;
 import javax.xml.stream.XMLStreamException;
 
+import org.jspecify.annotations.Nullable;
 import org.xml.sax.InputSource;
 import org.xml.sax.Locator;
 import org.xml.sax.SAXException;
@@ -29,7 +31,6 @@ import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.SAXParseException;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -56,31 +57,26 @@ abstract class AbstractStaxXMLReader extends AbstractXMLReader {
 
 	private boolean namespacePrefixesFeature = false;
 
-	@Nullable
-	private Boolean isStandalone;
+	private @Nullable Boolean isStandalone;
 
 	private final Map<String, String> namespaces = new LinkedHashMap<>();
 
 
 	@Override
 	public boolean getFeature(String name) throws SAXNotRecognizedException, SAXNotSupportedException {
-		if (NAMESPACES_FEATURE_NAME.equals(name)) {
-			return this.namespacesFeature;
-		}
-		else if (NAMESPACE_PREFIXES_FEATURE_NAME.equals(name)) {
-			return this.namespacePrefixesFeature;
-		}
-		else if (IS_STANDALONE_FEATURE_NAME.equals(name)) {
-			if (this.isStandalone != null) {
-				return this.isStandalone;
+		return switch (name) {
+			case NAMESPACES_FEATURE_NAME -> this.namespacesFeature;
+			case NAMESPACE_PREFIXES_FEATURE_NAME -> this.namespacePrefixesFeature;
+			case IS_STANDALONE_FEATURE_NAME -> {
+				if (this.isStandalone != null) {
+					yield this.isStandalone;
+				}
+				else {
+					throw new SAXNotSupportedException("startDocument() callback not completed yet");
+				}
 			}
-			else {
-				throw new SAXNotSupportedException("startDocument() callback not completed yet");
-			}
-		}
-		else {
-			return super.getFeature(name);
-		}
+			default -> super.getFeature(name);
+		};
 	}
 
 	@Override

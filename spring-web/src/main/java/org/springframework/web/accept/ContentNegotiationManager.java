@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,13 +20,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.MediaType;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.context.request.NativeWebRequest;
 
@@ -70,8 +75,8 @@ public class ContentNegotiationManager implements ContentNegotiationStrategy, Me
 		Assert.notEmpty(strategies, "At least one ContentNegotiationStrategy is expected");
 		this.strategies.addAll(strategies);
 		for (ContentNegotiationStrategy strategy : this.strategies) {
-			if (strategy instanceof MediaTypeFileExtensionResolver) {
-				this.resolvers.add((MediaTypeFileExtensionResolver) strategy);
+			if (strategy instanceof MediaTypeFileExtensionResolver mediaTypeFileExtensionResolver) {
+				this.resolvers.add(mediaTypeFileExtensionResolver);
 			}
 		}
 	}
@@ -99,8 +104,7 @@ public class ContentNegotiationManager implements ContentNegotiationStrategy, Me
 	 * @since 4.3
 	 */
 	@SuppressWarnings("unchecked")
-	@Nullable
-	public <T extends ContentNegotiationStrategy> T getStrategy(Class<T> strategyType) {
+	public <T extends ContentNegotiationStrategy> @Nullable T getStrategy(Class<T> strategyType) {
 		for (ContentNegotiationStrategy strategy : getStrategies()) {
 			if (strategyType.isInstance(strategy)) {
 				return (T) strategy;
@@ -132,31 +136,49 @@ public class ContentNegotiationManager implements ContentNegotiationStrategy, Me
 
 	@Override
 	public List<String> resolveFileExtensions(MediaType mediaType) {
-		Set<String> result = new LinkedHashSet<>();
+		return doResolveExtensions(resolver -> resolver.resolveFileExtensions(mediaType));
+	}
+
+	@Override
+	public List<String> getAllFileExtensions() {
+		return doResolveExtensions(MediaTypeFileExtensionResolver::getAllFileExtensions);
+	}
+
+	private List<String> doResolveExtensions(Function<MediaTypeFileExtensionResolver, List<String>> extractor) {
+		List<String> result = null;
 		for (MediaTypeFileExtensionResolver resolver : this.resolvers) {
-			result.addAll(resolver.resolveFileExtensions(mediaType));
+			List<String> extensions = extractor.apply(resolver);
+			if (CollectionUtils.isEmpty(extensions)) {
+				continue;
+			}
+			result = (result != null ? result : new ArrayList<>(4));
+			for (String extension : extensions) {
+				if (!result.contains(extension)) {
+					result.add(extension);
+				}
+			}
 		}
-		return new ArrayList<>(result);
+		return (result != null ? result : Collections.emptyList());
 	}
 
 	/**
-	 * {@inheritDoc}
-	 * <p>At startup this method returns extensions explicitly registered with
-	 * either {@link PathExtensionContentNegotiationStrategy} or
-	 * {@link ParameterContentNegotiationStrategy}. At runtime if there is a
-	 * "path extension" strategy and its
-	 * {@link PathExtensionContentNegotiationStrategy#setUseRegisteredExtensionsOnly(boolean)
-	 * useRegisteredExtensionsOnly} property is set to "false", the list of extensions may
-	 * increase as file extensions are resolved via
-	 * {@link org.springframework.http.MediaTypeFactory} and cached.
+	 * Return all registered lookup key to media type mappings by iterating
+	 * {@link MediaTypeFileExtensionResolver}s.
+	 * @since 5.2.4
 	 */
-	@Override
-	public List<String> getAllFileExtensions() {
-		Set<String> result = new LinkedHashSet<>();
+	public Map<String, MediaType> getMediaTypeMappings() {
+		Map<String, MediaType> result = null;
 		for (MediaTypeFileExtensionResolver resolver : this.resolvers) {
-			result.addAll(resolver.getAllFileExtensions());
+			if (resolver instanceof MappingMediaTypeFileExtensionResolver mappingResolver) {
+				Map<String, MediaType> map = mappingResolver.getMediaTypes();
+				if (CollectionUtils.isEmpty(map)) {
+					continue;
+				}
+				result = (result != null ? result : new HashMap<>(4));
+				result.putAll(map);
+			}
 		}
-		return new ArrayList<>(result);
+		return (result != null ? result : Collections.emptyMap());
 	}
 
 }

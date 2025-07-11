@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,17 +17,18 @@
 package org.springframework.web.servlet.tags;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.JspTagException;
+
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.JspTagException;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.NoSuchMessageException;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.JavaScriptUtils;
@@ -92,7 +93,7 @@ import org.springframework.web.util.TagUtils;
  * <td>false</td>
  * <td>true</td>
  * <td>Set JavaScript escaping for this tag, as boolean value.
- * Default is false.</td>
+ * Default is {@code false}.</td>
  * </tr>
  * <tr>
  * <td>message</td>
@@ -152,24 +153,19 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 	public static final String DEFAULT_ARGUMENT_SEPARATOR = ",";
 
 
-	@Nullable
-	private MessageSourceResolvable message;
+	private @Nullable MessageSourceResolvable message;
 
-	@Nullable
-	private String code;
+	private @Nullable String code;
 
-	@Nullable
-	private Object arguments;
+	private @Nullable Object arguments;
 
 	private String argumentSeparator = DEFAULT_ARGUMENT_SEPARATOR;
 
 	private List<Object> nestedArguments = Collections.emptyList();
 
-	@Nullable
-	private String text;
+	private @Nullable String text;
 
-	@Nullable
-	private String var;
+	private @Nullable String var;
 
 	private String scope = TagUtils.SCOPE_PAGE;
 
@@ -226,7 +222,7 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 	 * Set PageContext attribute name under which to expose
 	 * a variable that contains the resolved message.
 	 * @see #setScope
-	 * @see javax.servlet.jsp.PageContext#setAttribute
+	 * @see jakarta.servlet.jsp.PageContext#setAttribute
 	 */
 	public void setVar(String var) {
 		this.var = var;
@@ -237,7 +233,7 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 	 * Default is SCOPE_PAGE ("page").
 	 * @see #setVar
 	 * @see org.springframework.web.util.TagUtils#SCOPE_PAGE
-	 * @see javax.servlet.jsp.PageContext#setAttribute
+	 * @see jakarta.servlet.jsp.PageContext#setAttribute
 	 */
 	public void setScope(String scope) {
 		this.scope = scope;
@@ -254,7 +250,7 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 
 	@Override
 	protected final int doStartTagInternal() throws JspException, IOException {
-		this.nestedArguments = new LinkedList<>();
+		this.nestedArguments = new ArrayList<>();
 		return EVAL_BODY_INCLUDE;
 	}
 
@@ -305,6 +301,7 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 	 * Resolve the specified message into a concrete message String.
 	 * The returned message String should be unescaped.
 	 */
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected String resolveMessage() throws JspException, NoSuchMessageException {
 		MessageSource messageSource = getMessageSource();
 
@@ -337,7 +334,7 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 		throw new JspTagException("No resolvable message");
 	}
 
-	private Object[] appendArguments(@Nullable Object[] sourceArguments, Object[] additionalArguments) {
+	private Object[] appendArguments(Object @Nullable [] sourceArguments, Object[] additionalArguments) {
 		if (ObjectUtils.isEmpty(sourceArguments)) {
 			return additionalArguments;
 		}
@@ -354,29 +351,15 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 	 * @throws JspException if argument conversion failed
 	 * @see #setArguments
 	 */
-	@Nullable
-	protected Object[] resolveArguments(@Nullable Object arguments) throws JspException {
-		if (arguments instanceof String) {
-			String[] stringArray =
-					StringUtils.delimitedListToStringArray((String) arguments, this.argumentSeparator);
-			if (stringArray.length == 1) {
-				Object argument = stringArray[0];
-				if (argument != null && argument.getClass().isArray()) {
-					return ObjectUtils.toObjectArray(argument);
-				}
-				else {
-					return new Object[] {argument};
-				}
-			}
-			else {
-				return stringArray;
-			}
+	protected Object @Nullable [] resolveArguments(@Nullable Object arguments) throws JspException {
+		if (arguments instanceof String string) {
+			return StringUtils.delimitedListToStringArray(string, this.argumentSeparator);
 		}
-		else if (arguments instanceof Object[]) {
-			return (Object[]) arguments;
+		else if (arguments instanceof Object[] array) {
+			return array;
 		}
-		else if (arguments instanceof Collection) {
-			return ((Collection<?>) arguments).toArray();
+		else if (arguments instanceof Collection<?> collection) {
+			return collection.toArray();
 		}
 		else if (arguments != null) {
 			// Assume a single argument object.
@@ -389,12 +372,12 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 
 	/**
 	 * Write the message to the page.
-	 * <p>Can be overridden in subclasses, e.g. for testing purposes.
+	 * <p>Can be overridden in subclasses, for example, for testing purposes.
 	 * @param msg the message to write
 	 * @throws IOException if writing failed
 	 */
 	protected void writeMessage(String msg) throws IOException {
-		this.pageContext.getOut().write(String.valueOf(msg));
+		this.pageContext.getOut().write(msg);
 	}
 
 	/**
@@ -407,7 +390,7 @@ public class MessageTag extends HtmlEscapingAwareTag implements ArgumentAware {
 	/**
 	 * Return default exception message.
 	 */
-	protected String getNoSuchMessageExceptionDescription(NoSuchMessageException ex) {
+	protected @Nullable String getNoSuchMessageExceptionDescription(NoSuchMessageException ex) {
 		return ex.getMessage();
 	}
 

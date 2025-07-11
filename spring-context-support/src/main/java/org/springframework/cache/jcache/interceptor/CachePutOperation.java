@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,13 +18,15 @@ package org.springframework.cache.jcache.interceptor;
 
 import java.lang.reflect.Method;
 import java.util.List;
+
 import javax.cache.annotation.CacheInvocationParameter;
 import javax.cache.annotation.CacheMethodDetails;
 import javax.cache.annotation.CachePut;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.cache.interceptor.CacheResolver;
 import org.springframework.cache.interceptor.KeyGenerator;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ExceptionTypeFilter;
 
 /**
@@ -80,7 +82,7 @@ class CachePutOperation extends AbstractJCacheKeyOperation<CachePut> {
 	 * @param values the parameters value for a particular invocation
 	 * @return the {@link CacheInvocationParameter} instance for the value parameter
 	 */
-	public CacheInvocationParameter getValueParameter(Object... values) {
+	public CacheInvocationParameter getValueParameter(@Nullable Object... values) {
 		int parameterPosition = this.valueParameterDetail.getParameterPosition();
 		if (parameterPosition >= values.length) {
 			throw new IllegalStateException("Values mismatch, value parameter at position " +
@@ -90,8 +92,7 @@ class CachePutOperation extends AbstractJCacheKeyOperation<CachePut> {
 	}
 
 
-	@Nullable
-	private static CacheParameterDetail initializeValueParameterDetail(
+	private static @Nullable CacheParameterDetail initializeValueParameterDetail(
 			Method method, List<CacheParameterDetail> allParameters) {
 
 		CacheParameterDetail result = null;
@@ -101,7 +102,7 @@ class CachePutOperation extends AbstractJCacheKeyOperation<CachePut> {
 					result = parameter;
 				}
 				else {
-					throw new IllegalArgumentException("More than one @CacheValue found on " + method + "");
+					throw new IllegalArgumentException("More than one @CacheValue found on " + method);
 				}
 			}
 		}

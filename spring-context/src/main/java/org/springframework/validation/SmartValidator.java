@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,7 @@
 
 package org.springframework.validation;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Extended variant of the {@link Validator} interface, adding support for
@@ -42,7 +42,7 @@ public interface SmartValidator extends Validator {
 	 * @param target the object that is to be validated
 	 * @param errors contextual state about the validation process
 	 * @param validationHints one or more hint objects to be passed to the validation engine
-	 * @see javax.validation.Validator#validate(Object, Class[])
+	 * @see jakarta.validation.Validator#validate(Object, Class[])
 	 */
 	void validate(Object target, Errors errors, Object... validationHints);
 
@@ -56,12 +56,26 @@ public interface SmartValidator extends Validator {
 	 * @param errors contextual state about the validation process
 	 * @param validationHints one or more hint objects to be passed to the validation engine
 	 * @since 5.1
-	 * @see javax.validation.Validator#validateValue(Class, String, Object, Class[])
+	 * @see jakarta.validation.Validator#validateValue(Class, String, Object, Class[])
 	 */
 	default void validateValue(
-			Class<?> targetType, String fieldName, @Nullable Object value, Errors errors, Object... validationHints) {
+			Class<?> targetType, @Nullable String fieldName, @Nullable Object value, Errors errors, Object... validationHints) {
 
 		throw new IllegalArgumentException("Cannot validate individual value for " + targetType);
+	}
+
+	/**
+	 * Return a contained validator instance of the specified type, unwrapping
+	 * as far as necessary.
+	 * @param type the class of the object to return
+	 * @param <T> the type of the object to return
+	 * @return a validator instance of the specified type; {@code null} if there
+	 * isn't a nested validator; an exception may be raised if the specified
+	 * validator type does not match.
+	 * @since 6.1
+	 */
+	default <T> @Nullable T unwrap(@Nullable Class<T> type) {
+		return null;
 	}
 
 }

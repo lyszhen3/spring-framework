@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,15 +17,14 @@
 package org.springframework.messaging.simp.stomp;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.SimpLogging;
 import org.springframework.messaging.support.MessageBuilder;
@@ -33,6 +32,7 @@ import org.springframework.messaging.support.MessageHeaderInitializer;
 import org.springframework.messaging.support.NativeMessageHeaderAccessor;
 import org.springframework.util.InvalidMimeTypeException;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StreamUtils;
 
 /**
  * Decodes one or more STOMP frames contained in a {@link ByteBuffer}.
@@ -53,8 +53,7 @@ public class StompDecoder {
 
 	private static final Log logger = SimpLogging.forLogName(StompDecoder.class);
 
-	@Nullable
-	private MessageHeaderInitializer headerInitializer;
+	private @Nullable MessageHeaderInitializer headerInitializer;
 
 
 	/**
@@ -68,8 +67,7 @@ public class StompDecoder {
 	/**
 	 * Return the configured {@code MessageHeaderInitializer}, if any.
 	 */
-	@Nullable
-	public MessageHeaderInitializer getHeaderInitializer() {
+	public @Nullable MessageHeaderInitializer getHeaderInitializer() {
 		return this.headerInitializer;
 	}
 
@@ -78,10 +76,10 @@ public class StompDecoder {
 	 * Decodes one or more STOMP frames from the given {@code ByteBuffer} into a
 	 * list of {@link Message Messages}. If the input buffer contains partial STOMP frame
 	 * content, or additional content with a partial STOMP frame, the buffer is
-	 * reset and {@code null} is returned.
+	 * reset, and an empty list is returned.
 	 * @param byteBuffer the buffer to decode the STOMP frame from
 	 * @return the decoded messages, or an empty list if none
-	 * @throws StompConversionException raised in case of decoding issues
+	 * @throws StompConversionException in case of decoding issues
 	 */
 	public List<Message<byte[]>> decode(ByteBuffer byteBuffer) {
 		return decode(byteBuffer, null);
@@ -91,20 +89,20 @@ public class StompDecoder {
 	 * Decodes one or more STOMP frames from the given {@code buffer} and returns
 	 * a list of {@link Message Messages}.
 	 * <p>If the given ByteBuffer contains only partial STOMP frame content and no
-	 * complete STOMP frames, an empty list is returned, and the buffer is reset to
+	 * complete STOMP frames, an empty list is returned, and the buffer is reset
 	 * to where it was.
-	 * <p>If the buffer contains one ore more STOMP frames, those are returned and
-	 * the buffer reset to point to the beginning of the unused partial content.
-	 * <p>The output partialMessageHeaders map is used to store successfully parsed
+	 * <p>If the buffer contains one or more STOMP frames, those are returned, and
+	 * the buffer is reset to point to the beginning of the unused partial content.
+	 * <p>The {@code partialMessageHeaders} map is used to store successfully parsed
 	 * headers in case of partial content. The caller can then check if a
 	 * "content-length" header was read, which helps to determine how much more
 	 * content is needed before the next attempt to decode.
 	 * @param byteBuffer the buffer to decode the STOMP frame from
 	 * @param partialMessageHeaders an empty output map that will store the last
-	 * successfully parsed partialMessageHeaders in case of partial message content
+	 * successfully parsed partial message headers in case of partial message content
 	 * in cases where the partial buffer ended with a partial STOMP frame
 	 * @return the decoded messages, or an empty list if none
-	 * @throws StompConversionException raised in case of decoding issues
+	 * @throws StompConversionException in case of decoding issues
 	 */
 	public List<Message<byte[]>> decode(ByteBuffer byteBuffer,
 			@Nullable MultiValueMap<String, String> partialMessageHeaders) {
@@ -114,6 +112,10 @@ public class StompDecoder {
 			Message<byte[]> message = decodeMessage(byteBuffer, partialMessageHeaders);
 			if (message != null) {
 				messages.add(message);
+				skipEol(byteBuffer);
+				if (!byteBuffer.hasRemaining()) {
+					break;
+				}
 			}
 			else {
 				break;
@@ -123,17 +125,13 @@ public class StompDecoder {
 	}
 
 	/**
-	 * Decode a single STOMP frame from the given {@code buffer} into a {@link Message}.
+	 * Decode a single STOMP frame from the given {@code byteBuffer} into a {@link Message}.
 	 */
-	@Nullable
-	private Message<byte[]> decodeMessage(ByteBuffer byteBuffer, @Nullable MultiValueMap<String, String> headers) {
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
+	private @Nullable Message<byte[]> decodeMessage(ByteBuffer byteBuffer, @Nullable MultiValueMap<String, String> headers) {
 		Message<byte[]> decodedMessage = null;
-		skipLeadingEol(byteBuffer);
-
-		// Explicit mark/reset access via Buffer base type for compatibility
-		// with covariant return type on JDK 9's ByteBuffer...
-		Buffer buffer = byteBuffer;
-		buffer.mark();
+		skipEol(byteBuffer);
+		byteBuffer.mark();
 
 		String command = readCommand(byteBuffer);
 		if (command.length() > 0) {
@@ -143,7 +141,7 @@ public class StompDecoder {
 				StompCommand stompCommand = StompCommand.valueOf(command);
 				headerAccessor = StompHeaderAccessor.create(stompCommand);
 				initHeaders(headerAccessor);
-				readHeaders(byteBuffer, headerAccessor);
+				readHeaders(byteBuffer, headerAccessor, stompCommand);
 				payload = readPayload(byteBuffer, headerAccessor);
 			}
 			if (payload != null) {
@@ -171,7 +169,7 @@ public class StompDecoder {
 						headers.putAll(map);
 					}
 				}
-				buffer.reset();
+				byteBuffer.reset();
 			}
 		}
 		else {
@@ -196,9 +194,10 @@ public class StompDecoder {
 
 	/**
 	 * Skip one ore more EOL characters at the start of the given ByteBuffer.
-	 * Those are STOMP heartbeat frames.
+	 * STOMP, section 2.1 says: "The NULL octet can be optionally followed by
+	 * multiple EOLs."
 	 */
-	protected void skipLeadingEol(ByteBuffer byteBuffer) {
+	protected void skipEol(ByteBuffer byteBuffer) {
 		while (true) {
 			if (!tryConsumeEndOfLine(byteBuffer)) {
 				break;
@@ -211,10 +210,15 @@ public class StompDecoder {
 		while (byteBuffer.remaining() > 0 && !tryConsumeEndOfLine(byteBuffer)) {
 			command.write(byteBuffer.get());
 		}
-		return new String(command.toByteArray(), StandardCharsets.UTF_8);
+		return StreamUtils.copyToString(command, StandardCharsets.UTF_8);
 	}
 
-	private void readHeaders(ByteBuffer byteBuffer, StompHeaderAccessor headerAccessor) {
+	private void readHeaders(ByteBuffer byteBuffer, StompHeaderAccessor headerAccessor, StompCommand command) {
+
+		boolean shouldUnescape = (command != StompCommand.CONNECT &&
+				command != StompCommand.CONNECTED &&
+				command != StompCommand.STOMP);
+
 		while (true) {
 			ByteArrayOutputStream headerStream = new ByteArrayOutputStream(256);
 			boolean headerComplete = false;
@@ -226,7 +230,7 @@ public class StompDecoder {
 				headerStream.write(byteBuffer.get());
 			}
 			if (headerStream.size() > 0 && headerComplete) {
-				String header = new String(headerStream.toByteArray(), StandardCharsets.UTF_8);
+				String header = StreamUtils.copyToString(headerStream, StandardCharsets.UTF_8);
 				int colonIndex = header.indexOf(':');
 				if (colonIndex <= 0) {
 					if (byteBuffer.remaining() > 0) {
@@ -235,8 +239,8 @@ public class StompDecoder {
 					}
 				}
 				else {
-					String headerName = unescape(header.substring(0, colonIndex));
-					String headerValue = unescape(header.substring(colonIndex + 1));
+					String headerName = shouldUnescape ? unescape(header.substring(0, colonIndex)) : header.substring(0, colonIndex);
+					String headerValue = shouldUnescape ? unescape(header.substring(colonIndex + 1)) : header.substring(colonIndex + 1);
 					try {
 						headerAccessor.addNativeHeader(headerName, headerValue);
 					}
@@ -255,19 +259,22 @@ public class StompDecoder {
 
 	/**
 	 * See STOMP Spec 1.2:
-	 * <a href="http://stomp.github.io/stomp-specification-1.2.html#Value_Encoding">"Value Encoding"</a>.
+	 * <a href="https://stomp.github.io/stomp-specification-1.2.html#Value_Encoding">"Value Encoding"</a>.
 	 */
 	private String unescape(String inString) {
+		int index = inString.indexOf('\\');
+		if (index == -1) {
+			return inString;
+		}
 		StringBuilder sb = new StringBuilder(inString.length());
 		int pos = 0;  // position in the old string
-		int index = inString.indexOf('\\');
 
 		while (index >= 0) {
-			sb.append(inString.substring(pos, index));
+			sb.append(inString, pos, index);
 			if (index + 1 >= inString.length()) {
 				throw new StompConversionException("Illegal escape sequence at index " + index + ": " + inString);
 			}
-			Character c = inString.charAt(index + 1);
+			char c = inString.charAt(index + 1);
 			if (c == 'r') {
 				sb.append('\r');
 			}
@@ -292,8 +299,7 @@ public class StompDecoder {
 		return sb.toString();
 	}
 
-	@Nullable
-	private byte[] readPayload(ByteBuffer byteBuffer, StompHeaderAccessor headerAccessor) {
+	private byte @Nullable [] readPayload(ByteBuffer byteBuffer, StompHeaderAccessor headerAccessor) {
 		Integer contentLength;
 		try {
 			contentLength = headerAccessor.getContentLength();
@@ -351,8 +357,7 @@ public class StompDecoder {
 					throw new StompConversionException("'\\r' must be followed by '\\n'");
 				}
 			}
-			// Explicit cast for compatibility with covariant return type on JDK 9's ByteBuffer
-			((Buffer) byteBuffer).position(byteBuffer.position() - 1);
+			byteBuffer.position(byteBuffer.position() - 1);
 		}
 		return false;
 	}

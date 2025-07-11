@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,11 +23,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Variant of JSR-303's {@link javax.validation.Valid}, supporting the
+ * Variant of JSR-303's {@link jakarta.validation.Valid}, supporting the
  * specification of validation groups. Designed for convenient use with
  * Spring's JSR-303 support but not JSR-303 specific.
  *
- * <p>Can be used e.g. with Spring MVC handler methods arguments.
+ * <p>Can be used, for example, with Spring MVC handler methods arguments.
  * Supported through {@link org.springframework.validation.SmartValidator}'s
  * validation hint concept, with validation group classes acting as hint objects.
  *
@@ -43,7 +43,7 @@ import java.lang.annotation.Target;
  *
  * @author Juergen Hoeller
  * @since 3.1
- * @see javax.validation.Validator#validate(Object, Class[])
+ * @see jakarta.validation.Validator#validate(Object, Class[])
  * @see org.springframework.validation.SmartValidator#validate(Object, org.springframework.validation.Errors, Object...)
  * @see org.springframework.validation.beanvalidation.SpringValidatorAdapter
  * @see org.springframework.validation.beanvalidation.MethodValidationPostProcessor

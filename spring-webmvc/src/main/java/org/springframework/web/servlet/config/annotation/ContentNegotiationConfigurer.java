@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,71 +20,61 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.ServletContext;
+
+import jakarta.servlet.ServletContext;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
-import org.springframework.lang.Nullable;
 import org.springframework.web.accept.ContentNegotiationManager;
 import org.springframework.web.accept.ContentNegotiationManagerFactoryBean;
 import org.springframework.web.accept.ContentNegotiationStrategy;
 import org.springframework.web.accept.FixedContentNegotiationStrategy;
 import org.springframework.web.accept.HeaderContentNegotiationStrategy;
 import org.springframework.web.accept.ParameterContentNegotiationStrategy;
-import org.springframework.web.accept.PathExtensionContentNegotiationStrategy;
 
 /**
  * Creates a {@code ContentNegotiationManager} and configures it with
  * one or more {@link ContentNegotiationStrategy} instances.
  *
- * <p>As of 5.0 you can set the exact strategies to use via
- * {@link #strategies(List)}.
- *
- * <p>As an alternative you can also rely on the set of defaults described below
- * which can be turned on or off or customized through the methods of this
- * builder:
+ * <p>This factory offers properties that in turn result in configuring the
+ * underlying strategies. The table below shows the property names, their
+ * default settings, as well as the strategies that they help to configure:
  *
  * <table>
  * <tr>
- * <th>Configurer Property</th>
+ * <th>Property Setter</th>
+ * <th>Default Value</th>
  * <th>Underlying Strategy</th>
- * <th>Default Setting</th>
- * </tr>
- * <tr>
- * <td>{@link #favorPathExtension}</td>
- * <td>{@link PathExtensionContentNegotiationStrategy Path Extension strategy}</td>
- * <td>On</td>
+ * <th>Enabled Or Not</th>
  * </tr>
  * <tr>
  * <td>{@link #favorParameter}</td>
- * <td>{@link ParameterContentNegotiationStrategy Parameter strategy}</td>
+ * <td>false</td>
+ * <td>{@link ParameterContentNegotiationStrategy}</td>
  * <td>Off</td>
  * </tr>
  * <tr>
  * <td>{@link #ignoreAcceptHeader}</td>
- * <td>{@link HeaderContentNegotiationStrategy Header strategy}</td>
- * <td>On</td>
+ * <td>false</td>
+ * <td>{@link HeaderContentNegotiationStrategy}</td>
+ * <td>Enabled</td>
  * </tr>
  * <tr>
  * <td>{@link #defaultContentType}</td>
- * <td>{@link FixedContentNegotiationStrategy Fixed content strategy}</td>
- * <td>Not set</td>
+ * <td>null</td>
+ * <td>{@link FixedContentNegotiationStrategy}</td>
+ * <td>Off</td>
  * </tr>
  * <tr>
  * <td>{@link #defaultContentTypeStrategy}</td>
+ * <td>null</td>
  * <td>{@link ContentNegotiationStrategy}</td>
- * <td>Not set</td>
+ * <td>Off</td>
  * </tr>
  * </table>
  *
- * <p>The order in which strategies are configured is fixed. You can only turn
- * them on or off.
- *
- * <strong>Note:</strong> if you must use URL-based content type resolution,
- * the use of a query parameter is simpler and preferable to the use of a path
- * extension since the latter can cause issues with URI variables, path
- * parameters, and URI decoding. Consider setting {@link #favorPathExtension}
- * to {@literal false} or otherwise set the strategies to use explicitly via
+ * <p>As of 5.0 you can set the exact strategies to use via
  * {@link #strategies(List)}.
  *
  * @author Rossen Stoyanchev
@@ -95,16 +85,6 @@ public class ContentNegotiationConfigurer {
 	private final ContentNegotiationManagerFactoryBean factory = new ContentNegotiationManagerFactoryBean();
 
 	private final Map<String, MediaType> mediaTypes = new HashMap<>();
-
-
-	/**
-	 * Class constructor with {@link javax.servlet.ServletContext}.
-	 */
-	public ContentNegotiationConfigurer(@Nullable ServletContext servletContext) {
-		if (servletContext != null) {
-			this.factory.setServletContext(servletContext);
-		}
-	}
 
 
 	/**
@@ -120,14 +100,23 @@ public class ContentNegotiationConfigurer {
 	}
 
 	/**
-	 * Whether the path extension in the URL path should be used to determine
-	 * the requested media type.
-	 * <p>By default this is set to {@code true} in which case a request
-	 * for {@code /hotels.pdf} will be interpreted as a request for
-	 * {@code "application/pdf"} regardless of the 'Accept' header.
+	 * Whether a request parameter ("format" by default) should be used to
+	 * determine the requested media type. For this option to work you must
+	 * register {@link #mediaType(String, MediaType) media type mappings}.
+	 * <p>By default this is set to {@code false}.
+	 * @see #parameterName(String)
 	 */
-	public ContentNegotiationConfigurer favorPathExtension(boolean favorPathExtension) {
-		this.factory.setFavorPathExtension(favorPathExtension);
+	public ContentNegotiationConfigurer favorParameter(boolean favorParameter) {
+		this.factory.setFavorParameter(favorParameter);
+		return this;
+	}
+
+	/**
+	 * Set the query parameter name to use when {@link #favorParameter} is on.
+	 * <p>The default parameter name is {@code "format"}.
+	 */
+	public ContentNegotiationConfigurer parameterName(String parameterName) {
+		this.factory.setParameterName(parameterName);
 		return this;
 	}
 
@@ -135,9 +124,9 @@ public class ContentNegotiationConfigurer {
 	 * Add a mapping from a key, extracted from a path extension or a query
 	 * parameter, to a MediaType. This is required in order for the parameter
 	 * strategy to work. Any extensions explicitly registered here are also
-	 * whitelisted for the purpose of Reflected File Download attack detection
-	 * (see Spring Framework reference documentation for more details on RFD
-	 * attack protection).
+	 * treated as safe for the purpose of Reflected File Download attack
+	 * detection (see Spring Framework reference documentation for more details
+	 * on RFD attack protection).
 	 * <p>The path extension strategy will also try to use
 	 * {@link ServletContext#getMimeType} and {@link MediaTypeFactory} to resolve path
 	 * extensions. To change this behavior see the {@link #useRegisteredExtensionsOnly} property.
@@ -175,58 +164,14 @@ public class ContentNegotiationConfigurer {
 	}
 
 	/**
-	 * Whether to ignore requests with path extension that cannot be resolved
-	 * to any media type. Setting this to {@code false} will result in an
-	 * {@code HttpMediaTypeNotAcceptableException} if there is no match.
-	 * <p>By default this is set to {@code true}.
-	 */
-	public ContentNegotiationConfigurer ignoreUnknownPathExtensions(boolean ignore) {
-		this.factory.setIgnoreUnknownPathExtensions(ignore);
-		return this;
-	}
-
-	/**
-	 * When {@link #favorPathExtension} is set, this property determines whether
-	 * to allow use of JAF (Java Activation Framework) to resolve a path
-	 * extension to a specific MediaType.
-	 * @deprecated as of 5.0, in favor of {@link #useRegisteredExtensionsOnly(boolean)}
-	 * which has reverse behavior
-	 */
-	@Deprecated
-	public ContentNegotiationConfigurer useJaf(boolean useJaf) {
-		return this.useRegisteredExtensionsOnly(!useJaf);
-	}
-
-	/**
-	 * When {@link #favorPathExtension favorPathExtension} is set, this
+	 * When {@link #favorParameter(boolean)} is set, this
 	 * property determines whether to use only registered {@code MediaType} mappings
 	 * to resolve a path extension to a specific MediaType.
-	 * <p>By default this is not set in which case
-	 * {@code PathExtensionContentNegotiationStrategy} will use defaults if available.
+	 * <p>By default, this is not set in which case
+	 * {@code ParameterContentNegotiationStrategy} will use defaults if available.
 	 */
 	public ContentNegotiationConfigurer useRegisteredExtensionsOnly(boolean useRegisteredExtensionsOnly) {
 		this.factory.setUseRegisteredExtensionsOnly(useRegisteredExtensionsOnly);
-		return this;
-	}
-
-	/**
-	 * Whether a request parameter ("format" by default) should be used to
-	 * determine the requested media type. For this option to work you must
-	 * register {@link #mediaType(String, MediaType) media type mappings}.
-	 * <p>By default this is set to {@code false}.
-	 * @see #parameterName(String)
-	 */
-	public ContentNegotiationConfigurer favorParameter(boolean favorParameter) {
-		this.factory.setFavorParameter(favorParameter);
-		return this;
-	}
-
-	/**
-	 * Set the query parameter name to use when {@link #favorParameter} is on.
-	 * <p>The default parameter name is {@code "format"}.
-	 */
-	public ContentNegotiationConfigurer parameterName(String parameterName) {
-		this.factory.setParameterName(parameterName);
 		return this;
 	}
 

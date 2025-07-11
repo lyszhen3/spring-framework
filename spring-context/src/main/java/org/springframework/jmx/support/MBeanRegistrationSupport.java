@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package org.springframework.jmx.support;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.JMException;
@@ -27,8 +28,8 @@ import javax.management.ObjectName;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -76,8 +77,7 @@ public class MBeanRegistrationSupport {
 	/**
 	 * The {@code MBeanServer} instance being used to register beans.
 	 */
-	@Nullable
-	protected MBeanServer server;
+	protected @Nullable MBeanServer server;
 
 	/**
 	 * The beans that have been registered by this exporter.
@@ -103,8 +103,7 @@ public class MBeanRegistrationSupport {
 	/**
 	 * Return the {@code MBeanServer} that the beans will be registered with.
 	 */
-	@Nullable
-	public final MBeanServer getServer() {
+	public final @Nullable MBeanServer getServer() {
 		return this.server;
 	}
 

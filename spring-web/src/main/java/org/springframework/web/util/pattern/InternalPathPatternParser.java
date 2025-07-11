@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.PatternSyntaxException;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.web.util.pattern.PatternParseException.PatternMessage;
 
@@ -67,16 +68,13 @@ class InternalPathPatternParser {
 	private int variableCaptureStart;
 
 	// Variables captures in this path pattern
-	@Nullable
-	private List<String> capturedVariableNames;
+	private @Nullable List<String> capturedVariableNames;
 
 	// The head of the path element chain currently being built
-	@Nullable
-	private PathElement headPE;
+	private @Nullable PathElement headPE;
 
 	// The most recently constructed path element in the chain
-	@Nullable
-	private PathElement currentPE;
+	private @Nullable PathElement currentPE;
 
 
 	/**
@@ -105,16 +103,17 @@ class InternalPathPatternParser {
 
 		while (this.pos < this.pathPatternLength) {
 			char ch = this.pathPatternData[this.pos];
-			if (ch == this.parser.getSeparator()) {
+			char separator = this.parser.getPathOptions().separator();
+			if (ch == separator) {
 				if (this.pathElementStart != -1) {
 					pushPathElement(createPathElement());
 				}
 				if (peekDoubleWildcard()) {
-					pushPathElement(new WildcardTheRestPathElement(this.pos, this.parser.getSeparator()));
+					pushPathElement(new WildcardTheRestPathElement(this.pos, separator));
 					this.pos += 2;
 				}
 				else {
-					pushPathElement(new SeparatorPathElement(this.pos, this.parser.getSeparator()));
+					pushPathElement(new SeparatorPathElement(this.pos, separator));
 				}
 			}
 			else {
@@ -172,7 +171,7 @@ class InternalPathPatternParser {
 
 					}
 					else if ((this.pos > (this.variableCaptureStart + 1 + (this.isCaptureTheRestVariable ? 1 : 0)) &&
-							!Character.isJavaIdentifierPart(ch))) {
+							!Character.isJavaIdentifierPart(ch) && ch != '-')) {
 						throw new PatternParseException(this.pos, this.pathPatternData,
 								PatternMessage.ILLEGAL_CHARACTER_IN_CAPTURE_DESCRIPTOR,
 								Character.toString(ch));
@@ -191,8 +190,8 @@ class InternalPathPatternParser {
 	 * Just hit a ':' and want to jump over the regex specification for this
 	 * variable. pos will be pointing at the ':', we want to skip until the }.
 	 * <p>
-	 * Nested {...} pairs don't have to be escaped: <tt>/abc/{var:x{1,2}}/def</tt>
-	 * <p>An escaped } will not be treated as the end of the regex: <tt>/abc/{var:x\\{y:}/def</tt>
+	 * Nested {...} pairs don't have to be escaped: <code>/abc/{var:x{1,2}}/def</code>
+	 * <p>An escaped } will not be treated as the end of the regex: <code>/abc/{var:x\\{y:}/def</code>
 	 * <p>A separator that should not indicate the end of the regex can be escaped:
 	 */
 	private void skipCaptureRegex() {
@@ -221,7 +220,7 @@ class InternalPathPatternParser {
 				}
 				curlyBracketDepth--;
 			}
-			if (ch == this.parser.getSeparator() && !previousBackslash) {
+			if (ch == this.parser.getPathOptions().separator() && !previousBackslash) {
 				throw new PatternParseException(this.pos, this.pathPatternData,
 						PatternMessage.MISSING_CLOSE_CAPTURE);
 			}
@@ -235,7 +234,7 @@ class InternalPathPatternParser {
 
 	/**
 	 * After processing a separator, a quick peek whether it is followed by
-	 * (and only before the end of the pattern or the next separator).
+	 * a double wildcard (and only as the last path element).
 	 */
 	private boolean peekDoubleWildcard() {
 		if ((this.pos + 2) >= this.pathPatternLength) {
@@ -243,6 +242,11 @@ class InternalPathPatternParser {
 		}
 		if (this.pathPatternData[this.pos + 1] != '*' || this.pathPatternData[this.pos + 2] != '*') {
 			return false;
+		}
+		char separator = this.parser.getPathOptions().separator();
+		if ((this.pos + 3) < this.pathPatternLength && this.pathPatternData[this.pos + 3] == separator) {
+			throw new PatternParseException(this.pos, this.pathPatternData,
+					PatternMessage.NO_MORE_DATA_EXPECTED_AFTER_CAPTURE_THE_REST);
 		}
 		return (this.pos + 3 == this.pathPatternLength);
 	}
@@ -309,6 +313,7 @@ class InternalPathPatternParser {
 		}
 
 		PathElement newPE = null;
+		char separator = this.parser.getPathOptions().separator();
 
 		if (this.variableCaptureCount > 0) {
 			if (this.variableCaptureCount == 1 && this.pathElementStart == this.variableCaptureStart &&
@@ -316,13 +321,13 @@ class InternalPathPatternParser {
 				if (this.isCaptureTheRestVariable) {
 					// It is {*....}
 					newPE = new CaptureTheRestPathElement(
-							this.pathElementStart, getPathElementText(), this.parser.getSeparator());
+							this.pathElementStart, getPathElementText(), separator);
 				}
 				else {
 					// It is a full capture of this element (possibly with constraint), for example: /foo/{abc}/
 					try {
 						newPE = new CaptureVariablePathElement(this.pathElementStart, getPathElementText(),
-								this.parser.isCaseSensitive(), this.parser.getSeparator());
+								this.parser.isCaseSensitive(), separator);
 					}
 					catch (PatternSyntaxException pse) {
 						throw new PatternParseException(pse,
@@ -340,7 +345,7 @@ class InternalPathPatternParser {
 				}
 				RegexPathElement newRegexSection = new RegexPathElement(this.pathElementStart,
 						getPathElementText(), this.parser.isCaseSensitive(),
-						this.pathPatternData, this.parser.getSeparator());
+						this.pathPatternData, separator);
 				for (String variableName : newRegexSection.getVariableNames()) {
 					recordCapturedVariable(this.pathElementStart, variableName);
 				}
@@ -350,20 +355,20 @@ class InternalPathPatternParser {
 		else {
 			if (this.wildcard) {
 				if (this.pos - 1 == this.pathElementStart) {
-					newPE = new WildcardPathElement(this.pathElementStart, this.parser.getSeparator());
+					newPE = new WildcardPathElement(this.pathElementStart, separator);
 				}
 				else {
 					newPE = new RegexPathElement(this.pathElementStart, getPathElementText(),
-							this.parser.isCaseSensitive(), this.pathPatternData, this.parser.getSeparator());
+							this.parser.isCaseSensitive(), this.pathPatternData, separator);
 				}
 			}
 			else if (this.singleCharWildcardCount != 0) {
 				newPE = new SingleCharWildcardedPathElement(this.pathElementStart, getPathElementText(),
-						this.singleCharWildcardCount, this.parser.isCaseSensitive(), this.parser.getSeparator());
+						this.singleCharWildcardCount, this.parser.isCaseSensitive(), separator);
 			}
 			else {
 				newPE = new LiteralPathElement(this.pathElementStart, getPathElementText(),
-						this.parser.isCaseSensitive(), this.parser.getSeparator());
+						this.parser.isCaseSensitive(), separator);
 			}
 		}
 
@@ -373,7 +378,7 @@ class InternalPathPatternParser {
 	/**
 	 * For a path element representing a captured variable, locate the constraint pattern.
 	 * Assumes there is a constraint pattern.
-	 * @param data a complete path expression, e.g. /aaa/bbb/{ccc:...}
+	 * @param data a complete path expression, for example, /aaa/bbb/{ccc:...}
 	 * @param offset the start of the capture pattern of interest
 	 * @return the index of the character after the ':' within
 	 * the pattern expression relative to the start of the whole expression

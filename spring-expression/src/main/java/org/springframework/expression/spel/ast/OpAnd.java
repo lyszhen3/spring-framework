@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,8 @@
 
 package org.springframework.expression.spel.ast;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.asm.Label;
 import org.springframework.asm.MethodVisitor;
 import org.springframework.expression.EvaluationException;
@@ -25,7 +27,7 @@ import org.springframework.expression.spel.ExpressionState;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.expression.spel.SpelMessage;
 import org.springframework.expression.spel.support.BooleanTypedValue;
-import org.springframework.lang.Nullable;
+import org.springframework.lang.Contract;
 
 /**
  * Represents the boolean AND operation.
@@ -37,8 +39,8 @@ import org.springframework.lang.Nullable;
  */
 public class OpAnd extends Operator {
 
-	public OpAnd(int pos, SpelNodeImpl... operands) {
-		super("and", pos, operands);
+	public OpAnd(int startPos, int endPos, SpelNodeImpl... operands) {
+		super("and", startPos, endPos, operands);
 		this.exitTypeDescriptor = "Z";
 	}
 
@@ -64,6 +66,7 @@ public class OpAnd extends Operator {
 		}
 	}
 
+	@Contract("null -> fail")
 	private void assertValueNotNull(@Nullable Boolean value) {
 		if (value == null) {
 			throw new SpelEvaluationException(SpelMessage.TYPE_CONVERSION_ERROR, "null", "boolean");

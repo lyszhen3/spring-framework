@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,9 +20,11 @@ import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.net.ssl.SSLSession;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -33,11 +35,9 @@ import org.springframework.util.Assert;
  */
 final class DefaultSslInfo implements SslInfo {
 
-	@Nullable
-	private final String sessionId;
+	private final @Nullable String sessionId;
 
-	@Nullable
-	private final X509Certificate[] peerCertificates;
+	private final X509Certificate @Nullable [] peerCertificates;
 
 
 	DefaultSslInfo(@Nullable String sessionId, X509Certificate[] peerCertificates) {
@@ -54,20 +54,17 @@ final class DefaultSslInfo implements SslInfo {
 
 
 	@Override
-	@Nullable
-	public String getSessionId() {
+	public @Nullable String getSessionId() {
 		return this.sessionId;
 	}
 
 	@Override
-	@Nullable
-	public X509Certificate[] getPeerCertificates() {
+	public X509Certificate @Nullable [] getPeerCertificates() {
 		return this.peerCertificates;
 	}
 
 
-	@Nullable
-	private static String initSessionId(SSLSession session) {
+	private static @Nullable String initSessionId(SSLSession session) {
 		byte [] bytes = session.getId();
 		if (bytes == null) {
 			return null;
@@ -87,8 +84,7 @@ final class DefaultSslInfo implements SslInfo {
 		return sb.toString();
 	}
 
-	@Nullable
-	private static X509Certificate[] initCertificates(SSLSession session) {
+	private static X509Certificate @Nullable [] initCertificates(SSLSession session) {
 		Certificate[] certificates;
 		try {
 			certificates = session.getPeerCertificates();
@@ -99,8 +95,8 @@ final class DefaultSslInfo implements SslInfo {
 
 		List<X509Certificate> result = new ArrayList<>(certificates.length);
 		for (Certificate certificate : certificates) {
-			if (certificate instanceof X509Certificate) {
-				result.add((X509Certificate) certificate);
+			if (certificate instanceof X509Certificate x509Certificate) {
+				result.add(x509Certificate);
 			}
 		}
 		return (!result.isEmpty() ? result.toArray(new X509Certificate[0]) : null);

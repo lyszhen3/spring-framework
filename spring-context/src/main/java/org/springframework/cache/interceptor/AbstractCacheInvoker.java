@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,13 @@
 
 package org.springframework.cache.interceptor;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.cache.Cache;
-import org.springframework.lang.Nullable;
 import org.springframework.util.function.SingletonSupplier;
 
 /**
@@ -26,6 +31,7 @@ import org.springframework.util.function.SingletonSupplier;
  *
  * @author Stephane Nicoll
  * @author Juergen Hoeller
+ * @author Simon Baslé
  * @since 4.1
  * @see org.springframework.cache.interceptor.CacheErrorHandler
  */
@@ -67,8 +73,7 @@ public abstract class AbstractCacheInvoker {
 	 * miss in case of error.
 	 * @see Cache#get(Object)
 	 */
-	@Nullable
-	protected Cache.ValueWrapper doGet(Cache cache, Object key) {
+	protected Cache.@Nullable ValueWrapper doGet(Cache cache, Object key) {
 		try {
 			return cache.get(key);
 		}
@@ -79,25 +84,93 @@ public abstract class AbstractCacheInvoker {
 	}
 
 	/**
-	 * Execute {@link Cache#put(Object, Object)} on the specified {@link Cache}
-	 * and invoke the error handler if an exception occurs.
+	 * Execute {@link Cache#get(Object, Callable)} on the specified
+	 * {@link Cache} and invoke the error handler if an exception occurs.
+	 * Invokes the {@code valueLoader} if the handler does not throw any
+	 * exception, which simulates a cache read-through in case of error.
+	 * @since 6.2
+	 * @see Cache#get(Object, Callable)
 	 */
-	protected void doPut(Cache cache, Object key, @Nullable Object result) {
+	protected <T> @Nullable T doGet(Cache cache, Object key, Callable<T> valueLoader) {
 		try {
-			cache.put(key, result);
+			return cache.get(key, valueLoader);
+		}
+		catch (Cache.ValueRetrievalException ex) {
+			throw ex;
 		}
 		catch (RuntimeException ex) {
-			getErrorHandler().handleCachePutError(ex, cache, key, result);
+			getErrorHandler().handleCacheGetError(ex, cache, key);
+			try {
+				return valueLoader.call();
+			}
+			catch (Exception ex2) {
+				throw new Cache.ValueRetrievalException(key, valueLoader, ex);
+			}
+		}
+	}
+
+
+	/**
+	 * Execute {@link Cache#retrieve(Object)} on the specified {@link Cache}
+	 * and invoke the error handler if an exception occurs.
+	 * Returns {@code null} if the handler does not throw any exception, which
+	 * simulates a cache miss in case of error.
+	 * @since 6.2
+	 * @see Cache#retrieve(Object)
+	 */
+	protected @Nullable CompletableFuture<?> doRetrieve(Cache cache, Object key) {
+		try {
+			return cache.retrieve(key);
+		}
+		catch (RuntimeException ex) {
+			getErrorHandler().handleCacheGetError(ex, cache, key);
+			return null;
 		}
 	}
 
 	/**
-	 * Execute {@link Cache#evict(Object)} on the specified {@link Cache} and
-	 * invoke the error handler if an exception occurs.
+	 * Execute {@link Cache#retrieve(Object, Supplier)} on the specified
+	 * {@link Cache} and invoke the error handler if an exception occurs.
+	 * Invokes the {@code valueLoader} if the handler does not throw any
+	 * exception, which simulates a cache read-through in case of error.
+	 * @since 6.2
+	 * @see Cache#retrieve(Object, Supplier)
 	 */
-	protected void doEvict(Cache cache, Object key) {
+	protected <T> CompletableFuture<T> doRetrieve(Cache cache, Object key, Supplier<CompletableFuture<T>> valueLoader) {
 		try {
-			cache.evict(key);
+			return cache.retrieve(key, valueLoader);
+		}
+		catch (RuntimeException ex) {
+			getErrorHandler().handleCacheGetError(ex, cache, key);
+			return valueLoader.get();
+		}
+	}
+
+	/**
+	 * Execute {@link Cache#put(Object, Object)} on the specified {@link Cache}
+	 * and invoke the error handler if an exception occurs.
+	 */
+	protected void doPut(Cache cache, Object key, @Nullable Object value) {
+		try {
+			cache.put(key, value);
+		}
+		catch (RuntimeException ex) {
+			getErrorHandler().handleCachePutError(ex, cache, key, value);
+		}
+	}
+
+	/**
+	 * Execute {@link Cache#evict(Object)}/{@link Cache#evictIfPresent(Object)} on the
+	 * specified {@link Cache} and invoke the error handler if an exception occurs.
+	 */
+	protected void doEvict(Cache cache, Object key, boolean immediate) {
+		try {
+			if (immediate) {
+				cache.evictIfPresent(key);
+			}
+			else {
+				cache.evict(key);
+			}
 		}
 		catch (RuntimeException ex) {
 			getErrorHandler().handleCacheEvictError(ex, cache, key);
@@ -108,9 +181,14 @@ public abstract class AbstractCacheInvoker {
 	 * Execute {@link Cache#clear()} on the specified {@link Cache} and
 	 * invoke the error handler if an exception occurs.
 	 */
-	protected void doClear(Cache cache) {
+	protected void doClear(Cache cache, boolean immediate) {
 		try {
-			cache.clear();
+			if (immediate) {
+				cache.invalidate();
+			}
+			else {
+				cache.clear();
+			}
 		}
 		catch (RuntimeException ex) {
 			getErrorHandler().handleCacheClearError(ex, cache);

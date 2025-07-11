@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -33,7 +34,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ReactiveHttpInputMessage;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -61,17 +61,16 @@ public class DecoderHttpMessageReader<T> implements HttpMessageReader<T> {
 	 */
 	public DecoderHttpMessageReader(Decoder<T> decoder) {
 		Assert.notNull(decoder, "Decoder is required");
+		initLogger(decoder);
 		this.decoder = decoder;
 		this.mediaTypes = MediaType.asMediaTypes(decoder.getDecodableMimeTypes());
-		initLogger(decoder);
 	}
 
-	private void initLogger(Decoder<T> decoder) {
-		if (decoder instanceof AbstractDecoder &&
-				decoder.getClass().getPackage().getName().startsWith("org.springframework.core.codec")) {
-
-			Log logger = HttpLogging.forLog(((AbstractDecoder) decoder).getLogger());
-			((AbstractDecoder) decoder).setLogger(logger);
+	private static void initLogger(Decoder<?> decoder) {
+		if (decoder instanceof AbstractDecoder<?> abstractDecoder &&
+				decoder.getClass().getName().startsWith("org.springframework.core.codec")) {
+			Log logger = HttpLogging.forLog(abstractDecoder.getLogger());
+			abstractDecoder.setLogger(logger);
 		}
 	}
 
@@ -88,6 +87,10 @@ public class DecoderHttpMessageReader<T> implements HttpMessageReader<T> {
 		return this.mediaTypes;
 	}
 
+	@Override
+	public List<MediaType> getReadableMediaTypes(ResolvableType elementType) {
+		return MediaType.asMediaTypes(this.decoder.getDecodableMimeTypes(elementType));
+	}
 
 	@Override
 	public boolean canRead(ResolvableType elementType, @Nullable MediaType mediaType) {
@@ -97,13 +100,15 @@ public class DecoderHttpMessageReader<T> implements HttpMessageReader<T> {
 	@Override
 	public Flux<T> read(ResolvableType elementType, ReactiveHttpInputMessage message, Map<String, Object> hints) {
 		MediaType contentType = getContentType(message);
-		return this.decoder.decode(message.getBody(), elementType, contentType, hints);
+		Map<String, Object> allHints = Hints.merge(hints, getReadHints(elementType, message));
+		return this.decoder.decode(message.getBody(), elementType, contentType, allHints);
 	}
 
 	@Override
 	public Mono<T> readMono(ResolvableType elementType, ReactiveHttpInputMessage message, Map<String, Object> hints) {
 		MediaType contentType = getContentType(message);
-		return this.decoder.decodeToMono(message.getBody(), elementType, contentType, hints);
+		Map<String, Object> allHints = Hints.merge(hints, getReadHints(elementType, message));
+		return this.decoder.decodeToMono(message.getBody(), elementType, contentType, allHints);
 	}
 
 	/**
@@ -113,10 +118,17 @@ public class DecoderHttpMessageReader<T> implements HttpMessageReader<T> {
 	 * @param inputMessage the HTTP message
 	 * @return the MediaType, possibly {@code null}.
 	 */
-	@Nullable
-	protected MediaType getContentType(HttpMessage inputMessage) {
+	protected @Nullable MediaType getContentType(HttpMessage inputMessage) {
 		MediaType contentType = inputMessage.getHeaders().getContentType();
 		return (contentType != null ? contentType : MediaType.APPLICATION_OCTET_STREAM);
+	}
+
+	/**
+	 * Get additional hints for decoding based on the input HTTP message.
+	 * @since 5.3
+	 */
+	protected Map<String, Object> getReadHints(ResolvableType elementType, ReactiveHttpInputMessage message) {
+		return Hints.none();
 	}
 
 
@@ -150,9 +162,8 @@ public class DecoderHttpMessageReader<T> implements HttpMessageReader<T> {
 	protected Map<String, Object> getReadHints(ResolvableType actualType,
 			ResolvableType elementType, ServerHttpRequest request, ServerHttpResponse response) {
 
-		if (this.decoder instanceof HttpMessageDecoder) {
-			HttpMessageDecoder<?> decoder = (HttpMessageDecoder<?>) this.decoder;
-			return decoder.getDecodeHints(actualType, elementType, request, response);
+		if (this.decoder instanceof HttpMessageDecoder<?> httpMessageDecoder) {
+			return httpMessageDecoder.getDecodeHints(actualType, elementType, request, response);
 		}
 		return Hints.none();
 	}

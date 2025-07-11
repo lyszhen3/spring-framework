@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,12 +18,12 @@ package org.springframework.scheduling.quartz;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import org.quartz.Calendar;
 import org.quartz.JobDetail;
 import org.quartz.JobListener;
@@ -39,11 +39,10 @@ import org.quartz.xml.XMLSchedulingDataProcessor;
 
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.lang.Nullable;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 /**
  * Common base class for accessing a Quartz Scheduler, i.e. for registering jobs,
@@ -64,32 +63,23 @@ public abstract class SchedulerAccessor implements ResourceLoaderAware {
 
 	private boolean overwriteExistingJobs = false;
 
-	@Nullable
-	private String[] jobSchedulingDataLocations;
+	private String @Nullable [] jobSchedulingDataLocations;
 
-	@Nullable
-	private List<JobDetail> jobDetails;
+	private @Nullable List<JobDetail> jobDetails;
 
-	@Nullable
-	private Map<String, Calendar> calendars;
+	private @Nullable Map<String, Calendar> calendars;
 
-	@Nullable
-	private List<Trigger> triggers;
+	private @Nullable List<Trigger> triggers;
 
-	@Nullable
-	private SchedulerListener[] schedulerListeners;
+	private SchedulerListener @Nullable [] schedulerListeners;
 
-	@Nullable
-	private JobListener[] globalJobListeners;
+	private JobListener @Nullable [] globalJobListeners;
 
-	@Nullable
-	private TriggerListener[] globalTriggerListeners;
+	private TriggerListener @Nullable [] globalTriggerListeners;
 
-	@Nullable
-	private PlatformTransactionManager transactionManager;
+	private @Nullable PlatformTransactionManager transactionManager;
 
-	@Nullable
-	protected ResourceLoader resourceLoader;
+	protected @Nullable ResourceLoader resourceLoader;
 
 
 	/**
@@ -204,10 +194,11 @@ public abstract class SchedulerAccessor implements ResourceLoaderAware {
 	/**
 	 * Register jobs and triggers (within a transaction, if possible).
 	 */
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected void registerJobsAndTriggers() throws SchedulerException {
 		TransactionStatus transactionStatus = null;
 		if (this.transactionManager != null) {
-			transactionStatus = this.transactionManager.getTransaction(new DefaultTransactionDefinition());
+			transactionStatus = this.transactionManager.getTransaction(TransactionDefinition.withDefaults());
 		}
 
 		try {
@@ -228,7 +219,7 @@ public abstract class SchedulerAccessor implements ResourceLoaderAware {
 			}
 			else {
 				// Create empty list for easier checks when registering triggers.
-				this.jobDetails = new LinkedList<>();
+				this.jobDetails = new ArrayList<>();
 			}
 
 			// Register Calendars.
@@ -257,8 +248,8 @@ public abstract class SchedulerAccessor implements ResourceLoaderAware {
 					throw tex;
 				}
 			}
-			if (ex instanceof SchedulerException) {
-				throw (SchedulerException) ex;
+			if (ex instanceof SchedulerException schedulerException) {
+				throw schedulerException;
 			}
 			if (ex instanceof Exception) {
 				throw new SchedulerException("Registration of jobs and triggers failed: " + ex.getMessage(), ex);

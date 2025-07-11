@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,74 +13,82 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.web.server.session;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
 import java.util.stream.IntStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import reactor.core.scheduler.Schedulers;
+import reactor.test.StepVerifier;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.web.server.WebSession;
 
-import static junit.framework.TestCase.assertSame;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
- * Unit tests for {@link InMemoryWebSessionStore}.
+ * Tests for {@link InMemoryWebSessionStore}.
+ *
  * @author Rob Winch
+ * @author Sam Brannen
  */
-public class InMemoryWebSessionStoreTests {
+class InMemoryWebSessionStoreTests {
 
-	private InMemoryWebSessionStore store = new InMemoryWebSessionStore();
+	private final InMemoryWebSessionStore store = new InMemoryWebSessionStore();
 
 
 	@Test
-	public void startsSessionExplicitly() {
+	void startsSessionExplicitly() {
 		WebSession session = this.store.createWebSession().block();
-		assertNotNull(session);
+		assertThat(session).isNotNull();
 		session.start();
-		assertTrue(session.isStarted());
+		assertThat(session.isStarted()).isTrue();
 	}
 
 	@Test
-	public void startsSessionImplicitly() {
+	void startsSessionImplicitly() {
 		WebSession session = this.store.createWebSession().block();
-		assertNotNull(session);
-		session.start();
+		assertThat(session).isNotNull();
+		// We intentionally do not invoke start().
+		// session.start();
 		session.getAttributes().put("foo", "bar");
-		assertTrue(session.isStarted());
+		assertThat(session.isStarted()).isTrue();
+	}
+
+	@Test // gh-24027, gh-26958
+	void createSessionDoesNotBlock() {
+		this.store.createWebSession()
+				.doOnNext(session -> assertThat(Schedulers.isInNonBlockingThread()).isTrue())
+				.block();
 	}
 
 	@Test
-	public void retrieveExpiredSession() {
+	void retrieveExpiredSession() {
 		WebSession session = this.store.createWebSession().block();
-		assertNotNull(session);
+		assertThat(session).isNotNull();
 		session.getAttributes().put("foo", "bar");
 		session.save().block();
 
 		String id = session.getId();
 		WebSession retrieved = this.store.retrieveSession(id).block();
-		assertNotNull(retrieved);
-		assertSame(session, retrieved);
+		assertThat(retrieved).isNotNull();
+		assertThat(retrieved).isSameAs(session);
 
 		// Fast-forward 31 minutes
 		this.store.setClock(Clock.offset(this.store.getClock(), Duration.ofMinutes(31)));
 		WebSession retrievedAgain = this.store.retrieveSession(id).block();
-		assertNull(retrievedAgain);
+		assertThat(retrievedAgain).isNull();
 	}
 
 	@Test
-	public void lastAccessTimeIsUpdatedOnRetrieve() {
+	void lastAccessTimeIsUpdatedOnRetrieve() {
 		WebSession session1 = this.store.createWebSession().block();
-		assertNotNull(session1);
+		assertThat(session1).isNotNull();
 		String id = session1.getId();
 		Instant time1 = session1.getLastAccessTime();
 		session1.start();
@@ -90,30 +98,30 @@ public class InMemoryWebSessionStoreTests {
 		this.store.setClock(Clock.offset(this.store.getClock(), Duration.ofSeconds(5)));
 
 		WebSession session2 = this.store.retrieveSession(id).block();
-		assertNotNull(session2);
-		assertSame(session1, session2);
+		assertThat(session2).isNotNull();
+		assertThat(session2).isSameAs(session1);
 		Instant time2 = session2.getLastAccessTime();
-		assertTrue(time1.isBefore(time2));
+		assertThat(time1.isBefore(time2)).isTrue();
 	}
 
 	@Test // SPR-17051
-	public void sessionInvalidatedBeforeSave() {
+	void sessionInvalidatedBeforeSave() {
 		// Request 1 creates session
 		WebSession session1 = this.store.createWebSession().block();
-		assertNotNull(session1);
+		assertThat(session1).isNotNull();
 		String id = session1.getId();
 		session1.start();
 		session1.save().block();
 
 		// Request 2 retrieves session
 		WebSession session2 = this.store.retrieveSession(id).block();
-		assertNotNull(session2);
-		assertSame(session1, session2);
+		assertThat(session2).isNotNull();
+		assertThat(session2).isSameAs(session1);
 
 		// Request 3 retrieves and invalidates
 		WebSession session3 = this.store.retrieveSession(id).block();
-		assertNotNull(session3);
-		assertSame(session1, session3);
+		assertThat(session3).isNotNull();
+		assertThat(session3).isSameAs(session1);
 		session3.invalidate().block();
 
 		// Request 2 saves session after invalidated
@@ -121,49 +129,84 @@ public class InMemoryWebSessionStoreTests {
 
 		// Session should not be present
 		WebSession session4 = this.store.retrieveSession(id).block();
-		assertNull(session4);
+		assertThat(session4).isNull();
 	}
 
 	@Test
-	public void expirationCheckPeriod() {
-
-		DirectFieldAccessor accessor = new DirectFieldAccessor(this.store);
-		Map<?,?> sessions = (Map<?, ?>) accessor.getPropertyValue("sessions");
-		assertNotNull(sessions);
-
+	void expirationCheckPeriod() {
 		// Create 100 sessions
-		IntStream.range(0, 100).forEach(i -> insertSession());
-		assertEquals(100, sessions.size());
+		IntStream.rangeClosed(1, 100).forEach(i -> insertSession());
+		assertNumSessions(100);
 
-		// Force a new clock (31 min later), don't use setter which would clean expired sessions
+		// Force a new clock (31 min later). Don't use setter which would clean expired sessions.
+		DirectFieldAccessor accessor = new DirectFieldAccessor(this.store);
 		accessor.setPropertyValue("clock", Clock.offset(this.store.getClock(), Duration.ofMinutes(31)));
-		assertEquals(100, sessions.size());
+		assertNumSessions(100);
 
-		// Create 1 more which forces a time-based check (clock moved forward)
+		// Create 1 more which forces a time-based check (clock moved forward).
 		insertSession();
-		assertEquals(1, sessions.size());
+		assertNumSessions(1);
 	}
 
 	@Test
-	public void maxSessions() {
+	void maxSessions() {
+		this.store.setMaxSessions(10);
 
-		IntStream.range(0, 10000).forEach(i -> insertSession());
-
-		try {
-			insertSession();
-			fail();
-		}
-		catch (IllegalStateException ex) {
-			assertEquals("Max sessions limit reached: 10000", ex.getMessage());
-		}
+		IntStream.rangeClosed(1, 10).forEach(i -> insertSession());
+		assertThatIllegalStateException()
+				.isThrownBy(this::insertSession)
+				.withMessage("Max sessions limit reached: 10");
 	}
+
+	@Test
+	void updateSession() {
+		WebSession session = insertSession();
+
+		StepVerifier.create(session.save())
+				.expectComplete()
+				.verify();
+	}
+
+	@Test  // gh-35013
+	void updateSessionAfterMaxSessionLimitIsExceeded() {
+		this.store.setMaxSessions(10);
+
+		WebSession session = insertSession();
+		assertNumSessions(1);
+
+		IntStream.rangeClosed(1, 9).forEach(i -> insertSession());
+		assertNumSessions(10);
+
+		// Updating an existing session should succeed.
+		StepVerifier.create(session.save())
+				.expectComplete()
+				.verify();
+		assertNumSessions(10);
+
+		// Saving an additional new session should fail.
+		assertThatIllegalStateException()
+				.isThrownBy(this::insertSession)
+				.withMessage("Max sessions limit reached: 10");
+		assertNumSessions(10);
+
+		// Updating an existing session again should still succeed.
+		StepVerifier.create(session.save())
+				.expectComplete()
+				.verify();
+		assertNumSessions(10);
+	}
+
 
 	private WebSession insertSession() {
 		WebSession session = this.store.createWebSession().block();
-		assertNotNull(session);
+		assertThat(session).isNotNull();
 		session.start();
 		session.save().block();
 		return session;
+	}
+
+	private void assertNumSessions(int numSessions) {
+		assertThat(store.getSessions()).hasSize(numSessions);
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,8 +19,9 @@ package org.springframework.jndi;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.SpringProperties;
-import org.springframework.lang.Nullable;
 
 /**
  * {@link JndiLocatorSupport} subclass with public lookup methods,
@@ -34,7 +35,7 @@ public class JndiLocatorDelegate extends JndiLocatorSupport {
 	/**
 	 * System property that instructs Spring to ignore a default JNDI environment, i.e.
 	 * to always return {@code false} from {@link #isDefaultJndiEnvironmentAvailable()}.
-	 * <p>The default is "false", allowing for regular default JNDI access e.g. in
+	 * <p>The default is "false", allowing for regular default JNDI access, for example, in
 	 * {@link JndiPropertySource}. Switching this flag to {@code true} is an optimization
 	 * for scenarios where nothing is ever to be found for such JNDI fallback searches
 	 * to begin with, avoiding the repeated JNDI lookup overhead.
@@ -77,7 +78,7 @@ public class JndiLocatorDelegate extends JndiLocatorSupport {
 	}
 
 	/**
-	 * Check whether a default JNDI environment, as in a Java EE environment,
+	 * Check whether a default JNDI environment, as in a Jakarta EE environment,
 	 * is available on this JVM.
 	 * @return {@code true} if a default InitialContext can be used,
 	 * {@code false} if not

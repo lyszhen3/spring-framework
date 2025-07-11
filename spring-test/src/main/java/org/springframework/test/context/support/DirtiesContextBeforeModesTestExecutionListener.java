@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,11 +55,24 @@ import static org.springframework.test.annotation.DirtiesContext.MethodMode.BEFO
 public class DirtiesContextBeforeModesTestExecutionListener extends AbstractDirtiesContextTestExecutionListener {
 
 	/**
-	 * Returns {@code 1500}.
+	 * The {@link #getOrder() order} value for this listener: {@value}.
+	 * @since 6.2.3
+	 */
+	public static final int ORDER = 1500;
+
+	/**
+	 * Returns {@value #ORDER}, which ensures that the
+	 * {@code DirtiesContextBeforeModesTestExecutionListener} is ordered after the
+	 * {@link org.springframework.test.context.web.ServletTestExecutionListener
+	 * ServletTestExecutionListener} and before the
+	 * {@link org.springframework.test.context.event.ApplicationEventsTestExecutionListener
+	 * ApplicationEventsTestExecutionListener} and the
+	 * {@link org.springframework.test.context.bean.override.BeanOverrideTestExecutionListener
+	 * BeanOverrideTestExecutionListener}.
 	 */
 	@Override
 	public final int getOrder() {
-		return 1500;
+		return ORDER;
 	}
 
 	/**

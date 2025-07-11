@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2013 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,7 @@
 
 package org.springframework.messaging;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link MessageChannel} from which messages may be actively received through polling.
@@ -30,17 +30,15 @@ public interface PollableChannel extends MessageChannel {
 	 * Receive a message from this channel, blocking indefinitely if necessary.
 	 * @return the next available {@link Message} or {@code null} if interrupted
 	 */
-	@Nullable
-	Message<?> receive();
+	@Nullable Message<?> receive();
 
 	/**
 	 * Receive a message from this channel, blocking until either a message is available
 	 * or the specified timeout period elapses.
-	 * @param timeout the timeout in milliseconds or {@link MessageChannel#INDEFINITE_TIMEOUT}.
+	 * @param timeout the timeout in milliseconds or {@link MessageChannel#INDEFINITE_TIMEOUT}
 	 * @return the next available {@link Message} or {@code null} if the specified timeout
-	 * period elapses or the message reception is interrupted
+	 * period elapses or the message receipt is interrupted
 	 */
-	@Nullable
-	Message<?> receive(long timeout);
+	@Nullable Message<?> receive(long timeout);
 
 }

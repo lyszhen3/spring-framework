@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,17 +28,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpAttributes;
 import org.springframework.messaging.simp.SimpAttributesContextHolder;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.simp.broker.OrderedMessageChannelDecorator;
 import org.springframework.messaging.simp.stomp.BufferingStompDecoder;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompDecoder;
@@ -57,6 +58,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.SessionLimitExceededException;
 import org.springframework.web.socket.handler.WebSocketSessionDecorator;
 import org.springframework.web.socket.sockjs.transport.SockJsSession;
@@ -92,8 +94,7 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 	private static final byte[] EMPTY_PAYLOAD = new byte[0];
 
 
-	@Nullable
-	private StompSubProtocolErrorHandler errorHandler;
+	private @Nullable StompSubProtocolErrorHandler errorHandler;
 
 	private int messageSizeLimit = 64 * 1024;
 
@@ -103,18 +104,17 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 
 	private final Map<String, BufferingStompDecoder> decoders = new ConcurrentHashMap<>();
 
-	@Nullable
-	private MessageHeaderInitializer headerInitializer;
+	private @Nullable MessageHeaderInitializer headerInitializer;
+
+	private @Nullable Map<String, MessageChannel> orderedHandlingMessageChannels;
 
 	private final Map<String, Principal> stompAuthentications = new ConcurrentHashMap<>();
 
-	@Nullable
-	private Boolean immutableMessageInterceptorPresent;
+	private @Nullable Boolean immutableMessageInterceptorPresent;
 
-	@Nullable
-	private ApplicationEventPublisher eventPublisher;
+	private @Nullable ApplicationEventPublisher eventPublisher;
 
-	private final Stats stats = new Stats();
+	private final DefaultStats stats = new DefaultStats();
 
 
 	/**
@@ -131,8 +131,7 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 	/**
 	 * Return the configured error handler.
 	 */
-	@Nullable
-	public StompSubProtocolErrorHandler getErrorHandler() {
+	public @Nullable StompSubProtocolErrorHandler getErrorHandler() {
 		return this.errorHandler;
 	}
 
@@ -186,9 +185,32 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 	/**
 	 * Return the configured header initializer.
 	 */
-	@Nullable
-	public MessageHeaderInitializer getHeaderInitializer() {
+	public @Nullable MessageHeaderInitializer getHeaderInitializer() {
 		return this.headerInitializer;
+	}
+
+	/**
+	 * Whether client messages must be handled in the order received.
+	 * <p>By default messages sent to the {@code "clientInboundChannel"} may
+	 * not be handled in the same order because the channel is backed by a
+	 * ThreadPoolExecutor that in turn does not guarantee processing in order.
+	 * <p>When this flag is set to {@code true} messages within the same session
+	 * will be sent to the {@code "clientInboundChannel"} one at a time to
+	 * preserve the order in which they were received.
+	 * @param preserveReceiveOrder whether to publish in order
+	 * @since 6.1
+	 */
+	public void setPreserveReceiveOrder(boolean preserveReceiveOrder) {
+		this.orderedHandlingMessageChannels = (preserveReceiveOrder ? new ConcurrentHashMap<>() : null);
+	}
+
+	/**
+	 * Whether the handler is configured to handle inbound messages in the
+	 * order in which they were received.
+	 * @since 6.1
+	 */
+	public boolean isPreserveReceiveOrder() {
+		return (this.orderedHandlingMessageChannels != null);
 	}
 
 	@Override
@@ -203,26 +225,36 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 
 	/**
 	 * Return a String describing internal state and counters.
+	 * Effectively {@code toString()} on {@link #getStats() getStats()}.
 	 */
 	public String getStatsInfo() {
 		return this.stats.toString();
+	}
+
+	/**
+	 * Return a structured object with internal state and counters.
+	 * @since 5.2
+	 */
+	public Stats getStats() {
+		return this.stats;
 	}
 
 
 	/**
 	 * Handle incoming WebSocket messages from clients.
 	 */
+	@Override
 	public void handleMessageFromClient(WebSocketSession session,
-			WebSocketMessage<?> webSocketMessage, MessageChannel outputChannel) {
+			WebSocketMessage<?> webSocketMessage, MessageChannel targetChannel) {
 
 		List<Message<byte[]>> messages;
 		try {
 			ByteBuffer byteBuffer;
-			if (webSocketMessage instanceof TextMessage) {
-				byteBuffer = ByteBuffer.wrap(((TextMessage) webSocketMessage).asBytes());
+			if (webSocketMessage instanceof TextMessage textMessage) {
+				byteBuffer = ByteBuffer.wrap(textMessage.asBytes());
 			}
-			else if (webSocketMessage instanceof BinaryMessage) {
-				byteBuffer = ((BinaryMessage) webSocketMessage).getPayload();
+			else if (webSocketMessage instanceof BinaryMessage binaryMessage) {
+				byteBuffer = binaryMessage.getPayload();
 			}
 			else {
 				return;
@@ -230,6 +262,10 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 
 			BufferingStompDecoder decoder = this.decoders.get(session.getId());
 			if (decoder == null) {
+				if (!session.isOpen()) {
+					logger.trace("Dropped inbound WebSocket message due to closed session");
+					return;
+				}
 				throw new IllegalStateException("No decoder for session id '" + session.getId() + "'");
 			}
 
@@ -252,17 +288,35 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 			return;
 		}
 
+		MessageChannel channelToUse = targetChannel;
+		if (this.orderedHandlingMessageChannels != null) {
+			channelToUse = this.orderedHandlingMessageChannels.computeIfAbsent(
+					session.getId(), id -> new OrderedMessageChannelDecorator(targetChannel, logger));
+		}
+
 		for (Message<byte[]> message : messages) {
+			StompHeaderAccessor headerAccessor =
+					MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+			Assert.state(headerAccessor != null, "No StompHeaderAccessor");
+
+			StompCommand command = headerAccessor.getCommand();
+			boolean isConnect = StompCommand.CONNECT.equals(command) || StompCommand.STOMP.equals(command);
+
+			boolean sent = false;
 			try {
-				StompHeaderAccessor headerAccessor =
-						MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-				Assert.state(headerAccessor != null, "No StompHeaderAccessor");
 
 				headerAccessor.setSessionId(session.getId());
 				headerAccessor.setSessionAttributes(session.getAttributes());
 				headerAccessor.setUser(getUser(session));
+				if (isConnect) {
+					headerAccessor.setUserChangeCallback(user -> {
+						if (user != null && user != session.getPrincipal()) {
+							this.stompAuthentications.put(session.getId(), user);
+						}
+					});
+				}
 				headerAccessor.setHeader(SimpMessageHeaderAccessor.HEART_BEAT_HEADER, headerAccessor.getHeartbeat());
-				if (!detectImmutableMessageInterceptor(outputChannel)) {
+				if (!detectImmutableMessageInterceptor(targetChannel)) {
 					headerAccessor.setImmutable();
 				}
 
@@ -270,8 +324,6 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 					logger.trace("From client: " + headerAccessor.getShortLogMessage(message.getPayload()));
 				}
 
-				StompCommand command = headerAccessor.getCommand();
-				boolean isConnect = StompCommand.CONNECT.equals(command);
 				if (isConnect) {
 					this.stats.incrementConnectCount();
 				}
@@ -281,15 +333,9 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 
 				try {
 					SimpAttributesContextHolder.setAttributesFromMessage(message);
-					boolean sent = outputChannel.send(message);
+					sent = channelToUse.send(message);
 
 					if (sent) {
-						if (isConnect) {
-							Principal user = headerAccessor.getUser();
-							if (user != null && user != session.getPrincipal()) {
-								this.stompAuthentications.put(session.getId(), user);
-							}
-						}
 						if (this.eventPublisher != null) {
 							Principal user = getUser(session);
 							if (isConnect) {
@@ -309,17 +355,22 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 				}
 			}
 			catch (Throwable ex) {
-				if (logger.isErrorEnabled()) {
-					logger.error("Failed to send client message to application via MessageChannel" +
-							" in session " + session.getId() + ". Sending STOMP ERROR to client.", ex);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Failed to send message to MessageChannel in session " + session.getId(), ex);
+				}
+				else if (logger.isErrorEnabled()) {
+					// Skip for unsent CONNECT or SUBSCRIBE (likely authentication/authorization issues)
+					if (sent || !(isConnect || StompCommand.SUBSCRIBE.equals(command))) {
+						logger.error("Failed to send message to MessageChannel in session " +
+								session.getId() + ":" + ex.getMessage());
+					}
 				}
 				handleError(session, ex, message);
 			}
 		}
 	}
 
-	@Nullable
-	private Principal getUser(WebSocketSession session) {
+	private @Nullable Principal getUser(WebSocketSession session) {
 		Principal user = this.stompAuthentications.get(session.getId());
 		return (user != null ? user : session.getPrincipal());
 	}
@@ -329,12 +380,10 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 			sendErrorMessage(session, ex);
 			return;
 		}
-
 		Message<byte[]> message = getErrorHandler().handleClientMessageProcessingError(clientMessage, ex);
 		if (message == null) {
 			return;
 		}
-
 		StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 		Assert.state(accessor != null, "No StompHeaderAccessor");
 		sendToClient(session, accessor, message.getPayload());
@@ -350,12 +399,21 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 		headerAccessor.setMessage(error.getMessage());
 
 		byte[] bytes = this.stompEncoder.encode(headerAccessor.getMessageHeaders(), EMPTY_PAYLOAD);
+		// We cannot use try-with-resources here for the WebSocketSession, since we have
+		// custom handling of the close() method in a finally-block.
 		try {
 			session.sendMessage(new TextMessage(bytes));
 		}
 		catch (Throwable ex) {
-			// Could be part of normal workflow (e.g. browser tab closed)
+			// Could be part of normal workflow (for example, browser tab closed)
 			logger.debug("Failed to send STOMP ERROR to client", ex);
+		}
+		finally {
+			try {
+				session.close(CloseStatus.PROTOCOL_ERROR);
+			}
+			catch (IOException ignored) {
+			}
 		}
 	}
 
@@ -364,8 +422,8 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 			return this.immutableMessageInterceptorPresent;
 		}
 
-		if (channel instanceof AbstractMessageChannel) {
-			for (ChannelInterceptor interceptor : ((AbstractMessageChannel) channel).getInterceptors()) {
+		if (channel instanceof AbstractMessageChannel abstractMessageChannel) {
+			for (ChannelInterceptor interceptor : abstractMessageChannel.getInterceptors()) {
 				if (interceptor instanceof ImmutableMessageChannelInterceptor) {
 					this.immutableMessageInterceptorPresent = true;
 					return true;
@@ -393,7 +451,7 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 	@Override
 	@SuppressWarnings("unchecked")
 	public void handleMessageToClient(WebSocketSession session, Message<?> message) {
-		if (!(message.getPayload() instanceof byte[])) {
+		if (!(message.getPayload() instanceof byte[] payload)) {
 			if (logger.isErrorEnabled()) {
 				logger.error("Expected byte[] payload. Ignoring " + message + ".");
 			}
@@ -430,15 +488,22 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 			}
 		}
 
-		byte[] payload = (byte[]) message.getPayload();
 		if (StompCommand.ERROR.equals(command) && getErrorHandler() != null) {
-			Message<byte[]> errorMessage = getErrorHandler().handleErrorMessageToClient((Message<byte[]>) message);
+			Message<byte[]> errorMessage = getErrorHandler().handleErrorMessageToClient(
+					MessageBuilder.createMessage(payload, accessor.getMessageHeaders()));
 			if (errorMessage != null) {
 				accessor = MessageHeaderAccessor.getAccessor(errorMessage, StompHeaderAccessor.class);
 				Assert.state(accessor != null, "No StompHeaderAccessor");
 				payload = errorMessage.getPayload();
 			}
 		}
+
+		Runnable task = OrderedMessageChannelDecorator.getNextMessageTask(message);
+		if (task != null) {
+			Assert.isInstanceOf(ConcurrentWebSocketSessionDecorator.class, session);
+			((ConcurrentWebSocketSessionDecorator) session).setMessageCallback(m -> task.run());
+		}
+
 		sendToClient(session, accessor, payload);
 	}
 
@@ -460,7 +525,7 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 			throw ex;
 		}
 		catch (Throwable ex) {
-			// Could be part of normal workflow (e.g. browser tab closed)
+			// Could be part of normal workflow (for example, browser tab closed)
 			if (logger.isDebugEnabled()) {
 				logger.debug("Failed to send WebSocket message to client in session " + session.getId(), ex);
 			}
@@ -480,8 +545,8 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 
 	private StompHeaderAccessor getStompHeaderAccessor(Message<?> message) {
 		MessageHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, MessageHeaderAccessor.class);
-		if (accessor instanceof StompHeaderAccessor) {
-			return (StompHeaderAccessor) accessor;
+		if (accessor instanceof StompHeaderAccessor stompHeaderAccessor) {
+			return stompHeaderAccessor;
 		}
 		else {
 			StompHeaderAccessor stompAccessor = StompHeaderAccessor.wrap(message);
@@ -545,8 +610,7 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 		return connectedHeaders;
 	}
 
-	@Nullable
-	private String getDisconnectReceipt(SimpMessageHeaderAccessor simpHeaders) {
+	private @Nullable String getDisconnectReceipt(SimpMessageHeaderAccessor simpHeaders) {
 		String name = StompHeaderAccessor.DISCONNECT_MESSAGE_HEADER;
 		Message<?> message = (Message<?>) simpHeaders.getHeader(name);
 		if (message != null) {
@@ -574,8 +638,8 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 		long[] heartbeat = accessor.getHeartbeat();
 		if (heartbeat[1] > 0) {
 			session = WebSocketSessionDecorator.unwrap(session);
-			if (session instanceof SockJsSession) {
-				((SockJsSession) session).disableHeartbeat();
+			if (session instanceof SockJsSession sockJsSession) {
+				sockJsSession.disableHeartbeat();
 			}
 		}
 
@@ -583,8 +647,7 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 	}
 
 	@Override
-	@Nullable
-	public String resolveSessionId(Message<?> message) {
+	public @Nullable String resolveSessionId(Message<?> message) {
 		return SimpMessageHeaderAccessor.getSessionId(message.getHeaders());
 	}
 
@@ -611,6 +674,9 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 			outputChannel.send(message);
 		}
 		finally {
+			if (this.orderedHandlingMessageChannels != null) {
+				this.orderedHandlingMessageChannels.remove(session.getId());
+			}
 			this.stompAuthentications.remove(session.getId());
 			SimpAttributesContextHolder.resetAttributes();
 			simpAttributes.sessionCompleted();
@@ -634,13 +700,37 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 		return MessageBuilder.createMessage(EMPTY_PAYLOAD, headerAccessor.getMessageHeaders());
 	}
 
+
 	@Override
 	public String toString() {
 		return "StompSubProtocolHandler" + getSupportedProtocols();
 	}
 
 
-	private static class Stats {
+	/**
+	 * Contract for access to session counters.
+	 * @since 5.2
+	 */
+	public interface Stats {
+
+		/**
+		 * The number of CONNECT frames processed.
+		 */
+		int getTotalConnect();
+
+		/**
+		 * The number of CONNECTED frames processed.
+		 */
+		int getTotalConnected();
+
+		/**
+		 * The number of DISCONNECT frames processed.
+		 */
+		int getTotalDisconnect();
+	}
+
+
+	private static class DefaultStats implements Stats {
 
 		private final AtomicInteger connect = new AtomicInteger();
 
@@ -660,6 +750,22 @@ public class StompSubProtocolHandler implements SubProtocolHandler, ApplicationE
 			this.disconnect.incrementAndGet();
 		}
 
+		@Override
+		public int getTotalConnect() {
+			return this.connect.get();
+		}
+
+		@Override
+		public int getTotalConnected() {
+			return this.connected.get();
+		}
+
+		@Override
+		public int getTotalDisconnect() {
+			return this.disconnect.get();
+		}
+
+		@Override
 		public String toString() {
 			return "processed CONNECT(" + this.connect.get() + ")-CONNECTED(" +
 					this.connected.get() + ")-DISCONNECT(" + this.disconnect.get() + ")";

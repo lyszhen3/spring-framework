@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,15 +17,14 @@
 package org.springframework.web.filter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.util.Assert;
@@ -33,7 +32,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.util.WebUtils;
 
 /**
- * {@link javax.servlet.Filter} that converts posted method parameters into HTTP methods,
+ * {@link jakarta.servlet.Filter} that converts posted method parameters into HTTP methods,
  * retrievable via {@link HttpServletRequest#getMethod()}. Since browsers currently only
  * support GET and POST, a common technique - used by the Prototype library, for instance -
  * is to use a normal POST with an additional hidden form field ({@code _method})
@@ -56,8 +55,7 @@ import org.springframework.web.util.WebUtils;
 public class HiddenHttpMethodFilter extends OncePerRequestFilter {
 
 	private static final List<String> ALLOWED_METHODS =
-			Collections.unmodifiableList(Arrays.asList(HttpMethod.PUT.name(),
-					HttpMethod.DELETE.name(), HttpMethod.PATCH.name()));
+			List.of(HttpMethod.PUT.name(), HttpMethod.DELETE.name(), HttpMethod.PATCH.name());
 
 	/** Default method parameter: {@code _method}. */
 	public static final String DEFAULT_METHOD_PARAM = "_method";
@@ -83,7 +81,7 @@ public class HiddenHttpMethodFilter extends OncePerRequestFilter {
 		if ("POST".equals(request.getMethod()) && request.getAttribute(WebUtils.ERROR_EXCEPTION_ATTRIBUTE) == null) {
 			String paramValue = request.getParameter(this.methodParam);
 			if (StringUtils.hasLength(paramValue)) {
-				String method = paramValue.toUpperCase(Locale.ENGLISH);
+				String method = paramValue.toUpperCase(Locale.ROOT);
 				if (ALLOWED_METHODS.contains(method)) {
 					requestToUse = new HttpMethodRequestWrapper(request, method);
 				}

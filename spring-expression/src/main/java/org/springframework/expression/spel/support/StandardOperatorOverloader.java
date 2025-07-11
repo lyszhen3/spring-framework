@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,11 @@
 
 package org.springframework.expression.spel.support;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.expression.EvaluationException;
 import org.springframework.expression.Operation;
 import org.springframework.expression.OperatorOverloader;
-import org.springframework.lang.Nullable;
 
 /**
  * Standard implementation of {@link OperatorOverloader}.
@@ -28,6 +29,8 @@ import org.springframework.lang.Nullable;
  * @since 3.0
  */
 public class StandardOperatorOverloader implements OperatorOverloader {
+
+	static final StandardOperatorOverloader INSTANCE = new StandardOperatorOverloader();
 
 	@Override
 	public boolean overridesOperation(Operation operation, @Nullable Object leftOperand, @Nullable Object rightOperand)

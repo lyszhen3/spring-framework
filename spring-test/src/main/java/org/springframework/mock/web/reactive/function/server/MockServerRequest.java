@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,7 +29,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -41,14 +43,14 @@ import org.springframework.http.HttpRange;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.HttpMessageReader;
 import org.springframework.http.codec.multipart.Part;
-import org.springframework.http.server.PathContainer;
 import org.springframework.http.server.RequestPath;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.reactive.accept.ApiVersionStrategy;
 import org.springframework.web.reactive.function.BodyExtractor;
 import org.springframework.web.reactive.function.server.HandlerStrategies;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -69,14 +71,13 @@ public final class MockServerRequest implements ServerRequest {
 
 	private final URI uri;
 
-	private final RequestPath pathContainer;
+	private final RequestPath requestPath;
 
 	private final MockHeaders headers;
 
 	private final MultiValueMap<String, HttpCookie> cookies;
 
-	@Nullable
-	private final Object body;
+	private final @Nullable Object body;
 
 	private final Map<String, Object> attributes;
 
@@ -84,31 +85,32 @@ public final class MockServerRequest implements ServerRequest {
 
 	private final Map<String, String> pathVariables;
 
-	@Nullable
-	private final WebSession session;
+	private final @Nullable WebSession session;
 
-	@Nullable
-	private Principal principal;
+	private final @Nullable Principal principal;
 
-	@Nullable
-	private final InetSocketAddress remoteAddress;
+	private final @Nullable InetSocketAddress remoteAddress;
+
+	private final @Nullable InetSocketAddress localAddress;
 
 	private final List<HttpMessageReader<?>> messageReaders;
 
-	@Nullable
-	private final ServerWebExchange exchange;
+	private final @Nullable ApiVersionStrategy versionStrategy;
+
+	private final @Nullable ServerWebExchange exchange;
 
 
 	private MockServerRequest(HttpMethod method, URI uri, String contextPath, MockHeaders headers,
 			MultiValueMap<String, HttpCookie> cookies, @Nullable Object body,
 			Map<String, Object> attributes, MultiValueMap<String, String> queryParams,
 			Map<String, String> pathVariables, @Nullable WebSession session, @Nullable Principal principal,
-			@Nullable InetSocketAddress remoteAddress, List<HttpMessageReader<?>> messageReaders,
+			@Nullable InetSocketAddress remoteAddress, @Nullable InetSocketAddress localAddress,
+			List<HttpMessageReader<?>> messageReaders, @Nullable ApiVersionStrategy versionStrategy,
 			@Nullable ServerWebExchange exchange) {
 
 		this.method = method;
 		this.uri = uri;
-		this.pathContainer = RequestPath.parse(uri, contextPath);
+		this.requestPath = RequestPath.parse(uri, contextPath);
 		this.headers = headers;
 		this.cookies = cookies;
 		this.body = body;
@@ -118,7 +120,9 @@ public final class MockServerRequest implements ServerRequest {
 		this.session = session;
 		this.principal = principal;
 		this.remoteAddress = remoteAddress;
+		this.localAddress = localAddress;
 		this.messageReaders = messageReaders;
+		this.versionStrategy = versionStrategy;
 		this.exchange = exchange;
 	}
 
@@ -126,11 +130,6 @@ public final class MockServerRequest implements ServerRequest {
 	@Override
 	public HttpMethod method() {
 		return this.method;
-	}
-
-	@Override
-	public String methodName() {
-		return this.method.name();
 	}
 
 	@Override
@@ -144,8 +143,8 @@ public final class MockServerRequest implements ServerRequest {
 	}
 
 	@Override
-	public PathContainer pathContainer() {
-		return this.pathContainer;
+	public RequestPath requestPath() {
+		return this.requestPath;
 	}
 
 	@Override
@@ -164,8 +163,18 @@ public final class MockServerRequest implements ServerRequest {
 	}
 
 	@Override
+	public Optional<InetSocketAddress> localAddress() {
+		return Optional.ofNullable(this.localAddress);
+	}
+
+	@Override
 	public List<HttpMessageReader<?>> messageReaders() {
 		return this.messageReaders;
+	}
+
+	@Override
+	public @Nullable ApiVersionStrategy apiVersionStrategy() {
+		return this.versionStrategy;
 	}
 
 	@Override
@@ -208,6 +217,20 @@ public final class MockServerRequest implements ServerRequest {
 	public <S> Flux<S> bodyToFlux(ParameterizedTypeReference<S> typeReference) {
 		Assert.state(this.body != null, "No body");
 		return (Flux<S>) this.body;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> Mono<T> bind(Class<T> bindType) {
+		Assert.state(this.body != null, "No body");
+		return (Mono<T>) this.body;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public <T> Mono<T> bind(Class<T> bindType, Consumer<WebDataBinder> dataBinderCustomizer) {
+		Assert.state(this.body != null, "No body");
+		return (Mono<T>) this.body;
 	}
 
 	@Override
@@ -292,18 +315,15 @@ public final class MockServerRequest implements ServerRequest {
 
 		Builder session(WebSession session);
 
-		/**
-		 * Sets the request {@link Principal}.
-		 * @deprecated in favor of {@link #principal(Principal)}
-		 */
-		@Deprecated
-		Builder session(Principal principal);
-
 		Builder principal(Principal principal);
 
 		Builder remoteAddress(InetSocketAddress remoteAddress);
 
+		Builder localAddress(InetSocketAddress localAddress);
+
 		Builder messageReaders(List<HttpMessageReader<?>> messageReaders);
+
+		Builder apiVersionStrategy(@Nullable ApiVersionStrategy versionStrategy);
 
 		Builder exchange(ServerWebExchange exchange);
 
@@ -325,8 +345,7 @@ public final class MockServerRequest implements ServerRequest {
 
 		private MultiValueMap<String, HttpCookie> cookies = new LinkedMultiValueMap<>();
 
-		@Nullable
-		private Object body;
+		private @Nullable Object body;
 
 		private Map<String, Object> attributes = new ConcurrentHashMap<>();
 
@@ -334,19 +353,19 @@ public final class MockServerRequest implements ServerRequest {
 
 		private Map<String, String> pathVariables = new LinkedHashMap<>();
 
-		@Nullable
-		private WebSession session;
+		private @Nullable WebSession session;
 
-		@Nullable
-		private Principal principal;
+		private @Nullable Principal principal;
 
-		@Nullable
-		private InetSocketAddress remoteAddress;
+		private @Nullable InetSocketAddress remoteAddress;
+
+		private @Nullable InetSocketAddress localAddress;
 
 		private List<HttpMessageReader<?>> messageReaders = HandlerStrategies.withDefaults().messageReaders();
 
-		@Nullable
-		private ServerWebExchange exchange;
+		private @Nullable ApiVersionStrategy versionStrategy;
+
+		private @Nullable ServerWebExchange exchange;
 
 		@Override
 		public Builder method(HttpMethod method) {
@@ -451,12 +470,6 @@ public final class MockServerRequest implements ServerRequest {
 		}
 
 		@Override
-		@Deprecated
-		public Builder session(Principal principal) {
-			return principal(principal);
-		}
-
-		@Override
 		public Builder principal(Principal principal) {
 			Assert.notNull(principal, "'principal' must not be null");
 			this.principal = principal;
@@ -471,9 +484,22 @@ public final class MockServerRequest implements ServerRequest {
 		}
 
 		@Override
+		public Builder localAddress(InetSocketAddress localAddress) {
+			Assert.notNull(localAddress, "'localAddress' must not be null");
+			this.localAddress = localAddress;
+			return this;
+		}
+
+		@Override
 		public Builder messageReaders(List<HttpMessageReader<?>> messageReaders) {
 			Assert.notNull(messageReaders, "'messageReaders' must not be null");
 			this.messageReaders = messageReaders;
+			return this;
+		}
+
+		@Override
+		public Builder apiVersionStrategy(@Nullable ApiVersionStrategy versionStrategy) {
+			this.versionStrategy = versionStrategy;
 			return this;
 		}
 
@@ -489,16 +515,16 @@ public final class MockServerRequest implements ServerRequest {
 			this.body = body;
 			return new MockServerRequest(this.method, this.uri, this.contextPath, this.headers,
 					this.cookies, this.body, this.attributes, this.queryParams, this.pathVariables,
-					this.session, this.principal, this.remoteAddress, this.messageReaders,
-					this.exchange);
+					this.session, this.principal, this.remoteAddress, this.localAddress,
+					this.messageReaders, this.versionStrategy, this.exchange);
 		}
 
 		@Override
 		public MockServerRequest build() {
 			return new MockServerRequest(this.method, this.uri, this.contextPath, this.headers,
 					this.cookies, null, this.attributes, this.queryParams, this.pathVariables,
-					this.session, this.principal, this.remoteAddress, this.messageReaders,
-					this.exchange);
+					this.session, this.principal, this.remoteAddress, this.localAddress,
+					this.messageReaders, this.versionStrategy, this.exchange);
 		}
 	}
 
@@ -545,7 +571,7 @@ public final class MockServerRequest implements ServerRequest {
 		}
 
 		@Override
-		public InetSocketAddress host() {
+		public @Nullable InetSocketAddress host() {
 			return delegate().getHost();
 		}
 

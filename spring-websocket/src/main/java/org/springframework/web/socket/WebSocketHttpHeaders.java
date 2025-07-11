@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,14 +17,15 @@
 package org.springframework.web.socket;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -56,7 +57,7 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	 * Create a new instance.
 	 */
 	public WebSocketHttpHeaders() {
-		this(new HttpHeaders(), false);
+		this(new HttpHeaders());
 	}
 
 	/**
@@ -65,21 +66,7 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	 * @param headers the HTTP headers to wrap
 	 */
 	public WebSocketHttpHeaders(HttpHeaders headers) {
-		this(headers, false);
-	}
-
-	/**
-	 * Private constructor that can create read-only {@code WebSocketHttpHeader} instances.
-	 */
-	private WebSocketHttpHeaders(HttpHeaders headers, boolean readOnly) {
-		this.headers = readOnly ? HttpHeaders.readOnlyHttpHeaders(headers) : headers;
-	}
-
-	/**
-	 * Returns {@code WebSocketHttpHeaders} object that can only be read, not written to.
-	 */
-	public static WebSocketHttpHeaders readOnlyWebSocketHttpHeaders(WebSocketHttpHeaders headers) {
-		return new WebSocketHttpHeaders(headers, true);
+		this.headers = headers;
 	}
 
 
@@ -95,8 +82,7 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	 * Returns the value of the {@code Sec-WebSocket-Accept} header.
 	 * @return the value of the header
 	 */
-	@Nullable
-	public String getSecWebSocketAccept() {
+	public @Nullable String getSecWebSocketAccept() {
 		return getFirst(SEC_WEBSOCKET_ACCEPT);
 	}
 
@@ -142,8 +128,7 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	 * Returns the value of the {@code Sec-WebSocket-Key} header.
 	 * @return the value of the header
 	 */
-	@Nullable
-	public String getSecWebSocketKey() {
+	public @Nullable String getSecWebSocketKey() {
 		return getFirst(SEC_WEBSOCKET_KEY);
 	}
 
@@ -164,7 +149,7 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	}
 
 	/**
-	 * Returns the value of the {@code Sec-WebSocket-Key} header.
+	 * Returns the value of the {@code Sec-WebSocket-Protocol} header.
 	 * @return the value of the header
 	 */
 	public List<String> getSecWebSocketProtocol() {
@@ -192,8 +177,7 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	 * Returns the value of the {@code Sec-WebSocket-Version} header.
 	 * @return the value of the header
 	 */
-	@Nullable
-	public String getSecWebSocketVersion() {
+	public @Nullable String getSecWebSocketVersion() {
 		return getFirst(SEC_WEBSOCKET_VERSION);
 	}
 
@@ -206,8 +190,7 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	 * @return the first header value; or {@code null}
 	 */
 	@Override
-	@Nullable
-	public String getFirst(String headerName) {
+	public @Nullable String getFirst(String headerName) {
 		return this.headers.getFirst(headerName);
 	}
 
@@ -260,28 +243,28 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	}
 
 	@Override
-	public boolean containsKey(Object key) {
-		return this.headers.containsKey(key);
+	public boolean containsHeader(String key) {
+		return this.headers.containsHeader(key);
 	}
 
 	@Override
-	public boolean containsValue(Object value) {
-		return this.headers.containsValue(value);
+	public @Nullable List<String> get(String headerName) {
+		return this.headers.get(headerName);
 	}
 
 	@Override
-	public List<String> get(Object key) {
-		return this.headers.get(key);
-	}
-
-	@Override
-	public List<String> put(String key, List<String> value) {
+	public @Nullable List<String> put(String key, List<String> value) {
 		return this.headers.put(key, value);
 	}
 
 	@Override
-	public List<String> remove(Object key) {
+	public @Nullable List<String> remove(String key) {
 		return this.headers.remove(key);
+	}
+
+	@Override
+	public void putAll(HttpHeaders headers) {
+		this.headers.putAll(headers);
 	}
 
 	@Override
@@ -295,31 +278,30 @@ public class WebSocketHttpHeaders extends HttpHeaders {
 	}
 
 	@Override
-	public Set<String> keySet() {
-		return this.headers.keySet();
+	public Set<String> headerNames() {
+		return this.headers.headerNames();
 	}
 
 	@Override
-	public Collection<List<String>> values() {
-		return this.headers.values();
+	public Set<Map.Entry<String, List<String>>> headerSet() {
+		return this.headers.headerSet();
 	}
 
 	@Override
-	public Set<Entry<String, List<String>>> entrySet() {
-		return this.headers.entrySet();
+	public void forEach(BiConsumer<? super String, ? super List<String>> action) {
+		this.headers.forEach(action);
+	}
+
+	@Override
+	public @Nullable List<String> putIfAbsent(String headerName, List<String> headerValues) {
+		return this.headers.putIfAbsent(headerName, headerValues);
 	}
 
 
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof WebSocketHttpHeaders)) {
-			return false;
-		}
-		WebSocketHttpHeaders otherHeaders = (WebSocketHttpHeaders) other;
-		return this.headers.equals(otherHeaders.headers);
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof WebSocketHttpHeaders that &&
+				this.headers.equals(that.headers)));
 	}
 
 	@Override

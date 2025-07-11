@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,54 +16,82 @@
 
 package org.springframework.web.reactive.socket.server.upgrade;
 
+import java.net.URI;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.server.HttpServerResponse;
+import reactor.netty.http.server.WebsocketServerSpec;
 
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
-import org.springframework.http.server.reactive.AbstractServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.lang.Nullable;
+import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
+import org.springframework.util.Assert;
 import org.springframework.web.reactive.socket.HandshakeInfo;
 import org.springframework.web.reactive.socket.WebSocketHandler;
-import org.springframework.web.reactive.socket.adapter.NettyWebSocketSessionSupport;
 import org.springframework.web.reactive.socket.adapter.ReactorNettyWebSocketSession;
 import org.springframework.web.reactive.socket.server.RequestUpgradeStrategy;
 import org.springframework.web.server.ServerWebExchange;
 
 /**
- * A {@link RequestUpgradeStrategy} for use with Reactor Netty.
+ * A WebSocket {@code RequestUpgradeStrategy} for Reactor Netty.
  *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
 public class ReactorNettyRequestUpgradeStrategy implements RequestUpgradeStrategy {
 
-	private int maxFramePayloadLength = NettyWebSocketSessionSupport.DEFAULT_FRAME_MAX_SIZE;
+	private final Supplier<WebsocketServerSpec.Builder> specBuilderSupplier;
+
+	private @Nullable Integer maxFramePayloadLength;
+
+	private @Nullable Boolean handlePing;
 
 
 	/**
-	 * Configure the maximum allowable frame payload length. Setting this value
-	 * to your application's requirement may reduce denial of service attacks
-	 * using long data frames.
-	 * <p>Corresponds to the argument with the same name in the constructor of
-	 * {@link io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory
-	 * WebSocketServerHandshakerFactory} in Netty.
-	 * <p>By default set to 65536 (64K).
-	 * @param maxFramePayloadLength the max length for frames.
-	 * @since 5.1
+	 * Create an instances with a default {@link reactor.netty.http.server.WebsocketServerSpec.Builder}.
+	 * @since 5.2.6
 	 */
-	public void setMaxFramePayloadLength(Integer maxFramePayloadLength) {
-		this.maxFramePayloadLength = maxFramePayloadLength;
+	public ReactorNettyRequestUpgradeStrategy() {
+		this(WebsocketServerSpec::builder);
 	}
 
+
 	/**
-	 * Return the configured max length for frames.
-	 * @since 5.1
+	 * Create an instance with a pre-configured {@link reactor.netty.http.server.WebsocketServerSpec.Builder}
+	 * to use for WebSocket upgrades.
+	 * @since 5.2.6
 	 */
-	public int getMaxFramePayloadLength() {
-		return this.maxFramePayloadLength;
+	public ReactorNettyRequestUpgradeStrategy(Supplier<WebsocketServerSpec.Builder> builderSupplier) {
+		Assert.notNull(builderSupplier, "WebsocketServerSpec.Builder is required");
+		this.specBuilderSupplier = builderSupplier;
+	}
+
+
+	/**
+	 * Build an instance of {@code WebsocketServerSpec} that reflects the current
+	 * configuration. This can be used to check the configured parameters except
+	 * for sub-protocols which depend on the {@link WebSocketHandler} that is used
+	 * for a given upgrade.
+	 * @since 5.2.6
+	 */
+	public WebsocketServerSpec getWebsocketServerSpec() {
+		return buildSpec(null);
+	}
+
+	WebsocketServerSpec buildSpec(@Nullable String subProtocol) {
+		WebsocketServerSpec.Builder builder = this.specBuilderSupplier.get();
+		if (subProtocol != null) {
+			builder.protocols(subProtocol);
+		}
+		if (this.maxFramePayloadLength != null) {
+			builder.maxFramePayloadLength(this.maxFramePayloadLength);
+		}
+		if (this.handlePing != null) {
+			builder.handlePing(this.handlePing);
+		}
+		return builder.build();
 	}
 
 
@@ -72,17 +100,22 @@ public class ReactorNettyRequestUpgradeStrategy implements RequestUpgradeStrateg
 			@Nullable String subProtocol, Supplier<HandshakeInfo> handshakeInfoFactory) {
 
 		ServerHttpResponse response = exchange.getResponse();
-		HttpServerResponse reactorResponse = ((AbstractServerHttpResponse) response).getNativeResponse();
+		HttpServerResponse reactorResponse = ServerHttpResponseDecorator.getNativeResponse(response);
 		HandshakeInfo handshakeInfo = handshakeInfoFactory.get();
 		NettyDataBufferFactory bufferFactory = (NettyDataBufferFactory) response.bufferFactory();
+		URI uri = exchange.getRequest().getURI();
 
-		return reactorResponse.sendWebsocket(subProtocol, this.maxFramePayloadLength,
-				(in, out) -> {
-					ReactorNettyWebSocketSession session =
-							new ReactorNettyWebSocketSession(
-									in, out, handshakeInfo, bufferFactory, this.maxFramePayloadLength);
-					return handler.handle(session);
-				});
+		// Trigger WebFlux preCommit actions and upgrade
+		return response.setComplete()
+				.then(Mono.defer(() -> {
+					WebsocketServerSpec spec = buildSpec(subProtocol);
+					return reactorResponse.sendWebsocket((in, out) -> {
+						ReactorNettyWebSocketSession session =
+								new ReactorNettyWebSocketSession(
+										in, out, handshakeInfo, bufferFactory, spec.maxFramePayloadLength());
+						return handler.handle(session).checkpoint(uri + " [ReactorNettyRequestUpgradeStrategy]");
+					}, spec);
+				}));
 	}
 
 }

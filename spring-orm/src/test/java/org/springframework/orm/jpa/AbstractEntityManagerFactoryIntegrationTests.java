@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,14 +16,14 @@
 
 package org.springframework.orm.jpa;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Query;
 import javax.sql.DataSource;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Query;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -32,13 +32,14 @@ import org.springframework.core.io.Resource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.orm.jpa.domain.MyDomain;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Rod Johnson
@@ -70,10 +71,14 @@ public abstract class AbstractEntityManagerFactoryIntegrationTests {
 	private boolean zappedTables = false;
 
 
-	@Autowired
+	@Autowired @MyDomain
 	public void setEntityManagerFactory(EntityManagerFactory entityManagerFactory) {
 		this.entityManagerFactory = entityManagerFactory;
-		this.sharedEntityManager = SharedEntityManagerCreator.createSharedEntityManager(this.entityManagerFactory);
+	}
+
+	@Autowired @MyDomain
+	public void setSharedEntityManager(EntityManager sharedEntityManager) {
+		this.sharedEntityManager = sharedEntityManager;
 	}
 
 	@Autowired
@@ -87,8 +92,8 @@ public abstract class AbstractEntityManagerFactoryIntegrationTests {
 	}
 
 
-	@Before
-	public void setup() {
+	@BeforeEach
+	void setup() {
 		if (applicationContext == null) {
 			applicationContext = new ClassPathXmlApplicationContext(getConfigLocations());
 		}
@@ -103,20 +108,20 @@ public abstract class AbstractEntityManagerFactoryIntegrationTests {
 		return ECLIPSELINK_CONFIG_LOCATIONS;
 	}
 
-	@After
-	public void cleanup() {
+	@AfterEach
+	void cleanup() {
 		if (this.transactionStatus != null && !this.transactionStatus.isCompleted()) {
 			endTransaction();
 		}
 
-		assertTrue(TransactionSynchronizationManager.getResourceMap().isEmpty());
-		assertFalse(TransactionSynchronizationManager.isSynchronizationActive());
-		assertFalse(TransactionSynchronizationManager.isCurrentTransactionReadOnly());
-		assertFalse(TransactionSynchronizationManager.isActualTransactionActive());
+		assertThat(TransactionSynchronizationManager.getResourceMap()).isEmpty();
+		assertThat(TransactionSynchronizationManager.isSynchronizationActive()).isFalse();
+		assertThat(TransactionSynchronizationManager.isCurrentTransactionReadOnly()).isFalse();
+		assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
 	}
 
-	@AfterClass
-	public static void closeContext() {
+	@AfterAll
+	static void closeContext() {
 		if (applicationContext != null) {
 			applicationContext.close();
 			applicationContext = null;

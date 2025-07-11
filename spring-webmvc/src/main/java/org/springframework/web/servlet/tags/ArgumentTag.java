@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,14 +16,13 @@
 
 package org.springframework.web.servlet.tags;
 
-import javax.servlet.jsp.JspException;
-import javax.servlet.jsp.tagext.BodyTagSupport;
-
-import org.springframework.lang.Nullable;
+import jakarta.servlet.jsp.JspException;
+import jakarta.servlet.jsp.tagext.BodyTagSupport;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The {@code <argument>} tag is based on the JSTL {@code fmt:param} tag.
- * The purpose is to support arguments inside the message and theme tags.
+ * The purpose is to support arguments inside the message tags.
  *
  * <p>This tag must be nested under an argument aware tag.
  *
@@ -50,13 +49,11 @@ import org.springframework.lang.Nullable;
  * @author Nicholas Williams
  * @since 4.0
  * @see MessageTag
- * @see ThemeTag
  */
 @SuppressWarnings("serial")
 public class ArgumentTag extends BodyTagSupport {
 
-	@Nullable
-	private Object value;
+	private @Nullable Object value;
 
 	private boolean valueSet;
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,9 @@
 
 package org.springframework.messaging.handler;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.Ordered;
-import org.springframework.lang.Nullable;
 
 /**
  * Represents a Spring-managed bean with cross-cutting functionality to be
@@ -40,8 +41,7 @@ public interface MessagingAdviceBean extends Ordered {
 	 * <p>If the bean type is a CGLIB-generated class, the original user-defined
 	 * class is returned.
 	 */
-	@Nullable
-	Class<?> getBeanType();
+	@Nullable Class<?> getBeanType();
 
 	/**
 	 * Return the advice bean instance, if necessary resolving a bean specified

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,8 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.InitializingBean;
@@ -31,6 +33,7 @@ import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolverComposite;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
+import org.springframework.util.Assert;
 import org.springframework.validation.Validator;
 
 /**
@@ -60,16 +63,16 @@ public class DefaultMessageHandlerMethodFactory
 
 	private ConversionService conversionService = new DefaultFormattingConversionService();
 
-	private MessageConverter messageConverter;
+	private @Nullable MessageConverter messageConverter;
 
-	private Validator validator;
+	private @Nullable Validator validator;
 
-	private List<HandlerMethodArgumentResolver> customArgumentResolvers;
+	private @Nullable List<HandlerMethodArgumentResolver> customArgumentResolvers;
 
 	private final HandlerMethodArgumentResolverComposite argumentResolvers =
 			new HandlerMethodArgumentResolverComposite();
 
-	private BeanFactory beanFactory;
+	private @Nullable BeanFactory beanFactory;
 
 
 	/**
@@ -94,7 +97,7 @@ public class DefaultMessageHandlerMethodFactory
 	/**
 	 * Set the Validator instance used for validating {@code @Payload} arguments.
 	 * @see org.springframework.validation.annotation.Validated
-	 * @see org.springframework.messaging.handler.annotation.support.PayloadArgumentResolver
+	 * @see PayloadMethodArgumentResolver
 	 */
 	public void setValidator(Validator validator) {
 		this.validator = validator;
@@ -114,7 +117,7 @@ public class DefaultMessageHandlerMethodFactory
 	 * the ones configured by default. This is an advanced option. For most use cases
 	 * it should be sufficient to use {@link #setCustomArgumentResolvers(java.util.List)}.
 	 */
-	public void setArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
+	public void setArgumentResolvers(@Nullable List<HandlerMethodArgumentResolver> argumentResolvers) {
 		if (argumentResolvers == null) {
 			this.argumentResolvers.clear();
 			return;
@@ -151,11 +154,11 @@ public class DefaultMessageHandlerMethodFactory
 
 	protected List<HandlerMethodArgumentResolver> initArgumentResolvers() {
 		List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>();
-		ConfigurableBeanFactory cbf = (this.beanFactory instanceof ConfigurableBeanFactory ?
-				(ConfigurableBeanFactory) this.beanFactory : null);
+		ConfigurableBeanFactory beanFactory = (this.beanFactory instanceof ConfigurableBeanFactory cbf ?
+				cbf : null);
 
 		// Annotation-based argument resolution
-		resolvers.add(new HeaderMethodArgumentResolver(this.conversionService, cbf));
+		resolvers.add(new HeaderMethodArgumentResolver(this.conversionService, beanFactory));
 		resolvers.add(new HeadersMethodArgumentResolver());
 
 		// Type-based argument resolution
@@ -164,7 +167,9 @@ public class DefaultMessageHandlerMethodFactory
 		if (this.customArgumentResolvers != null) {
 			resolvers.addAll(this.customArgumentResolvers);
 		}
-		resolvers.add(new PayloadArgumentResolver(this.messageConverter, this.validator));
+
+		Assert.notNull(this.messageConverter, "MessageConverter not configured");
+		resolvers.add(new PayloadMethodArgumentResolver(this.messageConverter, this.validator));
 
 		return resolvers;
 	}

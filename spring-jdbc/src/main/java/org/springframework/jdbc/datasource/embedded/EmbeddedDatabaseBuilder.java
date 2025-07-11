@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -112,13 +112,27 @@ public class EmbeddedDatabaseBuilder {
 	}
 
 	/**
-	 * Set the type of embedded database.
+	 * Set the type of embedded database. Consider using {@link #setDatabaseConfigurer}
+	 * if customization of the connections properties is necessary.
 	 * <p>Defaults to HSQL if not called.
 	 * @param databaseType the type of embedded database to build
 	 * @return {@code this}, to facilitate method chaining
 	 */
 	public EmbeddedDatabaseBuilder setType(EmbeddedDatabaseType databaseType) {
 		this.databaseFactory.setDatabaseType(databaseType);
+		return this;
+	}
+
+	/**
+	 * Set the {@linkplain EmbeddedDatabaseConfigurer configurer} to use to
+	 * configure the embedded database, as an alternative to {@link #setType}.
+	 * @param configurer the configurer of the embedded database
+	 * @return {@code this}, to facilitate method chaining
+	 * @since 6.2
+	 * @see EmbeddedDatabaseConfigurers
+	 */
+	public EmbeddedDatabaseBuilder setDatabaseConfigurer(EmbeddedDatabaseConfigurer configurer) {
+		this.databaseFactory.setDatabaseConfigurer(configurer);
 		return this;
 	}
 
@@ -201,9 +215,22 @@ public class EmbeddedDatabaseBuilder {
 	 * @param commentPrefix the prefix for single-line comments
 	 * @return {@code this}, to facilitate method chaining
 	 * @since 4.0.3
+	 * @see #setCommentPrefixes(String...)
 	 */
 	public EmbeddedDatabaseBuilder setCommentPrefix(String commentPrefix) {
 		this.databasePopulator.setCommentPrefix(commentPrefix);
+		return this;
+	}
+
+	/**
+	 * Specify the prefixes that identify single-line comments within all SQL scripts.
+	 * <p>Defaults to {@code ["--"]}.
+	 * @param commentPrefixes the prefixes for single-line comments
+	 * @return {@code this}, to facilitate method chaining
+	 * @since 5.2
+	 */
+	public EmbeddedDatabaseBuilder setCommentPrefixes(String... commentPrefixes) {
+		this.databasePopulator.setCommentPrefixes(commentPrefixes);
 		return this;
 	}
 

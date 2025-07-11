@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +16,21 @@
 
 package org.springframework.aop.framework.autoproxy.target;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.aop.target.AbstractBeanFactoryBasedTargetSource;
 import org.springframework.aop.target.CommonsPool2TargetSource;
 import org.springframework.aop.target.PrototypeTargetSource;
 import org.springframework.aop.target.ThreadLocalTargetSource;
-import org.springframework.lang.Nullable;
 
 /**
  * Convenient TargetSourceCreator using bean name prefixes to create one of three
  * well-known TargetSource types:
- * <li>: CommonsPool2TargetSource
- * <li>% ThreadLocalTargetSource
- * <li>! PrototypeTargetSource
+ * <ul>
+ * <li>: CommonsPool2TargetSource</li>
+ * <li>% ThreadLocalTargetSource</li>
+ * <li>! PrototypeTargetSource</li>
+ * </ul>
  *
  * @author Rod Johnson
  * @author Stephane Nicoll
@@ -53,8 +56,7 @@ public class QuickTargetSourceCreator extends AbstractBeanFactoryBasedTargetSour
 	public static final String PREFIX_PROTOTYPE = "!";
 
 	@Override
-	@Nullable
-	protected final AbstractBeanFactoryBasedTargetSource createBeanFactoryBasedTargetSource(
+	protected final @Nullable AbstractBeanFactoryBasedTargetSource createBeanFactoryBasedTargetSource(
 			Class<?> beanClass, String beanName) {
 
 		if (beanName.startsWith(PREFIX_COMMONS_POOL)) {

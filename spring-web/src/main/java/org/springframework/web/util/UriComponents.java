@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,8 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 
@@ -51,11 +52,9 @@ public abstract class UriComponents implements Serializable {
 	private static final Pattern NAMES_PATTERN = Pattern.compile("\\{([^/]+?)\\}");
 
 
-	@Nullable
-	private final String scheme;
+	private final @Nullable String scheme;
 
-	@Nullable
-	private final String fragment;
+	private final @Nullable String fragment;
 
 
 	protected UriComponents(@Nullable String scheme, @Nullable String fragment) {
@@ -69,36 +68,31 @@ public abstract class UriComponents implements Serializable {
 	/**
 	 * Return the scheme. Can be {@code null}.
 	 */
-	@Nullable
-	public final String getScheme() {
+	public final @Nullable String getScheme() {
 		return this.scheme;
 	}
 
 	/**
 	 * Return the fragment. Can be {@code null}.
 	 */
-	@Nullable
-	public final String getFragment() {
+	public final @Nullable String getFragment() {
 		return this.fragment;
 	}
 
 	/**
 	 * Return the scheme specific part. Can be {@code null}.
 	 */
-	@Nullable
-	public abstract String getSchemeSpecificPart();
+	public abstract @Nullable String getSchemeSpecificPart();
 
 	/**
 	 * Return the user info. Can be {@code null}.
 	 */
-	@Nullable
-	public abstract String getUserInfo();
+	public abstract @Nullable String getUserInfo();
 
 	/**
 	 * Return the host. Can be {@code null}.
 	 */
-	@Nullable
-	public abstract String getHost();
+	public abstract @Nullable String getHost();
 
 	/**
 	 * Return the port. {@code -1} if no port has been set.
@@ -108,8 +102,7 @@ public abstract class UriComponents implements Serializable {
 	/**
 	 * Return the path. Can be {@code null}.
 	 */
-	@Nullable
-	public abstract String getPath();
+	public abstract @Nullable String getPath();
 
 	/**
 	 * Return the list of path segments. Empty if no path has been set.
@@ -119,8 +112,7 @@ public abstract class UriComponents implements Serializable {
 	/**
 	 * Return the query. Can be {@code null}.
 	 */
-	@Nullable
-	public abstract String getQuery();
+	public abstract @Nullable String getQuery();
 
 	/**
 	 * Return the map of query parameters. Empty if no query has been set.
@@ -156,7 +148,7 @@ public abstract class UriComponents implements Serializable {
 	 * @param uriVariables the map of URI variables
 	 * @return the expanded URI components
 	 */
-	public final UriComponents expand(Map<String, ?> uriVariables) {
+	public final UriComponents expand(Map<String, ? extends @Nullable Object> uriVariables) {
 		Assert.notNull(uriVariables, "'uriVariables' must not be null");
 		return expandInternal(new MapTemplateVariables(uriVariables));
 	}
@@ -167,7 +159,7 @@ public abstract class UriComponents implements Serializable {
 	 * @param uriVariableValues the URI variable values
 	 * @return the expanded URI components
 	 */
-	public final UriComponents expand(Object... uriVariableValues) {
+	public final UriComponents expand(@Nullable Object... uriVariableValues) {
 		Assert.notNull(uriVariableValues, "'uriVariableValues' must not be null");
 		return expandInternal(new VarArgsTemplateVariables(uriVariableValues));
 	}
@@ -201,10 +193,11 @@ public abstract class UriComponents implements Serializable {
 
 	/**
 	 * Concatenate all URI components to return the fully formed URI String.
-	 * <p>This method does nothing more than a simple concatenation based on
-	 * current values. That means it could produce different results if invoked
-	 * before vs after methods that can change individual values such as
-	 * {@code encode}, {@code expand}, or {@code normalize}.
+	 * <p>This method amounts to simple String concatenation of the current
+	 * URI component values and as such the result may contain illegal URI
+	 * characters, for example if URI variables have not been expanded or if
+	 * encoding has not been applied via {@link UriComponentsBuilder#encode()}
+	 * or {@link #encode()}.
 	 */
 	public abstract String toUriString();
 
@@ -236,13 +229,11 @@ public abstract class UriComponents implements Serializable {
 
 	// Static expansion helpers
 
-	@Nullable
-	static String expandUriComponent(@Nullable String source, UriTemplateVariables uriVariables) {
+	static @Nullable String expandUriComponent(@Nullable String source, UriTemplateVariables uriVariables) {
 		return expandUriComponent(source, uriVariables, null);
 	}
 
-	@Nullable
-	static String expandUriComponent(@Nullable String source, UriTemplateVariables uriVariables,
+	static @Nullable String expandUriComponent(@Nullable String source, UriTemplateVariables uriVariables,
 			@Nullable UnaryOperator<String> encoder) {
 
 		if (source == null) {
@@ -255,7 +246,7 @@ public abstract class UriComponents implements Serializable {
 			source = sanitizeSource(source);
 		}
 		Matcher matcher = NAMES_PATTERN.matcher(source);
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		while (matcher.find()) {
 			String match = matcher.group(1);
 			String varName = getVariableName(match);
@@ -276,8 +267,10 @@ public abstract class UriComponents implements Serializable {
 	 */
 	private static String sanitizeSource(String source) {
 		int level = 0;
-		StringBuilder sb = new StringBuilder();
-		for (char c : source.toCharArray()) {
+		int lastCharIndex = 0;
+		char[] chars = new char[source.length()];
+		for (int i = 0; i < source.length(); i++) {
+			char c = source.charAt(i);
 			if (c == '{') {
 				level++;
 			}
@@ -287,9 +280,9 @@ public abstract class UriComponents implements Serializable {
 			if (level > 1 || (level == 1 && c == '}')) {
 				continue;
 			}
-			sb.append(c);
+			chars[lastCharIndex++] = c;
 		}
-		return sb.toString();
+		return new String(chars, 0, lastCharIndex);
 	}
 
 	private static String getVariableName(String match) {
@@ -322,8 +315,7 @@ public abstract class UriComponents implements Serializable {
 		 * @param name the variable name
 		 * @return the variable value, possibly {@code null} or {@link #SKIP_VALUE}
 		 */
-		@Nullable
-		Object getValue(@Nullable String name);
+		@Nullable Object getValue(@Nullable String name);
 	}
 
 
@@ -332,15 +324,14 @@ public abstract class UriComponents implements Serializable {
 	 */
 	private static class MapTemplateVariables implements UriTemplateVariables {
 
-		private final Map<String, ?> uriVariables;
+		private final Map<String, ? extends @Nullable Object> uriVariables;
 
-		public MapTemplateVariables(Map<String, ?> uriVariables) {
+		public MapTemplateVariables(Map<String, ? extends @Nullable Object> uriVariables) {
 			this.uriVariables = uriVariables;
 		}
 
 		@Override
-		@Nullable
-		public Object getValue(@Nullable String name) {
+		public @Nullable Object getValue(@Nullable String name) {
 			if (!this.uriVariables.containsKey(name)) {
 				throw new IllegalArgumentException("Map has no value for '" + name + "'");
 			}
@@ -356,13 +347,12 @@ public abstract class UriComponents implements Serializable {
 
 		private final Iterator<Object> valueIterator;
 
-		public VarArgsTemplateVariables(Object... uriVariableValues) {
+		public VarArgsTemplateVariables(@Nullable Object... uriVariableValues) {
 			this.valueIterator = Arrays.asList(uriVariableValues).iterator();
 		}
 
 		@Override
-		@Nullable
-		public Object getValue(@Nullable String name) {
+		public @Nullable Object getValue(@Nullable String name) {
 			if (!this.valueIterator.hasNext()) {
 				throw new IllegalArgumentException("Not enough variable values available to expand '" + name + "'");
 			}

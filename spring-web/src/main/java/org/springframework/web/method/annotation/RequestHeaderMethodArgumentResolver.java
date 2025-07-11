@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,11 @@ package org.springframework.web.method.annotation;
 
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.core.MethodParameter;
-import org.springframework.lang.Nullable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.ServletRequestBindingException;
@@ -60,7 +62,8 @@ public class RequestHeaderMethodArgumentResolver extends AbstractNamedValueMetho
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
 		return (parameter.hasParameterAnnotation(RequestHeader.class) &&
-				!Map.class.isAssignableFrom(parameter.nestedIfOptional().getNestedParameterType()));
+				!Map.class.isAssignableFrom(parameter.nestedIfOptional().getNestedParameterType())) &&
+				!HttpHeaders.class.isAssignableFrom(parameter.nestedIfOptional().getNestedParameterType());
 	}
 
 	@Override
@@ -71,8 +74,7 @@ public class RequestHeaderMethodArgumentResolver extends AbstractNamedValueMetho
 	}
 
 	@Override
-	@Nullable
-	protected Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
+	protected @Nullable Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
 		String[] headerValues = request.getHeaderValues(name);
 		if (headerValues != null) {
 			return (headerValues.length == 1 ? headerValues[0] : headerValues);
@@ -87,6 +89,12 @@ public class RequestHeaderMethodArgumentResolver extends AbstractNamedValueMetho
 		throw new MissingRequestHeaderException(name, parameter);
 	}
 
+	@Override
+	protected void handleMissingValueAfterConversion(
+			String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
+
+		throw new MissingRequestHeaderException(name, parameter, true);
+	}
 
 	private static final class RequestHeaderNamedValueInfo extends NamedValueInfo {
 

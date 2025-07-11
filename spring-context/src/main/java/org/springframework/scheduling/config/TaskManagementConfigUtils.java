@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,13 +28,13 @@ public abstract class TaskManagementConfigUtils {
 	 * The bean name of the internally managed Scheduled annotation processor.
 	 */
 	public static final String SCHEDULED_ANNOTATION_PROCESSOR_BEAN_NAME =
-			"org.springframework.context.annotation.internalScheduledAnnotationProcessor";
+			"org.springframework.scheduling.config.internalScheduledAnnotationProcessor";
 
 	/**
 	 * The bean name of the internally managed Async annotation processor.
 	 */
 	public static final String ASYNC_ANNOTATION_PROCESSOR_BEAN_NAME =
-			"org.springframework.context.annotation.internalAsyncAnnotationProcessor";
+			"org.springframework.scheduling.config.internalAsyncAnnotationProcessor";
 
 	/**
 	 * The bean name of the internally managed AspectJ async execution aspect.

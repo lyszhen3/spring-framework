@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,9 +29,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 public interface SmartRequestBuilder extends RequestBuilder {
 
 	/**
-	 * Apply request post processing. Typically that means invoking one or more
+	 * Apply request post-processing. Typically, that means invoking one or more
 	 * {@link org.springframework.test.web.servlet.request.RequestPostProcessor org.springframework.test.web.servlet.request.RequestPostProcessors}.
-	 *
 	 * @param request the request to initialize
 	 * @return the request to use, either the one passed in or a wrapped one
 	 */

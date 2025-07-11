@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,27 +17,28 @@
 package org.springframework.jca.endpoint;
 
 import java.lang.reflect.Method;
-import javax.resource.ResourceException;
-import javax.resource.spi.ApplicationServerInternalException;
-import javax.resource.spi.UnavailableException;
-import javax.resource.spi.endpoint.MessageEndpoint;
-import javax.resource.spi.endpoint.MessageEndpointFactory;
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
+
 import javax.transaction.xa.XAResource;
 
+import jakarta.resource.ResourceException;
+import jakarta.resource.spi.ApplicationServerInternalException;
+import jakarta.resource.spi.UnavailableException;
+import jakarta.resource.spi.endpoint.MessageEndpoint;
+import jakarta.resource.spi.endpoint.MessageEndpointFactory;
+import jakarta.transaction.Transaction;
+import jakarta.transaction.TransactionManager;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanNameAware;
-import org.springframework.lang.Nullable;
 import org.springframework.transaction.jta.SimpleTransactionFactory;
 import org.springframework.transaction.jta.TransactionFactory;
 import org.springframework.util.Assert;
 
 /**
  * Abstract base implementation of the JCA 1.7
- * {@link javax.resource.spi.endpoint.MessageEndpointFactory} interface,
+ * {@link jakarta.resource.spi.endpoint.MessageEndpointFactory} interface,
  * providing transaction management capabilities as well as ClassLoader
  * exposure for endpoint invocations.
  *
@@ -50,16 +51,13 @@ public abstract class AbstractMessageEndpointFactory implements MessageEndpointF
 	/** Logger available to subclasses. */
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private TransactionFactory transactionFactory;
+	private @Nullable TransactionFactory transactionFactory;
 
-	@Nullable
-	private String transactionName;
+	private @Nullable String transactionName;
 
 	private int transactionTimeout = -1;
 
-	@Nullable
-	private String beanName;
+	private @Nullable String beanName;
 
 
 	/**
@@ -67,7 +65,7 @@ public abstract class AbstractMessageEndpointFactory implements MessageEndpointF
 	 * invocations, enlisting the endpoint resource in each such transaction.
 	 * <p>The passed-in object may be a transaction manager which implements
 	 * Spring's {@link org.springframework.transaction.jta.TransactionFactory}
-	 * interface, or a plain {@link javax.transaction.TransactionManager}.
+	 * interface, or a plain {@link jakarta.transaction.TransactionManager}.
 	 * <p>If no transaction manager is specified, the endpoint invocation
 	 * will simply not be wrapped in an XA transaction. Check out your
 	 * resource provider's ActivationSpec documentation for local
@@ -76,16 +74,16 @@ public abstract class AbstractMessageEndpointFactory implements MessageEndpointF
 	 * @see #setTransactionTimeout
 	 */
 	public void setTransactionManager(Object transactionManager) {
-		if (transactionManager instanceof TransactionFactory) {
-			this.transactionFactory = (TransactionFactory) transactionManager;
+		if (transactionManager instanceof TransactionFactory factory) {
+			this.transactionFactory = factory;
 		}
-		else if (transactionManager instanceof TransactionManager) {
-			this.transactionFactory = new SimpleTransactionFactory((TransactionManager) transactionManager);
+		else if (transactionManager instanceof TransactionManager manager) {
+			this.transactionFactory = new SimpleTransactionFactory(manager);
 		}
 		else {
 			throw new IllegalArgumentException("Transaction manager [" + transactionManager +
 					"] is neither a [org.springframework.transaction.jta.TransactionFactory} nor a " +
-					"[javax.transaction.TransactionManager]");
+					"[jakarta.transaction.TransactionManager]");
 		}
 	}
 
@@ -140,18 +138,16 @@ public abstract class AbstractMessageEndpointFactory implements MessageEndpointF
 	 * @see #setBeanName
 	 */
 	@Override
-	@Nullable
-	public String getActivationName() {
+	public @Nullable String getActivationName() {
 		return this.beanName;
 	}
 
 	/**
 	 * Implementation of the JCA 1.7 {@code #getEndpointClass()} method,
-	 * returning {@code} null in order to indicate a synthetic endpoint type.
+	 * returning {@code null} in order to indicate a synthetic endpoint type.
 	 */
 	@Override
-	@Nullable
-	public Class<?> getEndpointClass() {
+	public @Nullable Class<?> getEndpointClass() {
 		return null;
 	}
 
@@ -205,13 +201,11 @@ public abstract class AbstractMessageEndpointFactory implements MessageEndpointF
 	 */
 	protected abstract class AbstractMessageEndpoint implements MessageEndpoint {
 
-		@Nullable
-		private TransactionDelegate transactionDelegate;
+		private @Nullable TransactionDelegate transactionDelegate;
 
 		private boolean beforeDeliveryCalled = false;
 
-		@Nullable
-		private ClassLoader previousContextClassLoader;
+		private @Nullable ClassLoader previousContextClassLoader;
 
 		/**
 		 * Initialize this endpoint's TransactionDelegate.
@@ -318,11 +312,9 @@ public abstract class AbstractMessageEndpointFactory implements MessageEndpointF
 	 */
 	private class TransactionDelegate {
 
-		@Nullable
-		private final XAResource xaResource;
+		private final @Nullable XAResource xaResource;
 
-		@Nullable
-		private Transaction transaction;
+		private @Nullable Transaction transaction;
 
 		private boolean rollbackOnly;
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
 import org.w3c.dom.Element;
 
 import org.springframework.beans.MutablePropertyValues;
@@ -38,10 +39,12 @@ import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.beans.factory.xml.BeanDefinitionParser;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.http.converter.json.Jackson2ObjectMapperFactoryBean;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.ByteArrayMessageConverter;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.DefaultContentTypeResolver;
+import org.springframework.messaging.converter.GsonMessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
+import org.springframework.messaging.converter.JsonbMessageConverter;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -58,6 +61,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.MimeTypeUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.util.xml.DomUtils;
 import org.springframework.web.socket.WebSocketHandler;
@@ -80,8 +84,8 @@ import org.springframework.web.socket.sockjs.support.SockJsHttpRequestHandler;
  *
  * <p>Registers the following {@link org.springframework.messaging.MessageChannel MessageChannels}:
  * <ul>
- * <li>"clientInboundChannel" for receiving messages from clients (e.g. WebSocket clients)
- * <li>"clientOutboundChannel" for sending messages to clients (e.g. WebSocket clients)
+ * <li>"clientInboundChannel" for receiving messages from clients (for example, WebSocket clients)
+ * <li>"clientOutboundChannel" for sending messages to clients (for example, WebSocket clients)
  * <li>"brokerChannel" for sending messages from within the application to the message broker
  * </ul>
  *
@@ -95,6 +99,7 @@ import org.springframework.web.socket.sockjs.support.SockJsHttpRequestHandler;
  *
  * @author Brian Clozel
  * @author Rossen Stoyanchev
+ * @author Sebastien Deleuze
  * @since 4.0
  */
 class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
@@ -111,19 +116,29 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 
 	private static final int DEFAULT_MAPPING_ORDER = 1;
 
+	private static final boolean jacksonPresent;
+
 	private static final boolean jackson2Present;
+
+	private static final boolean gsonPresent;
+
+	private static final boolean jsonbPresent;
 
 	private static final boolean javaxValidationPresent;
 
 	static {
 		ClassLoader classLoader = MessageBrokerBeanDefinitionParser.class.getClassLoader();
-		jackson2Present = ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper", classLoader);
-		javaxValidationPresent = ClassUtils.isPresent("javax.validation.Validator", classLoader);
+		jacksonPresent = ClassUtils.isPresent("tools.jackson.databind.ObjectMapper", classLoader);
+		jackson2Present = ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper", classLoader) &&
+				ClassUtils.isPresent("com.fasterxml.jackson.core.JsonGenerator", classLoader);
+		gsonPresent = ClassUtils.isPresent("com.google.gson.Gson", classLoader);
+		jsonbPresent = ClassUtils.isPresent("jakarta.json.bind.Jsonb", classLoader);
+		javaxValidationPresent = ClassUtils.isPresent("jakarta.validation.Validator", classLoader);
 	}
 
 
 	@Override
-	public BeanDefinition parse(Element element, ParserContext context) {
+	public @Nullable BeanDefinition parse(Element element, ParserContext context) {
 		Object source = context.extractSource(element);
 		CompositeComponentDefinition compDefinition = new CompositeComponentDefinition(element.getTagName(), source);
 		context.pushContainingComponent(compDefinition);
@@ -200,7 +215,7 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 		RootBeanDefinition handlerMappingDef = new RootBeanDefinition(WebSocketHandlerMapping.class);
 
 		String orderAttribute = element.getAttribute("order");
-		int order = orderAttribute.isEmpty() ? DEFAULT_MAPPING_ORDER : Integer.valueOf(orderAttribute);
+		int order = orderAttribute.isEmpty() ? DEFAULT_MAPPING_ORDER : Integer.parseInt(orderAttribute);
 		handlerMappingDef.getPropertyValues().add("order", order);
 
 		String pathHelper = element.getAttribute("path-helper");
@@ -266,8 +281,7 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 		return new RuntimeBeanReference(name);
 	}
 
-	@Nullable
-	private RootBeanDefinition getDefaultExecutorBeanDefinition(String channelName) {
+	private @Nullable RootBeanDefinition getDefaultExecutorBeanDefinition(String channelName) {
 		if (channelName.equals("brokerChannel")) {
 			return null;
 		}
@@ -349,7 +363,13 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 			ManagedList<Object> interceptors = WebSocketNamespaceUtils.parseBeanSubElements(interceptElem, ctx);
 			String allowedOrigins = element.getAttribute("allowed-origins");
 			List<String> origins = Arrays.asList(StringUtils.tokenizeToStringArray(allowedOrigins, ","));
-			interceptors.add(new OriginHandshakeInterceptor(origins));
+			String allowedOriginPatterns = element.getAttribute("allowed-origin-patterns");
+			List<String> originPatterns = Arrays.asList(StringUtils.tokenizeToStringArray(allowedOriginPatterns, ","));
+			OriginHandshakeInterceptor interceptor = new OriginHandshakeInterceptor(origins);
+			if (!ObjectUtils.isEmpty(originPatterns)) {
+				interceptor.setAllowedOriginPatterns(originPatterns);
+			}
+			interceptors.add(interceptor);
 			ConstructorArgumentValues cargs = new ConstructorArgumentValues();
 			cargs.addIndexedArgumentValue(0, subProtoHandler);
 			cargs.addIndexedArgumentValue(1, handler);
@@ -473,6 +493,7 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 		return new RuntimeBeanReference(beanName);
 	}
 
+	@SuppressWarnings("removal")
 	private RuntimeBeanReference registerMessageConverter(
 			Element element, ParserContext context, @Nullable Object source) {
 
@@ -485,22 +506,35 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 				converters.add(object);
 			}
 		}
-		if (convertersElement == null || Boolean.valueOf(convertersElement.getAttribute("register-defaults"))) {
+		if (convertersElement == null || Boolean.parseBoolean(convertersElement.getAttribute("register-defaults"))) {
 			converters.setSource(source);
 			converters.add(new RootBeanDefinition(StringMessageConverter.class));
 			converters.add(new RootBeanDefinition(ByteArrayMessageConverter.class));
-			if (jackson2Present) {
+			if (jacksonPresent) {
+				RootBeanDefinition jacksonConverterDef = new RootBeanDefinition(JacksonJsonMessageConverter.class);
+				RootBeanDefinition resolverDef = new RootBeanDefinition(DefaultContentTypeResolver.class);
+				resolverDef.getPropertyValues().add("defaultMimeType", MimeTypeUtils.APPLICATION_JSON);
+				jacksonConverterDef.getPropertyValues().add("contentTypeResolver", resolverDef);
+				converters.add(jacksonConverterDef);
+			}
+			else if (jackson2Present) {
 				RootBeanDefinition jacksonConverterDef = new RootBeanDefinition(MappingJackson2MessageConverter.class);
 				RootBeanDefinition resolverDef = new RootBeanDefinition(DefaultContentTypeResolver.class);
 				resolverDef.getPropertyValues().add("defaultMimeType", MimeTypeUtils.APPLICATION_JSON);
 				jacksonConverterDef.getPropertyValues().add("contentTypeResolver", resolverDef);
-				// Use Jackson factory in order to have JSR-310 and Joda-Time modules registered automatically
+				// Use Jackson factory in order to have well known modules registered automatically
 				GenericBeanDefinition jacksonFactoryDef = new GenericBeanDefinition();
 				jacksonFactoryDef.setBeanClass(Jackson2ObjectMapperFactoryBean.class);
 				jacksonFactoryDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
 				jacksonFactoryDef.setSource(source);
 				jacksonConverterDef.getPropertyValues().add("objectMapper", jacksonFactoryDef);
 				converters.add(jacksonConverterDef);
+			}
+			else if (gsonPresent) {
+				converters.add(new RootBeanDefinition(GsonMessageConverter.class));
+			}
+			else if (jsonbPresent) {
+				converters.add(new RootBeanDefinition(JsonbMessageConverter.class));
 			}
 		}
 		ConstructorArgumentValues cargs = new ConstructorArgumentValues();
@@ -565,8 +599,7 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 		registerBeanDef(beanDef, context, source);
 	}
 
-	@Nullable
-	private RuntimeBeanReference getValidator(
+	private @Nullable RuntimeBeanReference getValidator(
 			Element messageBrokerElement, @Nullable Object source, ParserContext context) {
 
 		if (messageBrokerElement.hasAttribute("validator")) {
@@ -603,10 +636,6 @@ class MessageBrokerBeanDefinitionParser implements BeanDefinitionParser {
 		beanDef.getConstructorArgumentValues().addIndexedArgumentValue(0, userRegistry);
 		if (brokerElem.hasAttribute("user-destination-prefix")) {
 			beanDef.getPropertyValues().add("userDestinationPrefix", brokerElem.getAttribute("user-destination-prefix"));
-		}
-		if (brokerElem.hasAttribute("path-matcher")) {
-			String pathMatcherRef = brokerElem.getAttribute("path-matcher");
-			beanDef.getPropertyValues().add("pathMatcher", new RuntimeBeanReference(pathMatcherRef));
 		}
 		return new RuntimeBeanReference(registerBeanDef(beanDef, context, source));
 	}

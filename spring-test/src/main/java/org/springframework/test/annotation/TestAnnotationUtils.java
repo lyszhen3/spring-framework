@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,10 @@ import org.springframework.core.annotation.AnnotatedElementUtils;
  *
  * @author Sam Brannen
  * @since 4.2
+ * @see org.springframework.test.context.TestContextAnnotationUtils
+ * @deprecated since Spring Framework 7.0 with no replacement
  */
+@Deprecated(since = "7.0")
 public abstract class TestAnnotationUtils {
 
 	/**
@@ -37,10 +40,7 @@ public abstract class TestAnnotationUtils {
 	 */
 	public static long getTimeout(Method method) {
 		Timed timed = AnnotatedElementUtils.findMergedAnnotation(method, Timed.class);
-		if (timed == null) {
-			return 0;
-		}
-		return Math.max(0, timed.millis());
+		return (timed == null ? 0 : Math.max(0, timed.millis()));
 	}
 
 	/**

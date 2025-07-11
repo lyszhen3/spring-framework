@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package org.springframework.jndi;
 
 import java.util.Hashtable;
 import java.util.Properties;
+
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NameNotFoundException;
@@ -25,8 +26,8 @@ import javax.naming.NamingException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -43,8 +44,7 @@ public class JndiTemplate {
 
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private Properties environment;
+	private @Nullable Properties environment;
 
 
 	/**
@@ -71,8 +71,7 @@ public class JndiTemplate {
 	/**
 	 * Return the environment for the JNDI InitialContext, if any.
 	 */
-	@Nullable
-	public Properties getEnvironment() {
+	public @Nullable Properties getEnvironment() {
 		return this.environment;
 	}
 
@@ -84,8 +83,7 @@ public class JndiTemplate {
 	 * @throws NamingException thrown by the callback implementation
 	 * @see #createInitialContext
 	 */
-	@Nullable
-	public <T> T execute(JndiCallback<T> contextCallback) throws NamingException {
+	public <T> @Nullable T execute(JndiCallback<T> contextCallback) throws NamingException {
 		Context ctx = getContext();
 		try {
 			return contextCallback.doInContext(ctx);
@@ -126,7 +124,7 @@ public class JndiTemplate {
 	/**
 	 * Create a new JNDI initial context. Invoked by {@link #getContext}.
 	 * <p>The default implementation use this template's environment settings.
-	 * Can be subclassed for custom contexts, e.g. for testing.
+	 * Can be subclassed for custom contexts, for example, for testing.
 	 * @return the initial Context instance
 	 * @throws NamingException in case of initialization errors
 	 */

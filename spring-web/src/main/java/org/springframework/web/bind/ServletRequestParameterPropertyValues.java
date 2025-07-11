@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,10 @@
 
 package org.springframework.web.bind;
 
-import javax.servlet.ServletRequest;
+import jakarta.servlet.ServletRequest;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.MutablePropertyValues;
-import org.springframework.lang.Nullable;
 import org.springframework.web.util.WebUtils;
 
 /**
@@ -71,7 +71,7 @@ public class ServletRequestParameterPropertyValues extends MutablePropertyValues
 	 * @param request the HTTP request
 	 * @param prefix the prefix for parameters (the full prefix will
 	 * consist of this plus the separator)
-	 * @param prefixSeparator separator delimiting prefix (e.g. "spring")
+	 * @param prefixSeparator separator delimiting prefix (for example, "spring")
 	 * and the rest of the parameter name ("param1", "param2")
 	 */
 	public ServletRequestParameterPropertyValues(

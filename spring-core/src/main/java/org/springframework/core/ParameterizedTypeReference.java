@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-
 package org.springframework.core;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -39,7 +40,7 @@ import org.springframework.util.Assert;
  * @author Rossen Stoyanchev
  * @since 3.2
  * @param <T> the referenced type
- * @see <a href="http://gafter.blogspot.nl/2006/12/super-type-tokens.html">Neal Gafter on Super Type Tokens</a>
+ * @see <a href="https://gafter.blogspot.nl/2006/12/super-type-tokens.html">Neal Gafter on Super Type Tokens</a>
  */
 public abstract class ParameterizedTypeReference<T> {
 
@@ -66,9 +67,8 @@ public abstract class ParameterizedTypeReference<T> {
 	}
 
 	@Override
-	public boolean equals(Object other) {
-		return (this == other || (other instanceof ParameterizedTypeReference &&
-				this.type.equals(((ParameterizedTypeReference<?>) other).type)));
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof ParameterizedTypeReference<?> that && this.type.equals(that.type)));
 	}
 
 	@Override
@@ -85,14 +85,13 @@ public abstract class ParameterizedTypeReference<T> {
 	/**
 	 * Build a {@code ParameterizedTypeReference} wrapping the given type.
 	 * @param type a generic type (possibly obtained via reflection,
-	 * e.g. from {@link java.lang.reflect.Method#getGenericReturnType()})
+	 * for example, from {@link java.lang.reflect.Method#getGenericReturnType()})
 	 * @return a corresponding reference which may be passed into
 	 * {@code ParameterizedTypeReference}-accepting methods
 	 * @since 4.3.12
 	 */
 	public static <T> ParameterizedTypeReference<T> forType(Type type) {
-		return new ParameterizedTypeReference<T>(type) {
-		};
+		return new ParameterizedTypeReference<>(type) {};
 	}
 
 	private static Class<?> findParameterizedTypeReferenceSubclass(Class<?> child) {

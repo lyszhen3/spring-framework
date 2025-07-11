@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,10 @@
 
 package org.springframework.jdbc.core;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Object to represent a SQL parameter value, including parameter meta-data
+ * Object to represent an SQL parameter value, including parameter meta-data
  * such as the SQL type and the scale for numeric values.
  *
  * <p>Designed for use with {@link JdbcTemplate}'s operations that take an array of
@@ -31,15 +31,14 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @since 2.0.5
  * @see java.sql.Types
- * @see JdbcTemplate#query(String, Object[], ResultSetExtractor)
- * @see JdbcTemplate#query(String, Object[], RowCallbackHandler)
- * @see JdbcTemplate#query(String, Object[], RowMapper)
+ * @see JdbcTemplate#query(String, ResultSetExtractor, Object[])
+ * @see JdbcTemplate#query(String, RowCallbackHandler, Object[])
+ * @see JdbcTemplate#query(String, RowMapper, Object[])
  * @see JdbcTemplate#update(String, Object[])
  */
 public class SqlParameterValue extends SqlParameter {
 
-	@Nullable
-	private final Object value;
+	private final @Nullable Object value;
 
 
 	/**
@@ -89,8 +88,7 @@ public class SqlParameterValue extends SqlParameter {
 	/**
 	 * Return the value object that this parameter value holds.
 	 */
-	@Nullable
-	public Object getValue() {
+	public @Nullable Object getValue() {
 		return this.value;
 	}
 

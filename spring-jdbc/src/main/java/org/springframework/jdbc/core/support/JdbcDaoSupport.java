@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,18 +17,20 @@
 package org.springframework.jdbc.core.support;
 
 import java.sql.Connection;
+
 import javax.sql.DataSource;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.dao.support.DaoSupport;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Convenient super class for JDBC-based data access objects.
+ * Convenient superclass for JDBC-based data access objects.
  *
  * <p>Requires a {@link javax.sql.DataSource} to be set, providing a
  * {@link org.springframework.jdbc.core.JdbcTemplate} based on it to
@@ -43,11 +45,14 @@ import org.springframework.util.Assert;
  * @see #setDataSource
  * @see #getJdbcTemplate
  * @see org.springframework.jdbc.core.JdbcTemplate
+ * @deprecated as of 7.0, in favor of direct injection of {@link JdbcTemplate}
+ * or {@link org.springframework.jdbc.core.simple.JdbcClient}
  */
+@Deprecated(since = "7.0", forRemoval = true)
+@SuppressWarnings("removal")
 public abstract class JdbcDaoSupport extends DaoSupport {
 
-	@Nullable
-	private JdbcTemplate jdbcTemplate;
+	private @Nullable JdbcTemplate jdbcTemplate;
 
 
 	/**
@@ -76,8 +81,7 @@ public abstract class JdbcDaoSupport extends DaoSupport {
 	/**
 	 * Return the JDBC DataSource used by this DAO.
 	 */
-	@Nullable
-	public final DataSource getDataSource() {
+	public final @Nullable DataSource getDataSource() {
 		return (this.jdbcTemplate != null ? this.jdbcTemplate.getDataSource() : null);
 	}
 
@@ -94,8 +98,7 @@ public abstract class JdbcDaoSupport extends DaoSupport {
 	 * Return the JdbcTemplate for this DAO,
 	 * pre-initialized with the DataSource or set explicitly.
 	 */
-	@Nullable
-	public final JdbcTemplate getJdbcTemplate() {
+	public final @Nullable JdbcTemplate getJdbcTemplate() {
 		return this.jdbcTemplate;
 	}
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Simple {@link Resource} implementation that holds a resource description
@@ -72,9 +72,9 @@ public class DescriptiveResource extends AbstractResource {
 	 * This implementation compares the underlying description String.
 	 */
 	@Override
-	public boolean equals(Object other) {
-		return (this == other || (other instanceof DescriptiveResource &&
-				((DescriptiveResource) other).description.equals(this.description)));
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof DescriptiveResource that &&
+				this.description.equals(that.description)));
 	}
 
 	/**

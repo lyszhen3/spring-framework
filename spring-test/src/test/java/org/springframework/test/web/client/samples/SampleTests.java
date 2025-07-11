@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.test.web.client.samples;
 
 import java.io.IOException;
 import java.util.Collections;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -34,7 +34,8 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.RestTemplate;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.springframework.test.web.client.ExpectedCount.manyTimes;
 import static org.springframework.test.web.client.ExpectedCount.never;
 import static org.springframework.test.web.client.ExpectedCount.once;
@@ -44,27 +45,22 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 /**
  * Examples to demonstrate writing client-side REST tests with Spring MVC Test.
- * While the tests in this class invoke the RestTemplate directly, in actual
+ *
+ * <p>While the tests in this class invoke the RestTemplate directly, in actual
  * tests the RestTemplate may likely be invoked indirectly, i.e. through client
  * code.
  *
  * @author Rossen Stoyanchev
  */
-public class SampleTests {
+class SampleTests {
 
-	private MockRestServiceServer mockServer;
+	private final RestTemplate restTemplate = new RestTemplate();
 
-	private RestTemplate restTemplate;
+	private final MockRestServiceServer mockServer = MockRestServiceServer.bindTo(this.restTemplate).ignoreExpectOrder(true).build();
 
-	@Before
-	public void setup() {
-		this.restTemplate = new RestTemplate();
-		this.mockServer = MockRestServiceServer.bindTo(this.restTemplate).ignoreExpectOrder(true).build();
-	}
 
 	@Test
-	public void performGet() {
-
+	void performGet() {
 		String responseBody = "{\"name\" : \"Ludwig van Beethoven\", \"someDouble\" : \"1.6035\"}";
 
 		this.mockServer.expect(requestTo("/composers/42")).andExpect(method(HttpMethod.GET))
@@ -81,8 +77,7 @@ public class SampleTests {
 	}
 
 	@Test
-	public void performGetManyTimes() {
-
+	void performGetManyTimes() {
 		String responseBody = "{\"name\" : \"Ludwig van Beethoven\", \"someDouble\" : \"1.6035\"}";
 
 		this.mockServer.expect(manyTimes(), requestTo("/composers/42")).andExpect(method(HttpMethod.GET))
@@ -103,8 +98,7 @@ public class SampleTests {
 	}
 
 	@Test
-	public void expectNever() {
-
+	void expectNever() {
 		String responseBody = "{\"name\" : \"Ludwig van Beethoven\", \"someDouble\" : \"1.6035\"}";
 
 		this.mockServer.expect(once(), requestTo("/composers/42")).andExpect(method(HttpMethod.GET))
@@ -117,9 +111,8 @@ public class SampleTests {
 		this.mockServer.verify();
 	}
 
-	@Test(expected = AssertionError.class)
-	public void expectNeverViolated() {
-
+	@Test
+	void expectNeverViolated() {
 		String responseBody = "{\"name\" : \"Ludwig van Beethoven\", \"someDouble\" : \"1.6035\"}";
 
 		this.mockServer.expect(once(), requestTo("/composers/42")).andExpect(method(HttpMethod.GET))
@@ -128,13 +121,13 @@ public class SampleTests {
 				.andRespond(withSuccess(responseBody, MediaType.APPLICATION_JSON));
 
 		this.restTemplate.getForObject("/composers/{id}", Person.class, 42);
-		this.restTemplate.getForObject("/composers/{id}", Person.class, 43);
+		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
+				this.restTemplate.getForObject("/composers/{id}", Person.class, 43));
 	}
 
 	@Test
-	public void performGetWithResponseBodyFromFile() {
-
-		Resource responseBody = new ClassPathResource("ludwig.json", this.getClass());
+	void performGetWithResponseBodyFromFile() {
+		Resource responseBody = new ClassPathResource("ludwig.json", getClass());
 
 		this.mockServer.expect(requestTo("/composers/42")).andExpect(method(HttpMethod.GET))
 			.andRespond(withSuccess(responseBody, MediaType.APPLICATION_JSON));
@@ -149,8 +142,7 @@ public class SampleTests {
 	}
 
 	@Test
-	public void verify() {
-
+	void verify() {
 		this.mockServer.expect(requestTo("/number")).andExpect(method(HttpMethod.GET))
 			.andRespond(withSuccess("1", MediaType.TEXT_PLAIN));
 
@@ -175,14 +167,13 @@ public class SampleTests {
 			this.mockServer.verify();
 		}
 		catch (AssertionError error) {
-			assertTrue(error.getMessage(), error.getMessage().contains("2 unsatisfied expectation(s)"));
+			assertThat(error.getMessage()).as(error.getMessage()).contains("2 unsatisfied expectation(s)");
 		}
 	}
 
 	@Test // SPR-14694
-	public void repeatedAccessToResponseViaResource() {
-
-		Resource resource = new ClassPathResource("ludwig.json", this.getClass());
+	void repeatedAccessToResponseViaResource() {
+		Resource resource = new ClassPathResource("ludwig.json", getClass());
 
 		RestTemplate restTemplate = new RestTemplate();
 		restTemplate.setInterceptors(Collections.singletonList(new ContentInterceptor(resource)));
@@ -217,7 +208,7 @@ public class SampleTests {
 			ClientHttpResponse response = execution.execute(request, body);
 			byte[] expected = FileCopyUtils.copyToByteArray(this.resource.getInputStream());
 			byte[] actual = FileCopyUtils.copyToByteArray(response.getBody());
-			assertEquals(new String(expected), new String(actual));
+			assertThat(new String(actual)).isEqualTo(new String(expected));
 			return response;
 		}
 	}

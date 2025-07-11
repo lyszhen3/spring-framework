@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,8 @@ package org.springframework.web.servlet;
 
 import java.util.HashMap;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.ObjectUtils;
@@ -27,7 +28,7 @@ import org.springframework.util.StringUtils;
 /**
  * A FlashMap provides a way for one request to store attributes intended for
  * use in another. This is most commonly needed when redirecting from one URL
- * to another -- e.g. the Post/Redirect/Get pattern. A FlashMap is saved before
+ * to another -- for example, the Post/Redirect/Get pattern. A FlashMap is saved before
  * the redirect (typically in the session) and is made available after the
  * redirect and removed immediately.
  *
@@ -49,18 +50,17 @@ import org.springframework.util.StringUtils;
 @SuppressWarnings("serial")
 public final class FlashMap extends HashMap<String, Object> implements Comparable<FlashMap> {
 
-	@Nullable
-	private String targetRequestPath;
+	private @Nullable String targetRequestPath;
 
-	private final MultiValueMap<String, String> targetRequestParams = new LinkedMultiValueMap<>(4);
+	private final MultiValueMap<String, String> targetRequestParams = new LinkedMultiValueMap<>(3);
 
 	private long expirationTime = -1;
 
 
 	/**
 	 * Provide a URL path to help identify the target request for this FlashMap.
-	 * <p>The path may be absolute (e.g. "/application/resource") or relative to the
-	 * current request (e.g. "../resource").
+	 * <p>The path may be absolute (for example, "/application/resource") or relative to the
+	 * current request (for example, "../resource").
 	 */
 	public void setTargetRequestPath(@Nullable String path) {
 		this.targetRequestPath = path;
@@ -69,8 +69,7 @@ public final class FlashMap extends HashMap<String, Object> implements Comparabl
 	/**
 	 * Return the target URL path (or {@code null} if none specified).
 	 */
-	@Nullable
-	public String getTargetRequestPath() {
+	public @Nullable String getTargetRequestPath() {
 		return this.targetRequestPath;
 	}
 
@@ -161,17 +160,11 @@ public final class FlashMap extends HashMap<String, Object> implements Comparabl
 	}
 
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof FlashMap)) {
-			return false;
-		}
-		FlashMap otherFlashMap = (FlashMap) other;
-		return (super.equals(otherFlashMap) &&
-				ObjectUtils.nullSafeEquals(this.targetRequestPath, otherFlashMap.targetRequestPath) &&
-				this.targetRequestParams.equals(otherFlashMap.targetRequestParams));
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof FlashMap that &&
+				super.equals(other) &&
+				ObjectUtils.nullSafeEquals(this.targetRequestPath, that.targetRequestPath) &&
+				this.targetRequestParams.equals(that.targetRequestParams)));
 	}
 
 	@Override

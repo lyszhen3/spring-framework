@@ -10,12 +10,10 @@
  * leave them uncaught and treat all data access exceptions as fatal.
  *
  * <p>The classes in this package are discussed in Chapter 9 of
- * <a href="http://www.amazon.com/exec/obidos/tg/detail/-/0764543857/">Expert One-On-One J2EE Design and Development</a>
+ * <a href="https://www.amazon.com/exec/obidos/tg/detail/-/0764543857/">Expert One-On-One J2EE Design and Development</a>
  * by Rod Johnson (Wrox, 2002).
  */
-@NonNullApi
-@NonNullFields
+@NullMarked
 package org.springframework.dao;
 
-import org.springframework.lang.NonNullApi;
-import org.springframework.lang.NonNullFields;
+import org.jspecify.annotations.NullMarked;

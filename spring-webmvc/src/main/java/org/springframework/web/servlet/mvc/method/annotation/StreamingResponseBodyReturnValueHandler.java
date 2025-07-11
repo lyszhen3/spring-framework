@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,15 +18,16 @@ package org.springframework.web.servlet.mvc.method.annotation;
 
 import java.io.OutputStream;
 import java.util.concurrent.Callable;
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpResponse;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.async.WebAsyncUtils;
@@ -70,9 +71,8 @@ public class StreamingResponseBodyReturnValueHandler implements HandlerMethodRet
 		Assert.state(response != null, "No HttpServletResponse");
 		ServerHttpResponse outputMessage = new ServletServerHttpResponse(response);
 
-		if (returnValue instanceof ResponseEntity) {
-			ResponseEntity<?> responseEntity = (ResponseEntity<?>) returnValue;
-			response.setStatus(responseEntity.getStatusCodeValue());
+		if (returnValue instanceof ResponseEntity<?> responseEntity) {
+			response.setStatus(responseEntity.getStatusCode().value());
 			outputMessage.getHeaders().putAll(responseEntity.getHeaders());
 			returnValue = responseEntity.getBody();
 			if (returnValue == null) {
@@ -108,6 +108,7 @@ public class StreamingResponseBodyReturnValueHandler implements HandlerMethodRet
 		@Override
 		public Void call() throws Exception {
 			this.streamingBody.writeTo(this.outputStream);
+			this.outputStream.flush();
 			return null;
 		}
 	}

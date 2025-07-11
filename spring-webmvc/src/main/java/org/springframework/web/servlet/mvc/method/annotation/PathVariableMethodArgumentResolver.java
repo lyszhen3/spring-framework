@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,11 +20,12 @@ import java.beans.PropertyEditor;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.MissingPathVariableException;
@@ -89,8 +90,7 @@ public class PathVariableMethodArgumentResolver extends AbstractNamedValueMethod
 
 	@Override
 	@SuppressWarnings("unchecked")
-	@Nullable
-	protected Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
+	protected @Nullable Object resolveName(String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
 		Map<String, String> uriTemplateVars = (Map<String, String>) request.getAttribute(
 				HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
 		return (uriTemplateVars != null ? uriTemplateVars.get(name) : null);
@@ -99,6 +99,13 @@ public class PathVariableMethodArgumentResolver extends AbstractNamedValueMethod
 	@Override
 	protected void handleMissingValue(String name, MethodParameter parameter) throws ServletRequestBindingException {
 		throw new MissingPathVariableException(name, parameter);
+	}
+
+	@Override
+	protected void handleMissingValueAfterConversion(
+			String name, MethodParameter parameter, NativeWebRequest request) throws Exception {
+
+		throw new MissingPathVariableException(name, parameter, true);
 	}
 
 	@Override
@@ -125,15 +132,14 @@ public class PathVariableMethodArgumentResolver extends AbstractNamedValueMethod
 		}
 
 		PathVariable ann = parameter.getParameterAnnotation(PathVariable.class);
-		String name = (ann != null && !StringUtils.isEmpty(ann.value()) ? ann.value() : parameter.getParameterName());
+		String name = (ann != null && StringUtils.hasLength(ann.value()) ? ann.value() : parameter.getParameterName());
 		String formatted = formatUriValue(conversionService, new TypeDescriptor(parameter.nestedIfOptional()), value);
 		uriVariables.put(name, formatted);
 	}
 
-	@Nullable
-	protected String formatUriValue(@Nullable ConversionService cs, @Nullable TypeDescriptor sourceType, Object value) {
-		if (value instanceof String) {
-			return (String) value;
+	protected @Nullable String formatUriValue(@Nullable ConversionService cs, @Nullable TypeDescriptor sourceType, Object value) {
+		if (value instanceof String string) {
+			return string;
 		}
 		else if (cs != null) {
 			return (String) cs.convert(value, sourceType, STRING_TYPE_DESCRIPTOR);

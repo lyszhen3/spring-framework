@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,14 +16,18 @@
 
 package org.springframework.cache.jcache;
 
+import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
+
 import javax.cache.Cache;
 import javax.cache.processor.EntryProcessor;
 import javax.cache.processor.EntryProcessorException;
 import javax.cache.processor.MutableEntry;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.cache.support.AbstractValueAdaptingCache;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -35,10 +39,13 @@ import org.springframework.util.Assert;
  * @author Juergen Hoeller
  * @author Stephane Nicoll
  * @since 3.2
+ * @see JCacheCacheManager
  */
 public class JCacheCache extends AbstractValueAdaptingCache {
 
 	private final Cache<Object, Object> cache;
+
+	private final ValueLoaderEntryProcessor valueLoaderEntryProcessor;
 
 
 	/**
@@ -58,6 +65,8 @@ public class JCacheCache extends AbstractValueAdaptingCache {
 		super(allowNullValues);
 		Assert.notNull(jcache, "Cache must not be null");
 		this.cache = jcache;
+		this.valueLoaderEntryProcessor = new ValueLoaderEntryProcessor(
+				this::fromStoreValue, this::toStoreValue);
 	}
 
 
@@ -72,16 +81,15 @@ public class JCacheCache extends AbstractValueAdaptingCache {
 	}
 
 	@Override
-	@Nullable
-	protected Object lookup(Object key) {
+	protected @Nullable Object lookup(Object key) {
 		return this.cache.get(key);
 	}
 
 	@Override
-	@Nullable
-	public <T> T get(Object key, Callable<T> valueLoader) {
+	@SuppressWarnings("unchecked")
+	public <T> @Nullable T get(Object key, Callable<T> valueLoader) {
 		try {
-			return this.cache.invoke(key, new ValueLoaderEntryProcessor<T>(), valueLoader);
+			return (T) this.cache.invoke(key, this.valueLoaderEntryProcessor, valueLoader);
 		}
 		catch (EntryProcessorException ex) {
 			throw new ValueRetrievalException(key, valueLoader, ex.getCause());
@@ -94,10 +102,9 @@ public class JCacheCache extends AbstractValueAdaptingCache {
 	}
 
 	@Override
-	@Nullable
-	public ValueWrapper putIfAbsent(Object key, @Nullable Object value) {
-		boolean set = this.cache.putIfAbsent(key, toStoreValue(value));
-		return (set ? null : get(key));
+	public @Nullable ValueWrapper putIfAbsent(Object key, @Nullable Object value) {
+		Object previous = this.cache.invoke(key, PutIfAbsentEntryProcessor.INSTANCE, toStoreValue(value));
+		return (previous != null ? toValueWrapper(previous) : null);
 	}
 
 	@Override
@@ -106,31 +113,69 @@ public class JCacheCache extends AbstractValueAdaptingCache {
 	}
 
 	@Override
+	public boolean evictIfPresent(Object key) {
+		return this.cache.remove(key);
+	}
+
+	@Override
 	public void clear() {
 		this.cache.removeAll();
 	}
 
+	@Override
+	public boolean invalidate() {
+		boolean notEmpty = this.cache.iterator().hasNext();
+		this.cache.removeAll();
+		return notEmpty;
+	}
 
-	private class ValueLoaderEntryProcessor<T> implements EntryProcessor<Object, Object, T> {
 
-		@SuppressWarnings("unchecked")
+	private static class PutIfAbsentEntryProcessor implements EntryProcessor<Object, Object, Object> {
+
+		private static final PutIfAbsentEntryProcessor INSTANCE = new PutIfAbsentEntryProcessor();
+
 		@Override
-		@Nullable
-		public T process(MutableEntry<Object, Object> entry, Object... arguments) throws EntryProcessorException {
-			Callable<T> valueLoader = (Callable<T>) arguments[0];
+		@SuppressWarnings("NullAway") // Overridden method does not define nullness
+		public @Nullable Object process(MutableEntry<Object, @Nullable Object> entry, @Nullable Object... arguments) throws EntryProcessorException {
+			Object existingValue = entry.getValue();
+			if (existingValue == null) {
+				entry.setValue(arguments[0]);
+			}
+			return existingValue;
+		}
+	}
+
+
+	private static final class ValueLoaderEntryProcessor implements EntryProcessor<Object, Object, Object> {
+
+		private final Function<Object, @Nullable Object> fromStoreValue;
+
+		private final Function<Object, Object> toStoreValue;
+
+		private ValueLoaderEntryProcessor(Function<Object, @Nullable Object> fromStoreValue,
+				Function<Object, Object> toStoreValue) {
+
+			this.fromStoreValue = fromStoreValue;
+			this.toStoreValue = toStoreValue;
+		}
+
+		@Override
+		@SuppressWarnings({"unchecked","NullAway"}) // Overridden method does not define nullness
+		public @Nullable Object process(MutableEntry<Object, @Nullable Object> entry, @Nullable Object... arguments) throws EntryProcessorException {
+			Callable<Object> valueLoader = (Callable<Object>) arguments[0];
 			if (entry.exists()) {
-				return (T) fromStoreValue(entry.getValue());
+				return this.fromStoreValue.apply(Objects.requireNonNull(entry.getValue()));
 			}
 			else {
-				T value;
+				Object value;
 				try {
-					value = valueLoader.call();
+					value = Objects.requireNonNull(valueLoader).call();
 				}
 				catch (Exception ex) {
 					throw new EntryProcessorException("Value loader '" + valueLoader + "' failed " +
 							"to compute value for key '" + entry.getKey() + "'", ex);
 				}
-				entry.setValue(toStoreValue(value));
+				entry.setValue(this.toStoreValue.apply(value));
 				return value;
 			}
 		}

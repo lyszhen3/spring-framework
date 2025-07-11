@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,9 +22,9 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanNameAware;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageDeliveryException;
@@ -42,9 +42,9 @@ public abstract class AbstractMessageChannel implements MessageChannel, Intercep
 
 	protected Log logger = LogFactory.getLog(getClass());
 
-	private final List<ChannelInterceptor> interceptors = new ArrayList<>(5);
-
 	private String beanName;
+
+	private final List<ChannelInterceptor> interceptors = new ArrayList<>(5);
 
 
 	public AbstractMessageChannel() {
@@ -87,17 +87,20 @@ public abstract class AbstractMessageChannel implements MessageChannel, Intercep
 
 	@Override
 	public void setInterceptors(List<ChannelInterceptor> interceptors) {
+		Assert.noNullElements(interceptors, "'interceptors' must not contain null elements");
 		this.interceptors.clear();
 		this.interceptors.addAll(interceptors);
 	}
 
 	@Override
 	public void addInterceptor(ChannelInterceptor interceptor) {
+		Assert.notNull(interceptor, "'interceptor' must not be null");
 		this.interceptors.add(interceptor);
 	}
 
 	@Override
 	public void addInterceptor(int index, ChannelInterceptor interceptor) {
+		Assert.notNull(interceptor, "'interceptor' must not be null");
 		this.interceptors.add(index, interceptor);
 	}
 
@@ -140,8 +143,8 @@ public abstract class AbstractMessageChannel implements MessageChannel, Intercep
 		}
 		catch (Exception ex) {
 			chain.triggerAfterSendCompletion(messageToUse, this, sent, ex);
-			if (ex instanceof MessagingException) {
-				throw (MessagingException) ex;
+			if (ex instanceof MessagingException messagingException) {
+				throw messagingException;
 			}
 			throw new MessageDeliveryException(messageToUse,"Failed to send message to " + this, ex);
 		}
@@ -171,8 +174,7 @@ public abstract class AbstractMessageChannel implements MessageChannel, Intercep
 
 		private int receiveInterceptorIndex = -1;
 
-		@Nullable
-		public Message<?> applyPreSend(Message<?> message, MessageChannel channel) {
+		public @Nullable Message<?> applyPreSend(Message<?> message, MessageChannel channel) {
 			Message<?> messageToUse = message;
 			for (ChannelInterceptor interceptor : interceptors) {
 				Message<?> resolvedMessage = interceptor.preSend(messageToUse, channel);
@@ -221,8 +223,7 @@ public abstract class AbstractMessageChannel implements MessageChannel, Intercep
 			return true;
 		}
 
-		@Nullable
-		public Message<?> applyPostReceive(Message<?> message, MessageChannel channel) {
+		public @Nullable Message<?> applyPostReceive(Message<?> message, MessageChannel channel) {
 			Message<?> messageToUse = message;
 			for (ChannelInterceptor interceptor : interceptors) {
 				messageToUse = interceptor.postReceive(messageToUse, channel);

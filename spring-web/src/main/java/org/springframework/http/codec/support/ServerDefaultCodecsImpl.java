@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,19 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.http.codec.support;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.codec.Encoder;
-import org.springframework.http.codec.HttpMessageReader;
 import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.http.codec.ServerSentEventHttpMessageWriter;
-import org.springframework.http.codec.multipart.MultipartHttpMessageReader;
-import org.springframework.http.codec.multipart.SynchronossPartHttpMessageReader;
-import org.springframework.lang.Nullable;
-import org.springframework.util.ClassUtils;
 
 /**
  * Default implementation of {@link ServerCodecConfigurer.ServerDefaultCodecs}.
@@ -34,34 +32,22 @@ import org.springframework.util.ClassUtils;
  */
 class ServerDefaultCodecsImpl extends BaseDefaultCodecs implements ServerCodecConfigurer.ServerDefaultCodecs {
 
-	private static final boolean synchronossMultipartPresent =
-			ClassUtils.isPresent("org.synchronoss.cloud.nio.multipart.NioMultipartParser",
-					DefaultServerCodecConfigurer.class.getClassLoader());
+	private @Nullable Encoder<?> sseEncoder;
 
 
-	@Nullable
-	private Encoder<?> sseEncoder;
+	ServerDefaultCodecsImpl() {
+	}
+
+	ServerDefaultCodecsImpl(ServerDefaultCodecsImpl other) {
+		super(other);
+		this.sseEncoder = other.sseEncoder;
+	}
 
 
 	@Override
 	public void serverSentEventEncoder(Encoder<?> encoder) {
 		this.sseEncoder = encoder;
-	}
-
-
-	@Override
-	protected void extendTypedReaders(List<HttpMessageReader<?>> typedReaders) {
-		if (synchronossMultipartPresent) {
-			boolean enable = isEnableLoggingRequestDetails();
-
-			SynchronossPartHttpMessageReader partReader = new SynchronossPartHttpMessageReader();
-			partReader.setEnableLoggingRequestDetails(enable);
-			typedReaders.add(partReader);
-
-			MultipartHttpMessageReader reader = new MultipartHttpMessageReader(partReader);
-			reader.setEnableLoggingRequestDetails(enable);
-			typedReaders.add(reader);
-		}
+		initObjectWriters();
 	}
 
 	@Override
@@ -69,9 +55,12 @@ class ServerDefaultCodecsImpl extends BaseDefaultCodecs implements ServerCodecCo
 		objectWriters.add(new ServerSentEventHttpMessageWriter(getSseEncoder()));
 	}
 
-	@Nullable
-	private Encoder<?> getSseEncoder() {
-		return this.sseEncoder != null ? this.sseEncoder : jackson2Present ? getJackson2JsonEncoder() : null;
+	private @Nullable Encoder<?> getSseEncoder() {
+		return this.sseEncoder != null ? this.sseEncoder :
+				jacksonPresent ? getJacksonJsonEncoder() :
+				jackson2Present ? getJackson2JsonEncoder() :
+				kotlinSerializationJsonPresent ? getKotlinSerializationJsonEncoder() :
+				null;
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
 import org.springframework.context.ApplicationContext;
@@ -29,7 +30,6 @@ import org.springframework.context.i18n.LocaleContext;
 import org.springframework.http.codec.multipart.Part;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 
@@ -75,8 +75,7 @@ public interface ServerWebExchange {
 	 * @return the attribute value
 	 */
 	@SuppressWarnings("unchecked")
-	@Nullable
-	default <T> T getAttribute(String name) {
+	default <T> @Nullable T getAttribute(String name) {
 		return (T) getAttributes().get(name);
 	}
 
@@ -107,12 +106,12 @@ public interface ServerWebExchange {
 	}
 
 	/**
-	 * Return the web session for the current request. Always guaranteed  to
-	 * return an instance either matching to the session id requested by the
-	 * client, or with a new session id either because the client did not
-	 * specify one or because the underlying session had expired. Use of this
-	 * method does not automatically create a session. See {@link WebSession}
-	 * for more details.
+	 * Return the web session for the current request.
+	 * <p>Always guaranteed to return either an instance matching the session id
+	 * requested by the client, or a new session either because the client did not
+	 * specify a session id or because the underlying session expired.
+	 * <p>Use of this method does not automatically create a session. See
+	 * {@link WebSession} for more details.
 	 */
 	Mono<WebSession> getSession();
 
@@ -136,8 +135,24 @@ public interface ServerWebExchange {
 	 * <p><strong>Note:</strong> calling this method causes the request body to
 	 * be read and parsed in full and the resulting {@code MultiValueMap} is
 	 * cached so that this method is safe to call more than once.
+	 * <p><strong>Note:</strong>the {@linkplain Part#content() contents} of each
+	 * part is not cached, and can only be read once.
 	 */
 	Mono<MultiValueMap<String, Part>> getMultipartData();
+
+	/**
+	 * Cleans up any storage used for multipart handling.
+	 * @since 6.0.10
+	 * @see Part#delete()
+	 */
+	default Mono<Void> cleanupMultipart() {
+		return getMultipartData()
+				.onErrorComplete()  // ignore errors reading multipart data
+				.flatMapIterable(Map::values)
+				.flatMapIterable(Function.identity())
+				.flatMap(part -> part.delete().onErrorComplete())
+				.then();
+	}
 
 	/**
 	 * Return the {@link LocaleContext} using the configured
@@ -152,8 +167,7 @@ public interface ServerWebExchange {
 	 * @since 5.0.3
 	 * @see org.springframework.web.server.adapter.WebHttpHandlerBuilder#applicationContext(ApplicationContext)
 	 */
-	@Nullable
-	ApplicationContext getApplicationContext();
+	@Nullable ApplicationContext getApplicationContext();
 
 	/**
 	 * Returns {@code true} if the one of the {@code checkNotModified} methods
@@ -200,7 +214,7 @@ public interface ServerWebExchange {
 	/**
 	 * Transform the given url according to the registered transformation function(s).
 	 * By default, this method returns the given {@code url}, though additional
-	 * transformation functions can by registered with {@link #addUrlTransformer}
+	 * transformation functions can be registered with {@link #addUrlTransformer}
 	 * @param url the URL to transform
 	 * @return the transformed URL
 	 */
@@ -246,7 +260,7 @@ public interface ServerWebExchange {
 		 * Configure a consumer to modify the current request using a builder.
 		 * <p>Effectively this:
 		 * <pre>
-		 * exchange.mutate().request(builder-> builder.method(HttpMethod.PUT));
+		 * exchange.mutate().request(builder -&gt; builder.method(HttpMethod.PUT));
 		 *
 		 * // vs...
 		 *

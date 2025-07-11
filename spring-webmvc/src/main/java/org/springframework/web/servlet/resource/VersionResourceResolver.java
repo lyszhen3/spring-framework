@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,18 +21,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.lang.Nullable;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -40,7 +43,7 @@ import org.springframework.util.StringUtils;
 /**
  * Resolves request paths containing a version string that can be used as part
  * of an HTTP caching strategy in which a resource is cached with a date in the
- * distant future (e.g. 1 year) and cached until the version, and therefore the
+ * distant future (for example, 1 year) and cached until the version, and therefore the
  * URL, is changed.
  *
  * <p>Different versioning strategies exist, and this resolver must be configured
@@ -64,7 +67,7 @@ import org.springframework.util.StringUtils;
  */
 public class VersionResourceResolver extends AbstractResourceResolver {
 
-	private AntPathMatcher pathMatcher = new AntPathMatcher();
+	private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
 	/** Map from path pattern -> VersionStrategy. */
 	private final Map<String, VersionStrategy> versionStrategyMap = new LinkedHashMap<>();
@@ -74,7 +77,7 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 	 * Set a Map with URL paths as keys and {@code VersionStrategy} as values.
 	 * <p>Supports direct URL matches and Ant-style pattern matches. For syntax
 	 * details, see the {@link org.springframework.util.AntPathMatcher} javadoc.
-	 * @param map map with URLs as keys and version strategies as values
+	 * @param map a map with URLs as keys and version strategies as values
 	 */
 	public void setStrategyMap(Map<String, VersionStrategy> map) {
 		this.versionStrategyMap.clear();
@@ -90,7 +93,7 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 
 	/**
 	 * Insert a content-based version in resource URLs that match the given path
-	 * patterns. The version is computed from the content of the file, e.g.
+	 * patterns. The version is computed from the content of the file, for example,
 	 * {@code "css/main-e36d2e05253c6c7085a91522ce43a0b4.css"}. This is a good
 	 * default strategy to use except when it cannot be, for example when using
 	 * JavaScript module loaders, use {@link #addFixedVersionStrategy} instead
@@ -111,11 +114,11 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 	 * content-based versions) when using JavaScript module loaders.
 	 * <p>The version may be a random number, the current date, or a value
 	 * fetched from a git commit sha, a property file, or environment variable
-	 * and set with SpEL expressions in the configuration (e.g. see {@code @Value}
+	 * and set with SpEL expressions in the configuration (for example, see {@code @Value}
 	 * in Java config).
 	 * <p>If not done already, variants of the given {@code pathPatterns}, prefixed with
 	 * the {@code version} will be also configured. For example, adding a {@code "/js/**"} path pattern
-	 * will also cofigure automatically a {@code "/v1.0.0/js/**"} with {@code "v1.0.0"} the
+	 * will also configure automatically a {@code "/v1.0.0/js/**"} with {@code "v1.0.0"} the
 	 * {@code version} String given as an argument.
 	 * @param version a version string
 	 * @param pathPatterns one or more resource URL path patterns,
@@ -154,7 +157,7 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 
 
 	@Override
-	protected Resource resolveResourceInternal(@Nullable HttpServletRequest request, String requestPath,
+	protected @Nullable Resource resolveResourceInternal(@Nullable HttpServletRequest request, String requestPath,
 			List<? extends Resource> locations, ResourceResolverChain chain) {
 
 		Resource resolved = chain.resolveResource(request, requestPath, locations);
@@ -168,7 +171,7 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 		}
 
 		String candidateVersion = versionStrategy.extractVersion(requestPath);
-		if (StringUtils.isEmpty(candidateVersion)) {
+		if (!StringUtils.hasLength(candidateVersion)) {
 			return null;
 		}
 
@@ -192,7 +195,7 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 	}
 
 	@Override
-	protected String resolveUrlPathInternal(String resourceUrlPath,
+	protected @Nullable String resolveUrlPathInternal(String resourceUrlPath,
 			List<? extends Resource> locations, ResourceResolverChain chain) {
 
 		String baseUrl = chain.resolveUrlPath(resourceUrlPath, locations);
@@ -213,8 +216,7 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 	 * Find a {@code VersionStrategy} for the request path of the requested resource.
 	 * @return an instance of a {@code VersionStrategy} or null if none matches that request path
 	 */
-	@Nullable
-	protected VersionStrategy getStrategyForPath(String requestPath) {
+	protected @Nullable VersionStrategy getStrategyForPath(String requestPath) {
 		String path = "/".concat(requestPath);
 		List<String> matchingPatterns = new ArrayList<>();
 		for (String pattern : this.versionStrategyMap.keySet()) {
@@ -231,7 +233,7 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 	}
 
 
-	private class FileNameVersionedResource extends AbstractResource implements HttpResource {
+	private static class FileNameVersionedResource extends AbstractResource implements HttpResource {
 
 		private final Resource original;
 
@@ -278,9 +280,23 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 		}
 
 		@Override
-		@Nullable
-		public String getFilename() {
-			return this.original.getFilename();
+		public InputStream getInputStream() throws IOException {
+			return this.original.getInputStream();
+		}
+
+		@Override
+		public ReadableByteChannel readableChannel() throws IOException {
+			return this.original.readableChannel();
+		}
+
+		@Override
+		public byte[] getContentAsByteArray() throws IOException {
+			return this.original.getContentAsByteArray();
+		}
+
+		@Override
+		public String getContentAsString(Charset charset) throws IOException {
+			return this.original.getContentAsString(charset);
 		}
 
 		@Override
@@ -299,20 +315,20 @@ public class VersionResourceResolver extends AbstractResourceResolver {
 		}
 
 		@Override
+		public @Nullable String getFilename() {
+			return this.original.getFilename();
+		}
+
+		@Override
 		public String getDescription() {
 			return this.original.getDescription();
 		}
 
 		@Override
-		public InputStream getInputStream() throws IOException {
-			return this.original.getInputStream();
-		}
-
-		@Override
 		public HttpHeaders getResponseHeaders() {
-			HttpHeaders headers = (this.original instanceof HttpResource ?
-					((HttpResource) this.original).getResponseHeaders() : new HttpHeaders());
-			headers.setETag("\"" + this.version + "\"");
+			HttpHeaders headers = (this.original instanceof HttpResource httpResource ?
+					httpResource.getResponseHeaders() : new HttpHeaders());
+			headers.setETag("W/\"" + this.version + "\"");
 			return headers;
 		}
 	}

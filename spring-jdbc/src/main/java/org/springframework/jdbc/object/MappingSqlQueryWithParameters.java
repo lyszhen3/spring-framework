@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,10 +19,12 @@ package org.springframework.jdbc.object;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+
 import javax.sql.DataSource;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.lang.Nullable;
 
 /**
  * Reusable RDBMS query in which concrete subclasses must implement
@@ -49,7 +51,7 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.jdbc.object.MappingSqlQuery
  * @see org.springframework.jdbc.object.SqlQuery
  */
-public abstract class MappingSqlQueryWithParameters<T> extends SqlQuery<T> {
+public abstract class MappingSqlQueryWithParameters<T extends @Nullable Object> extends SqlQuery<T> {
 
 	/**
 	 * Constructor to allow use as a JavaBean.
@@ -72,7 +74,7 @@ public abstract class MappingSqlQueryWithParameters<T> extends SqlQuery<T> {
 	 * implementation of the mapRow() method.
 	 */
 	@Override
-	protected RowMapper<T> newRowMapper(@Nullable Object[] parameters, @Nullable Map<?, ?> context) {
+	protected RowMapper<T> newRowMapper(@Nullable Object @Nullable [] parameters, @Nullable Map<?, ?> context) {
 		return new RowMapperImpl(parameters, context);
 	}
 
@@ -91,8 +93,7 @@ public abstract class MappingSqlQueryWithParameters<T> extends SqlQuery<T> {
 	 * Subclasses can simply not catch SQLExceptions, relying on the
 	 * framework to clean up.
 	 */
-	@Nullable
-	protected abstract T mapRow(ResultSet rs, int rowNum, @Nullable Object[] parameters, @Nullable Map<?, ?> context)
+	protected abstract T mapRow(ResultSet rs, int rowNum, @Nullable Object @Nullable [] parameters, @Nullable Map<?, ?> context)
 			throws SQLException;
 
 
@@ -102,22 +103,19 @@ public abstract class MappingSqlQueryWithParameters<T> extends SqlQuery<T> {
 	 */
 	protected class RowMapperImpl implements RowMapper<T> {
 
-		@Nullable
-		private final Object[] params;
+		private final @Nullable Object @Nullable [] params;
 
-		@Nullable
-		private final Map<?, ?> context;
+		private final @Nullable Map<?, ?> context;
 
 		/**
 		 * Use an array results. More efficient if we know how many results to expect.
 		 */
-		public RowMapperImpl(@Nullable Object[] parameters, @Nullable Map<?, ?> context) {
+		public RowMapperImpl(@Nullable Object @Nullable [] parameters, @Nullable Map<?, ?> context) {
 			this.params = parameters;
 			this.context = context;
 		}
 
 		@Override
-		@Nullable
 		public T mapRow(ResultSet rs, int rowNum) throws SQLException {
 			return MappingSqlQueryWithParameters.this.mapRow(rs, rowNum, this.params, this.context);
 		}

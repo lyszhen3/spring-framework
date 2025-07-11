@@ -8,8 +8,8 @@
 		elementFormDefault="qualified"
 		attributeFormDefault="unqualified">
 
-	<xsd:import namespace="http://www.springframework.org/schema/beans" schemaLocation="http://www.springframework.org/schema/beans/spring-beans.xsd"/>
-	<xsd:import namespace="http://www.springframework.org/schema/tool" schemaLocation="http://www.springframework.org/schema/tool/spring-tool.xsd"/>
+	<xsd:import namespace="http://www.springframework.org/schema/beans" schemaLocation="https://www.springframework.org/schema/beans/spring-beans.xsd"/>
+	<xsd:import namespace="http://www.springframework.org/schema/tool" schemaLocation="https://www.springframework.org/schema/tool/spring-tool.xsd"/>
 
 	<xsd:annotation>
 		<xsd:documentation><![CDATA[
@@ -75,7 +75,7 @@
 	The bean name of the KeyGenerator that is to be used to retrieve the backing caches.
 
 	This attribute is not required, and only needs to be specified
-	explicitly if the default strategy (DefaultKeyGenerator) is not sufficient.
+	explicitly if the default strategy (SimpleKeyGenerator) is not sufficient.
 					]]></xsd:documentation>
 					<xsd:appinfo>
 						<tool:annotation kind="ref">

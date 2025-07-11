@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,12 +17,13 @@
 package org.springframework.web.filter;
 
 import java.io.IOException;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
-import org.springframework.lang.Nullable;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -40,13 +41,12 @@ import org.springframework.util.Assert;
  * @since 15.03.2004
  * @see #setEncoding
  * @see #setForceEncoding
- * @see javax.servlet.http.HttpServletRequest#setCharacterEncoding
- * @see javax.servlet.http.HttpServletResponse#setCharacterEncoding
+ * @see jakarta.servlet.http.HttpServletRequest#setCharacterEncoding
+ * @see jakarta.servlet.http.HttpServletResponse#setCharacterEncoding
  */
 public class CharacterEncodingFilter extends OncePerRequestFilter {
 
-	@Nullable
-	private String encoding;
+	private @Nullable String encoding;
 
 	private boolean forceRequestEncoding = false;
 
@@ -106,7 +106,7 @@ public class CharacterEncodingFilter extends OncePerRequestFilter {
 
 	/**
 	 * Set the encoding to use for requests. This encoding will be passed into a
-	 * {@link javax.servlet.http.HttpServletRequest#setCharacterEncoding} call.
+	 * {@link jakarta.servlet.http.HttpServletRequest#setCharacterEncoding} call.
 	 * <p>Whether this encoding will override existing request encodings
 	 * (and whether it will be applied as default response encoding as well)
 	 * depends on the {@link #setForceEncoding "forceEncoding"} flag.
@@ -119,8 +119,7 @@ public class CharacterEncodingFilter extends OncePerRequestFilter {
 	 * Return the configured encoding for requests and/or responses.
 	 * @since 4.3
 	 */
-	@Nullable
-	public String getEncoding() {
+	public @Nullable String getEncoding() {
 		return this.encoding;
 	}
 
@@ -128,7 +127,7 @@ public class CharacterEncodingFilter extends OncePerRequestFilter {
 	 * Set whether the configured {@link #setEncoding encoding} of this filter
 	 * is supposed to override existing request and response encodings.
 	 * <p>Default is "false", i.e. do not modify the encoding if
-	 * {@link javax.servlet.http.HttpServletRequest#getCharacterEncoding()}
+	 * {@link jakarta.servlet.http.HttpServletRequest#getCharacterEncoding()}
 	 * returns a non-null value. Switch this to "true" to enforce the specified
 	 * encoding in any case, applying it as default response encoding as well.
 	 * <p>This is the equivalent to setting both {@link #setForceRequestEncoding(boolean)}
@@ -145,7 +144,7 @@ public class CharacterEncodingFilter extends OncePerRequestFilter {
 	 * Set whether the configured {@link #setEncoding encoding} of this filter
 	 * is supposed to override existing request encodings.
 	 * <p>Default is "false", i.e. do not modify the encoding if
-	 * {@link javax.servlet.http.HttpServletRequest#getCharacterEncoding()}
+	 * {@link jakarta.servlet.http.HttpServletRequest#getCharacterEncoding()}
 	 * returns a non-null value. Switch this to "true" to enforce the specified
 	 * encoding in any case.
 	 * @since 4.3

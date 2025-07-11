@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A default {@link AsyncUncaughtExceptionHandler} that simply logs the exception.
@@ -34,7 +35,7 @@ public class SimpleAsyncUncaughtExceptionHandler implements AsyncUncaughtExcepti
 
 
 	@Override
-	public void handleUncaughtException(Throwable ex, Method method, Object... params) {
+	public void handleUncaughtException(Throwable ex, Method method, @Nullable Object... params) {
 		if (logger.isErrorEnabled()) {
 			logger.error("Unexpected exception occurred invoking async method: " + method, ex);
 		}

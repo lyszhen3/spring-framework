@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,11 @@ import org.springframework.util.Assert;
  * @author Rod Johnson
  * @author Sam Brannen
  * @since 2.0
+ * @deprecated since Spring Framework 7.0 in favor of the
+ * {@link org.springframework.test.context.junit.jupiter.SpringExtension SpringExtension}
+ * and JUnit Jupiter
  */
+@Deprecated(since = "7.0")
 public final class SystemProfileValueSource implements ProfileValueSource {
 
 	private static final SystemProfileValueSource INSTANCE = new SystemProfileValueSource();
@@ -34,7 +38,7 @@ public final class SystemProfileValueSource implements ProfileValueSource {
 	/**
 	 * Obtain the canonical instance of this ProfileValueSource.
 	 */
-	public static final SystemProfileValueSource getInstance() {
+	public static SystemProfileValueSource getInstance() {
 		return INSTANCE;
 	}
 

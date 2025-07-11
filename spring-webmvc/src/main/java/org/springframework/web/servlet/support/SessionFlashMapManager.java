@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,11 +17,12 @@
 package org.springframework.web.servlet.support;
 
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
-import org.springframework.lang.Nullable;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.util.WebUtils;
 
@@ -42,8 +43,7 @@ public class SessionFlashMapManager extends AbstractFlashMapManager {
 	 */
 	@Override
 	@SuppressWarnings("unchecked")
-	@Nullable
-	protected List<FlashMap> retrieveFlashMaps(HttpServletRequest request) {
+	protected @Nullable List<FlashMap> retrieveFlashMaps(HttpServletRequest request) {
 		HttpSession session = request.getSession(false);
 		return (session != null ? (List<FlashMap>) session.getAttribute(FLASH_MAPS_SESSION_ATTRIBUTE) : null);
 	}

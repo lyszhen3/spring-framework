@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,12 +20,14 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.cache.annotation.CacheInvocationParameter;
 import javax.cache.annotation.CacheKeyGenerator;
 import javax.cache.annotation.CacheKeyInvocationContext;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.cache.interceptor.KeyGenerator;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
@@ -42,11 +44,9 @@ class KeyGeneratorAdapter implements KeyGenerator {
 
 	private final JCacheOperationSource cacheOperationSource;
 
-	@Nullable
-	private KeyGenerator keyGenerator;
+	private @Nullable KeyGenerator keyGenerator;
 
-	@Nullable
-	private CacheKeyGenerator cacheKeyGenerator;
+	private @Nullable CacheKeyGenerator cacheKeyGenerator;
 
 
 	/**
@@ -84,9 +84,9 @@ class KeyGeneratorAdapter implements KeyGenerator {
 	}
 
 	@Override
-	public Object generate(Object target, Method method, Object... params) {
+	public Object generate(Object target, Method method, @Nullable Object... params) {
 		JCacheOperation<?> operation = this.cacheOperationSource.getCacheOperation(method, target.getClass());
-		if (!(AbstractJCacheKeyOperation.class.isInstance(operation))) {
+		if (!(operation instanceof AbstractJCacheKeyOperation)) {
 			throw new IllegalStateException("Invalid operation, should be a key-based operation " + operation);
 		}
 		CacheKeyInvocationContext<?> invocationContext = createCacheKeyInvocationContext(target, operation, params);
@@ -100,14 +100,13 @@ class KeyGeneratorAdapter implements KeyGenerator {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	private static Object doGenerate(KeyGenerator keyGenerator, CacheKeyInvocationContext<?> context) {
 		List<Object> parameters = new ArrayList<>();
 		for (CacheInvocationParameter param : context.getKeyParameters()) {
 			Object value = param.getValue();
 			if (param.getParameterPosition() == context.getAllParameters().length - 1 &&
 					context.getMethod().isVarArgs()) {
-				parameters.addAll((List<Object>) CollectionUtils.arrayToList(value));
+				parameters.addAll(CollectionUtils.arrayToList(value));
 			}
 			else {
 				parameters.add(value);
@@ -119,7 +118,7 @@ class KeyGeneratorAdapter implements KeyGenerator {
 
 	@SuppressWarnings("unchecked")
 	private CacheKeyInvocationContext<?> createCacheKeyInvocationContext(
-			Object target, JCacheOperation<?> operation, Object[] params) {
+			Object target, JCacheOperation<?> operation, @Nullable Object[] params) {
 
 		AbstractJCacheKeyOperation<Annotation> keyCacheOperation = (AbstractJCacheKeyOperation<Annotation>) operation;
 		return new DefaultCacheKeyInvocationContext<>(keyCacheOperation, target, params);

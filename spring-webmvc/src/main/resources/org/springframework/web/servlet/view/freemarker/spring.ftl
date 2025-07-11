@@ -11,7 +11,7 @@
  * FreeMarkerConfigurer.
  *
  * To take advantage of these macros, the "exposeSpringMacroHelpers" property
- * of the FreeMarker class needs to be set to "true". This will expose a
+ * of the FreeMarkerView class needs to be set to "true". This will expose a
  * RequestContext under the name "springMacroRequestContext", as needed by
  * the macros in this library.
  *
@@ -51,36 +51,6 @@
 <#macro messageArgsText code, args, text>${springMacroRequestContext.getMessage(code, args, text)?no_esc}</#macro>
 
 <#--
- * theme
- *
- * Macro to translate a theme message code into a message.
- -->
-<#macro theme code>${springMacroRequestContext.getThemeMessage(code)?no_esc}</#macro>
-
-<#--
- * themeText
- *
- * Macro to translate a theme message code into a message,
- * using the given default text if no message found.
- -->
-<#macro themeText code, text>${springMacroRequestContext.getThemeMessage(code, text)?no_esc}</#macro>
-
-<#--
- * themeArgs
- *
- * Macro to translate a theme message code with arguments into a message.
- -->
-<#macro themeArgs code, args>${springMacroRequestContext.getThemeMessage(code, args)?no_esc}</#macro>
-
-<#--
- * themeArgsText
- *
- * Macro to translate a theme message code with arguments into a message,
- * using the given default text if no message found.
- -->
-<#macro themeArgsText code, args, text>${springMacroRequestContext.getThemeMessage(code, args, text)?no_esc}</#macro>
-
-<#--
  * url
  *
  * Takes a relative URL and makes it absolute from the server root by
@@ -92,8 +62,8 @@
  * bind
  *
  * Exposes a BindStatus object for the given bind path, which can be
- * a bean (e.g. "person") to get global errors, or a bean property
- * (e.g. "person.name") to get field errors. Can be called multiple times
+ * a bean (for example, "person") to get global errors, or a bean property
+ * (for example, "person.name") to get field errors. Can be called multiple times
  * within a form to bind to multiple command objects and/or field names.
  *
  * This macro will participate in the default HTML escape setting for the given

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.EnumSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -29,7 +29,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
@@ -38,11 +40,11 @@ import org.springframework.core.codec.Hints;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.ReactiveHttpOutputMessage;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.codec.HttpMessageWriter;
-import org.springframework.http.server.reactive.AbstractServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.Assert;
@@ -58,11 +60,12 @@ import org.springframework.web.server.ServerWebExchange;
  *
  * @author Arjen Poutsma
  * @author Juergen Hoeller
+ * @author Sebastien Deleuze
  * @since 5.0
  */
 class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
-	private final int statusCode;
+	private final HttpStatusCode statusCode;
 
 	private final HttpHeaders headers = new HttpHeaders();
 
@@ -73,23 +76,23 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 	public DefaultServerResponseBuilder(ServerResponse other) {
 		Assert.notNull(other, "ServerResponse must not be null");
-		this.statusCode = (other instanceof AbstractServerResponse ?
-				((AbstractServerResponse) other).statusCode : other.statusCode().value());
 		this.headers.addAll(other.headers());
+		this.cookies.addAll(other.cookies());
+		this.statusCode = other.statusCode();
+		if (other instanceof AbstractServerResponse abstractOther) {
+			this.hints.putAll(abstractOther.hints);
+		}
 	}
 
-	public DefaultServerResponseBuilder(HttpStatus status) {
-		Assert.notNull(status, "HttpStatus must not be null");
-		this.statusCode = status.value();
-	}
-
-	public DefaultServerResponseBuilder(int statusCode) {
-		this.statusCode = statusCode;
+	public DefaultServerResponseBuilder(HttpStatusCode status) {
+		Assert.notNull(status, "HttpStatusCode must not be null");
+		this.statusCode = status;
 	}
 
 
 	@Override
-	public ServerResponse.BodyBuilder header(String headerName, String... headerValues) {
+	public ServerResponse.BodyBuilder header(String headerName, @Nullable String... headerValues) {
+		Assert.notNull(headerName, "HeaderName must not be null");
 		for (String headerValue : headerValues) {
 			this.headers.add(headerName, headerValue);
 		}
@@ -98,6 +101,7 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 	@Override
 	public ServerResponse.BodyBuilder headers(Consumer<HttpHeaders> headersConsumer) {
+		Assert.notNull(headersConsumer, "HeadersConsumer must not be null");
 		headersConsumer.accept(this.headers);
 		return this;
 	}
@@ -111,18 +115,21 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 	@Override
 	public ServerResponse.BodyBuilder cookies(Consumer<MultiValueMap<String, ResponseCookie>> cookiesConsumer) {
+		Assert.notNull(cookiesConsumer, "CookiesConsumer must not be null");
 		cookiesConsumer.accept(this.cookies);
 		return this;
 	}
 
 	@Override
 	public ServerResponse.BodyBuilder allow(HttpMethod... allowedMethods) {
+		Assert.notNull(allowedMethods, "Http allowedMethods must not be null");
 		this.headers.setAllow(new LinkedHashSet<>(Arrays.asList(allowedMethods)));
 		return this;
 	}
 
 	@Override
 	public ServerResponse.BodyBuilder allow(Set<HttpMethod> allowedMethods) {
+		Assert.notNull(allowedMethods, "Http allowedMethods must not be null");
 		this.headers.setAllow(allowedMethods);
 		return this;
 	}
@@ -140,20 +147,20 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 	}
 
 	@Override
-	public ServerResponse.BodyBuilder eTag(String etag) {
-		if (!etag.startsWith("\"") && !etag.startsWith("W/\"")) {
-			etag = "\"" + etag;
-		}
-		if (!etag.endsWith("\"")) {
-			etag = etag + "\"";
-		}
-		this.headers.setETag(etag);
+	public ServerResponse.BodyBuilder eTag(String tag) {
+		this.headers.setETag(tag);
 		return this;
 	}
 
 	@Override
 	public ServerResponse.BodyBuilder hint(String key, Object value) {
 		this.hints.put(key, value);
+		return this;
+	}
+
+	@Override
+	public ServerResponse.BodyBuilder hints(Consumer<Map<String, Object>> hintsConsumer) {
+		hintsConsumer.accept(this.hints);
 		return this;
 	}
 
@@ -203,76 +210,76 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 	public Mono<ServerResponse> build(
 			BiFunction<ServerWebExchange, ServerResponse.Context, Mono<Void>> writeFunction) {
 
-		return Mono.just(
-				new WriterFunctionResponse(this.statusCode, this.headers, this.cookies, writeFunction));
+		return Mono.just(new WriterFunctionResponse(
+				this.statusCode, this.headers, this.cookies, writeFunction));
+	}
+
+	@Override
+	public Mono<ServerResponse> bodyValue(Object body) {
+		return initBuilder(body, BodyInserters.fromValue(body));
+	}
+
+	@Override
+	public <T> Mono<ServerResponse> bodyValue(T body, ParameterizedTypeReference<T> bodyType) {
+		return initBuilder(body, BodyInserters.fromValue(body, bodyType));
 	}
 
 	@Override
 	public <T, P extends Publisher<T>> Mono<ServerResponse> body(P publisher, Class<T> elementClass) {
-		Assert.notNull(publisher, "Publisher must not be null");
-		Assert.notNull(elementClass, "Element Class must not be null");
-
-		return new DefaultEntityResponseBuilder<>(publisher,
-				BodyInserters.fromPublisher(publisher, elementClass))
-				.headers(this.headers)
-				.status(this.statusCode)
-				.build()
-				.map(entityResponse -> entityResponse);
+		return initBuilder(publisher, BodyInserters.fromPublisher(publisher, elementClass));
 	}
 
 	@Override
-	public <T, P extends Publisher<T>> Mono<ServerResponse> body(P publisher,
-			ParameterizedTypeReference<T> typeReference) {
-
-		Assert.notNull(publisher, "Publisher must not be null");
-		Assert.notNull(typeReference, "ParameterizedTypeReference must not be null");
-
-		return new DefaultEntityResponseBuilder<>(publisher,
-				BodyInserters.fromPublisher(publisher, typeReference))
-				.headers(this.headers)
-				.status(this.statusCode)
-				.build()
-				.map(entityResponse -> entityResponse);
+	public <T, P extends Publisher<T>> Mono<ServerResponse> body(P publisher, ParameterizedTypeReference<T> typeRef) {
+		return initBuilder(publisher, BodyInserters.fromPublisher(publisher, typeRef));
 	}
 
 	@Override
-	public Mono<ServerResponse> syncBody(Object body) {
-		Assert.notNull(body, "Body must not be null");
-		Assert.isTrue(!(body instanceof Publisher),
-				"Please specify the element class by using body(Publisher, Class)");
+	public Mono<ServerResponse> body(Object producer, Class<?> elementClass) {
+		return initBuilder(producer, BodyInserters.fromProducer(producer, elementClass));
+	}
 
-		return new DefaultEntityResponseBuilder<>(body,
-				BodyInserters.fromObject(body))
-				.headers(this.headers)
+	@Override
+	public Mono<ServerResponse> body(Object producer, ParameterizedTypeReference<?> elementTypeRef) {
+		return initBuilder(producer, BodyInserters.fromProducer(producer, elementTypeRef));
+	}
+
+	private <T> Mono<ServerResponse> initBuilder(T entity, BodyInserter<T, ReactiveHttpOutputMessage> inserter) {
+		return new DefaultEntityResponseBuilder<>(entity, inserter)
 				.status(this.statusCode)
+				.headers(this.headers)
+				.cookies(cookies -> cookies.addAll(this.cookies))
+				.hints(hints -> hints.putAll(this.hints))
 				.build()
-				.map(entityResponse -> entityResponse);
+				.map(Function.identity());
 	}
 
 	@Override
 	public Mono<ServerResponse> body(BodyInserter<?, ? super ServerHttpResponse> inserter) {
-		return Mono.just(
-				new BodyInserterResponse<>(this.statusCode, this.headers, this.cookies, inserter, this.hints));
+		return Mono.just(new BodyInserterResponse<>(
+				this.statusCode, this.headers, this.cookies, inserter, this.hints));
 	}
 
 	@Override
 	public Mono<ServerResponse> render(String name, Object... modelAttributes) {
 		return new DefaultRenderingResponseBuilder(name)
-				.headers(this.headers)
 				.status(this.statusCode)
+				.headers(this.headers)
+				.cookies(cookies -> cookies.addAll(this.cookies))
 				.modelAttributes(modelAttributes)
 				.build()
-				.map(renderingResponse -> renderingResponse);
+				.map(Function.identity());
 	}
 
 	@Override
 	public Mono<ServerResponse> render(String name, Map<String, ?> model) {
 		return new DefaultRenderingResponseBuilder(name)
-				.headers(this.headers)
 				.status(this.statusCode)
+				.headers(this.headers)
+				.cookies(cookies -> cookies.addAll(this.cookies))
 				.modelAttributes(model)
 				.build()
-				.map(renderingResponse -> renderingResponse);
+				.map(Function.identity());
 	}
 
 
@@ -281,25 +288,30 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 	 */
 	abstract static class AbstractServerResponse implements ServerResponse {
 
-		private static final Set<HttpMethod> SAFE_METHODS = EnumSet.of(HttpMethod.GET, HttpMethod.HEAD);
+		private static final Set<HttpMethod> SAFE_METHODS = Set.of(HttpMethod.GET, HttpMethod.HEAD);
 
-		final int statusCode;
+		private final HttpStatusCode statusCode;
 
 		private final HttpHeaders headers;
 
 		private final MultiValueMap<String, ResponseCookie> cookies;
 
+		final Map<String, Object> hints;
+
+
 		protected AbstractServerResponse(
-				int statusCode, HttpHeaders headers, MultiValueMap<String, ResponseCookie> cookies) {
+				HttpStatusCode statusCode, HttpHeaders headers, MultiValueMap<String, ResponseCookie> cookies,
+				Map<String, Object> hints) {
 
 			this.statusCode = statusCode;
 			this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
 			this.cookies = CollectionUtils.unmodifiableMultiValueMap(new LinkedMultiValueMap<>(cookies));
+			this.hints = hints;
 		}
 
 		@Override
-		public final HttpStatus statusCode() {
-			return HttpStatus.valueOf(this.statusCode);
+		public final HttpStatusCode statusCode() {
+			return this.statusCode;
 		}
 
 		@Override
@@ -326,17 +338,7 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 		}
 
 		private void writeStatusAndHeaders(ServerHttpResponse response) {
-			if (response instanceof AbstractServerHttpResponse) {
-				((AbstractServerHttpResponse) response).setStatusCodeValue(this.statusCode);
-			}
-			else {
-				HttpStatus status = HttpStatus.resolve(this.statusCode);
-				if (status == null) {
-					throw new IllegalStateException(
-							"Unresolvable HttpStatus for general ServerHttpResponse: " + this.statusCode);
-				}
-				response.setStatusCode(status);
-			}
+			response.setStatusCode(this.statusCode);
 			copy(this.headers, response.getHeaders());
 			copy(this.cookies, response.getCookies());
 		}
@@ -345,9 +347,13 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 		private static <K,V> void copy(MultiValueMap<K,V> src, MultiValueMap<K,V> dst) {
 			if (!src.isEmpty()) {
-				src.entrySet().stream()
-						.filter(entry -> !dst.containsKey(entry.getKey()))
-						.forEach(entry -> dst.put(entry.getKey(), entry.getValue()));
+				dst.putAll(src);
+			}
+		}
+
+		private static void copy(HttpHeaders src, HttpHeaders dst) {
+			if (!src.isEmpty()) {
+				dst.putAll(src);
 			}
 		}
 	}
@@ -357,11 +363,11 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 		private final BiFunction<ServerWebExchange, Context, Mono<Void>> writeFunction;
 
-		public WriterFunctionResponse(int statusCode, HttpHeaders headers,
+		public WriterFunctionResponse(HttpStatusCode statusCode, HttpHeaders headers,
 				MultiValueMap<String, ResponseCookie> cookies,
 				BiFunction<ServerWebExchange, Context, Mono<Void>> writeFunction) {
 
-			super(statusCode, headers, cookies);
+			super(statusCode, headers, cookies, Collections.emptyMap());
 			Assert.notNull(writeFunction, "BiFunction must not be null");
 			this.writeFunction = writeFunction;
 		}
@@ -377,16 +383,14 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 		private final BodyInserter<T, ? super ServerHttpResponse> inserter;
 
-		private final Map<String, Object> hints;
 
-		public BodyInserterResponse(int statusCode, HttpHeaders headers,
+		public BodyInserterResponse(HttpStatusCode statusCode, HttpHeaders headers,
 				MultiValueMap<String, ResponseCookie> cookies,
 				BodyInserter<T, ? super ServerHttpResponse> body, Map<String, Object> hints) {
 
-			super(statusCode, headers, cookies);
+			super(statusCode, headers, cookies, hints);
 			Assert.notNull(body, "BodyInserter must not be null");
 			this.inserter = body;
-			this.hints = hints;
 		}
 
 		@Override

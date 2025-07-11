@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,11 @@
 
 package org.springframework.web.context.request;
 
-import javax.faces.context.FacesContext;
+import jakarta.faces.context.FacesContext;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.NamedInheritableThreadLocal;
 import org.springframework.core.NamedThreadLocal;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -42,10 +42,10 @@ import org.springframework.util.ClassUtils;
  * @see org.springframework.web.filter.RequestContextFilter
  * @see org.springframework.web.servlet.DispatcherServlet
  */
-public abstract class RequestContextHolder  {
+public abstract class RequestContextHolder {
 
 	private static final boolean jsfPresent =
-			ClassUtils.isPresent("javax.faces.context.FacesContext", RequestContextHolder.class.getClassLoader());
+			ClassUtils.isPresent("jakarta.faces.context.FacesContext", RequestContextHolder.class.getClassLoader());
 
 	private static final ThreadLocal<RequestAttributes> requestAttributesHolder =
 			new NamedThreadLocal<>("Request attributes");
@@ -100,8 +100,7 @@ public abstract class RequestContextHolder  {
 	 * @return the RequestAttributes currently bound to the thread,
 	 * or {@code null} if none bound
 	 */
-	@Nullable
-	public static RequestAttributes getRequestAttributes() {
+	public static @Nullable RequestAttributes getRequestAttributes() {
 		RequestAttributes attributes = requestAttributesHolder.get();
 		if (attributes == null) {
 			attributes = inheritableRequestAttributesHolder.get();
@@ -119,7 +118,7 @@ public abstract class RequestContextHolder  {
 	 * @see #setRequestAttributes
 	 * @see ServletRequestAttributes
 	 * @see FacesRequestAttributes
-	 * @see javax.faces.context.FacesContext#getCurrentInstance()
+	 * @see jakarta.faces.context.FacesContext#getCurrentInstance()
 	 */
 	public static RequestAttributes currentRequestAttributes() throws IllegalStateException {
 		RequestAttributes attributes = getRequestAttributes();
@@ -145,10 +144,15 @@ public abstract class RequestContextHolder  {
  	 */
 	private static class FacesRequestAttributesFactory {
 
-		@Nullable
-		public static RequestAttributes getFacesRequestAttributes() {
-			FacesContext facesContext = FacesContext.getCurrentInstance();
-			return (facesContext != null ? new FacesRequestAttributes(facesContext) : null);
+		public static @Nullable RequestAttributes getFacesRequestAttributes() {
+			try {
+				FacesContext facesContext = FacesContext.getCurrentInstance();
+				return (facesContext != null ? new FacesRequestAttributes(facesContext) : null);
+			}
+			catch (NoClassDefFoundError err) {
+				// typically for com/sun/faces/util/Util if only the JSF API jar is present
+				return null;
+			}
 		}
 	}
 

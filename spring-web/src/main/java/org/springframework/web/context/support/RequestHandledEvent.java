@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,16 +16,16 @@
 
 package org.springframework.web.context.support;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.context.ApplicationEvent;
-import org.springframework.lang.Nullable;
 
 /**
  * Event raised when a request is handled within an ApplicationContext.
  *
  * <p>Supported by Spring's own FrameworkServlet (through a specific
  * ServletRequestHandledEvent subclass), but can also be raised by any
- * other web component. Used, for example, by Spring's out-of-the-box
- * PerformanceMonitorListener.
+ * other web component.
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
@@ -38,19 +38,16 @@ import org.springframework.lang.Nullable;
 public class RequestHandledEvent extends ApplicationEvent {
 
 	/** Session id that applied to the request, if any. */
-	@Nullable
-	private String sessionId;
+	private final @Nullable String sessionId;
 
 	/** Usually the UserPrincipal. */
-	@Nullable
-	private String userName;
+	private final @Nullable String userName;
 
 	/** Request processing time. */
 	private final long processingTimeMillis;
 
 	/** Cause of failure, if any. */
-	@Nullable
-	private Throwable failureCause;
+	private @Nullable Throwable failureCause;
 
 
 	/**
@@ -97,18 +94,16 @@ public class RequestHandledEvent extends ApplicationEvent {
 	/**
 	 * Return the id of the HTTP session, if any.
 	 */
-	@Nullable
-	public String getSessionId() {
+	public @Nullable String getSessionId() {
 		return this.sessionId;
 	}
 
 	/**
 	 * Return the name of the user that was associated with the request
 	 * (usually the UserPrincipal).
-	 * @see javax.servlet.http.HttpServletRequest#getUserPrincipal()
+	 * @see jakarta.servlet.http.HttpServletRequest#getUserPrincipal()
 	 */
-	@Nullable
-	public String getUserName() {
+	public @Nullable String getUserName() {
 		return this.userName;
 	}
 
@@ -122,8 +117,7 @@ public class RequestHandledEvent extends ApplicationEvent {
 	/**
 	 * Return the cause of failure, if any.
 	 */
-	@Nullable
-	public Throwable getFailureCause() {
+	public @Nullable Throwable getFailureCause() {
 		return this.failureCause;
 	}
 
@@ -147,15 +141,10 @@ public class RequestHandledEvent extends ApplicationEvent {
 		StringBuilder sb = new StringBuilder();
 		sb.append("session=[").append(this.sessionId).append("]; ");
 		sb.append("user=[").append(this.userName).append("]; ");
-		sb.append("time=[").append(this.processingTimeMillis).append("ms]; ");
-		sb.append("status=[");
-		if (!wasFailure()) {
-			sb.append("OK");
+		sb.append("time=[").append(this.processingTimeMillis).append("ms]");
+		if (wasFailure()) {
+			sb.append("; failure=[").append(this.failureCause).append("]");
 		}
-		else {
-			sb.append("failed: ").append(this.failureCause);
-		}
-		sb.append(']');
 		return sb.toString();
 	}
 

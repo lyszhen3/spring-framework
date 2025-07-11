@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,23 +51,19 @@ import java.lang.annotation.Target;
  * <h3>Usage Requirements</h3>
  * <p>Like with any annotation in Java, the mere presence of {@code @AliasFor}
  * on its own will not enforce alias semantics. For alias semantics to be
- * enforced, annotations must be <em>loaded</em> via the utility methods in
- * {@link AnnotationUtils}. Behind the scenes, Spring will <em>synthesize</em>
- * an annotation by wrapping it in a dynamic proxy that transparently enforces
- * <em>attribute alias</em> semantics for annotation attributes that are
- * annotated with {@code @AliasFor}. Similarly, {@link AnnotatedElementUtils}
- * supports explicit meta-annotation attribute overrides when {@code @AliasFor}
- * is used within an annotation hierarchy. Typically you will not need to
- * manually synthesize annotations on your own since Spring will do that for
- * you transparently when looking up annotations on Spring-managed components.
+ * enforced, annotations must be <em>loaded</em> via {@link MergedAnnotations}.
  *
  * <h3>Implementation Requirements</h3>
  * <ul>
  * <li><strong>Explicit aliases within an annotation</strong>:
  * <ol>
- * <li>Each attribute that makes up an aliased pair must be annotated with
+ * <li>Each attribute that makes up an aliased pair should be annotated with
  * {@code @AliasFor}, and either {@link #attribute} or {@link #value} must
- * reference the <em>other</em> attribute in the pair.</li>
+ * reference the <em>other</em> attribute in the pair. Since Spring Framework
+ * 5.2.1 it is technically possible to annotate only one of the attributes in an
+ * aliased pair; however, it is recommended to annotate both attributes in an
+ * aliased pair for better documentation as well as compatibility with previous
+ * versions of the Spring Framework.</li>
  * <li>Aliased attributes must declare the same return type.</li>
  * <li>Aliased attributes must declare a default value.</li>
  * <li>Aliased attributes must declare the same default value.</li>
@@ -78,7 +74,8 @@ import java.lang.annotation.Target;
  * <ol>
  * <li>The attribute that is an alias for an attribute in a meta-annotation
  * must be annotated with {@code @AliasFor}, and {@link #attribute} must
- * reference the attribute in the meta-annotation.</li>
+ * reference the attribute in the meta-annotation (unless both attributes have
+ * the same name).</li>
  * <li>Aliased attributes must declare the same return type.</li>
  * <li>{@link #annotation} must reference the meta-annotation.</li>
  * <li>The referenced meta-annotation must be <em>meta-present</em> on the
@@ -169,17 +166,15 @@ import java.lang.annotation.Target;
  * }</pre>
  *
  * <h3>Spring Annotations Supporting Attribute Aliases</h3>
- * <p>As of Spring Framework 4.2, several annotations within core Spring
- * have been updated to use {@code @AliasFor} to configure their internal
- * attribute aliases. Consult the Javadoc for individual annotations as well
- * as the reference manual for details.
+ * <p>Many annotations within the Spring Framework and across the Spring
+ * ecosystem rely on {@code @AliasFor} to configure attribute aliases. Consult
+ * the Javadoc for individual annotations as well as reference documentation for
+ * details.
  *
  * @author Sam Brannen
  * @since 4.2
- * @see AnnotatedElementUtils
- * @see AnnotationUtils
- * @see AnnotationUtils#synthesizeAnnotation(Annotation, java.lang.reflect.AnnotatedElement)
- * @see SynthesizedAnnotation
+ * @see MergedAnnotations
+ * @see AnnotationUtils#isSynthesizedAnnotation(Annotation)
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
@@ -197,6 +192,8 @@ public @interface AliasFor {
 
 	/**
 	 * The name of the attribute that <em>this</em> attribute is an alias for.
+	 * <p>May be omitted if this attribute is an alias for an attribute in a
+	 * meta-annotation and both attributes have the same name.
 	 * @see #value
 	 */
 	@AliasFor("value")

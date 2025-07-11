@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,15 +21,16 @@ import java.time.chrono.Chronology;
 import java.time.format.DateTimeFormatter;
 import java.util.TimeZone;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.context.i18n.LocaleContext;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.i18n.TimeZoneAwareLocaleContext;
-import org.springframework.lang.Nullable;
 
 /**
  * A context that holds user-specific <code>java.time</code> (JSR-310) settings
  * such as the user's Chronology (calendar system) and time zone.
- * A {@code null} property value indicate the user has not specified a setting.
+ * <p>A {@code null} property value indicates the user has not specified a setting.
  *
  * @author Juergen Hoeller
  * @since 4.0
@@ -37,11 +38,9 @@ import org.springframework.lang.Nullable;
  */
 public class DateTimeContext {
 
-	@Nullable
-	private Chronology chronology;
+	private @Nullable Chronology chronology;
 
-	@Nullable
-	private ZoneId timeZone;
+	private @Nullable ZoneId timeZone;
 
 
 	/**
@@ -54,8 +53,7 @@ public class DateTimeContext {
 	/**
 	 * Return the user's chronology (calendar system), if any.
 	 */
-	@Nullable
-	public Chronology getChronology() {
+	public @Nullable Chronology getChronology() {
 		return this.chronology;
 	}
 
@@ -74,15 +72,14 @@ public class DateTimeContext {
 	/**
 	 * Return the user's time zone, if any.
 	 */
-	@Nullable
-	public ZoneId getTimeZone() {
+	public @Nullable ZoneId getTimeZone() {
 		return this.timeZone;
 	}
 
 
 	/**
-	 * Get the DateTimeFormatter with the this context's settings
-	 * applied to the base {@code formatter}.
+	 * Get the DateTimeFormatter with this context's settings applied to the
+	 * base {@code formatter}.
 	 * @param formatter the base formatter that establishes default
 	 * formatting rules, generally context-independent
 	 * @return the contextual DateTimeFormatter
@@ -96,8 +93,8 @@ public class DateTimeContext {
 		}
 		else {
 			LocaleContext localeContext = LocaleContextHolder.getLocaleContext();
-			if (localeContext instanceof TimeZoneAwareLocaleContext) {
-				TimeZone timeZone = ((TimeZoneAwareLocaleContext) localeContext).getTimeZone();
+			if (localeContext instanceof TimeZoneAwareLocaleContext timeZoneAware) {
+				TimeZone timeZone = timeZoneAware.getTimeZone();
 				if (timeZone != null) {
 					formatter = formatter.withZone(timeZone.toZoneId());
 				}

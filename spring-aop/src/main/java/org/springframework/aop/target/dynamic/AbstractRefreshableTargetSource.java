@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,9 @@ package org.springframework.aop.target.dynamic;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.TargetSource;
-import org.springframework.lang.Nullable;
 
 /**
  * Abstract {@link org.springframework.aop.TargetSource} implementation that
@@ -42,7 +42,7 @@ public abstract class AbstractRefreshableTargetSource implements TargetSource, R
 	/** Logger available to subclasses. */
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
+	@SuppressWarnings("NullAway.Init")
 	protected Object targetObject;
 
 	private long refreshCheckDelay = -1;
@@ -73,28 +73,12 @@ public abstract class AbstractRefreshableTargetSource implements TargetSource, R
 		return this.targetObject.getClass();
 	}
 
-	/**
-	 * Not static.
-	 */
 	@Override
-	public boolean isStatic() {
-		return false;
-	}
-
-	@Override
-	@Nullable
-	public final synchronized Object getTarget() {
+	public final synchronized @Nullable Object getTarget() {
 		if ((refreshCheckDelayElapsed() && requiresRefresh()) || this.targetObject == null) {
 			refresh();
 		}
 		return this.targetObject;
-	}
-
-	/**
-	 * No need to release target.
-	 */
-	@Override
-	public void releaseTarget(Object object) {
 	}
 
 

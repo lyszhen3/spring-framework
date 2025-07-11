@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,20 +25,19 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import reactor.core.publisher.EmitterProcessor;
+import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxProcessor;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoProcessor;
+import reactor.core.publisher.Sinks;
 
 import org.springframework.context.support.StaticApplicationContext;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
@@ -62,32 +61,28 @@ import org.springframework.messaging.simp.annotation.SubscribeMapping;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.AntPathMatcher;
-import org.springframework.util.concurrent.ListenableFutureTask;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 import org.springframework.validation.annotation.Validated;
 
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
-import static org.mockito.BDDMockito.any;
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
- * Test fixture for
- * {@link org.springframework.messaging.simp.annotation.support.SimpAnnotationMethodMessageHandler}.
+ * Test fixture for {@link SimpAnnotationMethodMessageHandler}.
  *
  * @author Rossen Stoyanchev
  * @author Brian Clozel
  * @author Sebastien Deleuze
  */
+@ExtendWith(MockitoExtension.class)
 public class SimpAnnotationMethodMessageHandlerTests {
 
 	private static final String TEST_INVALID_VALUE = "invalidValue";
 
-
-	private TestSimpAnnotationMethodMessageHandler messageHandler;
-
-	private TestController testController;
 
 	@Mock
 	private SubscribableChannel channel;
@@ -98,11 +93,13 @@ public class SimpAnnotationMethodMessageHandlerTests {
 	@Captor
 	private ArgumentCaptor<Object> payloadCaptor;
 
+	private TestSimpAnnotationMethodMessageHandler messageHandler;
 
-	@Before
-	public void setup() {
-		MockitoAnnotations.initMocks(this);
+	private TestController testController = new TestController();
 
+
+	@BeforeEach
+	void setup() {
 		SimpMessagingTemplate brokerTemplate = new SimpMessagingTemplate(this.channel);
 		brokerTemplate.setMessageConverter(this.converter);
 
@@ -110,8 +107,6 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		this.messageHandler.setApplicationContext(new StaticApplicationContext());
 		this.messageHandler.setValidator(new StringTestValidator(TEST_INVALID_VALUE));
 		this.messageHandler.afterPropertiesSet();
-
-		this.testController = new TestController();
 	}
 
 
@@ -123,114 +118,114 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("headers", this.testController.method);
-		assertEquals("bar", this.testController.arguments.get("foo"));
-		assertEquals("bar", ((Map<String, Object>) this.testController.arguments.get("headers")).get("foo"));
+		assertThat(this.testController.method).isEqualTo("headers");
+		assertThat(this.testController.arguments.get("foo")).isEqualTo("bar");
+		assertThat(((Map<String, Object>) this.testController.arguments.get("headers")).get("foo")).isEqualTo("bar");
 	}
 
 	@Test
-	public void optionalHeaderArgumentResolutionWhenPresent() {
+	void optionalHeaderArgumentResolutionWhenPresent() {
 		Map<String, Object> headers = Collections.singletonMap("foo", "bar");
 		Message<?> message = createMessage("/pre/optionalHeaders", headers);
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("optionalHeaders", this.testController.method);
-		assertEquals("bar", this.testController.arguments.get("foo1"));
-		assertEquals("bar", this.testController.arguments.get("foo2"));
+		assertThat(this.testController.method).isEqualTo("optionalHeaders");
+		assertThat(this.testController.arguments.get("foo1")).isEqualTo("bar");
+		assertThat(this.testController.arguments.get("foo2")).isEqualTo("bar");
 	}
 
 	@Test
-	public void optionalHeaderArgumentResolutionWhenNotPresent() {
+	void optionalHeaderArgumentResolutionWhenNotPresent() {
 		Message<?> message = createMessage("/pre/optionalHeaders");
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("optionalHeaders", this.testController.method);
-		assertNull(this.testController.arguments.get("foo1"));
-		assertNull(this.testController.arguments.get("foo2"));
+		assertThat(this.testController.method).isEqualTo("optionalHeaders");
+		assertThat(this.testController.arguments.get("foo1")).isNull();
+		assertThat(this.testController.arguments.get("foo2")).isNull();
 	}
 
 	@Test
-	public void messageMappingDestinationVariableResolution() {
+	void messageMappingDestinationVariableResolution() {
 		Message<?> message = createMessage("/pre/message/bar/value");
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("messageMappingDestinationVariable", this.testController.method);
-		assertEquals("bar", this.testController.arguments.get("foo"));
-		assertEquals("value", this.testController.arguments.get("name"));
+		assertThat(this.testController.method).isEqualTo("messageMappingDestinationVariable");
+		assertThat(this.testController.arguments.get("foo")).isEqualTo("bar");
+		assertThat(this.testController.arguments.get("name")).isEqualTo("value");
 	}
 
 	@Test
-	public void subscribeEventDestinationVariableResolution() {
+	void subscribeEventDestinationVariableResolution() {
 		Message<?> message = createMessage(SimpMessageType.SUBSCRIBE, "/pre/sub/bar/value", null);
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("subscribeEventDestinationVariable", this.testController.method);
-		assertEquals("bar", this.testController.arguments.get("foo"));
-		assertEquals("value", this.testController.arguments.get("name"));
+		assertThat(this.testController.method).isEqualTo("subscribeEventDestinationVariable");
+		assertThat(this.testController.arguments.get("foo")).isEqualTo("bar");
+		assertThat(this.testController.arguments.get("name")).isEqualTo("value");
 	}
 
 	@Test
-	public void simpleBinding() {
+	void simpleBinding() {
 		Message<?> message = createMessage("/pre/binding/id/12");
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("simpleBinding", this.testController.method);
-		assertTrue("should be bound to type long", this.testController.arguments.get("id") instanceof Long);
-		assertEquals(12L, this.testController.arguments.get("id"));
+		assertThat(this.testController.method).isEqualTo("simpleBinding");
+		assertThat(this.testController.arguments.get("id")).as("should be bound to type long").isInstanceOf(Long.class);
+		assertThat(this.testController.arguments.get("id")).isEqualTo(12L);
 	}
 
 	@Test
-	public void validationError() {
+	void validationError() {
 		Message<?> message = createMessage("/pre/validation/payload");
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("handleValidationException", this.testController.method);
+		assertThat(this.testController.method).isEqualTo("handleValidationException");
 	}
 
 	@Test
-	public void exceptionWithHandlerMethodArg() {
+	void exceptionWithHandlerMethodArg() {
 		Message<?> message = createMessage("/pre/illegalState");
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("handleExceptionWithHandlerMethodArg", this.testController.method);
+		assertThat(this.testController.method).isEqualTo("handleExceptionWithHandlerMethodArg");
 		HandlerMethod handlerMethod = (HandlerMethod) this.testController.arguments.get("handlerMethod");
-		assertNotNull(handlerMethod);
-		assertEquals("illegalState", handlerMethod.getMethod().getName());
+		assertThat(handlerMethod).isNotNull();
+		assertThat(handlerMethod.getMethod().getName()).isEqualTo("illegalState");
 	}
 
 	@Test
-	public void exceptionAsCause() {
+	void exceptionAsCause() {
 		Message<?> message = createMessage("/pre/illegalStateCause");
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("handleExceptionWithHandlerMethodArg", this.testController.method);
+		assertThat(this.testController.method).isEqualTo("handleExceptionWithHandlerMethodArg");
 		HandlerMethod handlerMethod = (HandlerMethod) this.testController.arguments.get("handlerMethod");
-		assertNotNull(handlerMethod);
-		assertEquals("illegalStateCause", handlerMethod.getMethod().getName());
+		assertThat(handlerMethod).isNotNull();
+		assertThat(handlerMethod.getMethod().getName()).isEqualTo("illegalStateCause");
 	}
 
 	@Test
-	public void errorAsMessageHandlingException() {
+	void errorAsMessageHandlingException() {
 		Message<?> message = createMessage("/pre/error");
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("handleErrorWithHandlerMethodArg", this.testController.method);
+		assertThat(this.testController.method).isEqualTo("handleErrorWithHandlerMethodArg");
 		HandlerMethod handlerMethod = (HandlerMethod) this.testController.arguments.get("handlerMethod");
-		assertNotNull(handlerMethod);
-		assertEquals("errorAsThrowable", handlerMethod.getMethod().getName());
+		assertThat(handlerMethod).isNotNull();
+		assertThat(handlerMethod.getMethod().getName()).isEqualTo("errorAsThrowable");
 	}
 
 	@Test
-	public void simpScope() {
+	void simpScope() {
 		Map<String, Object> sessionAttributes = new ConcurrentHashMap<>();
 		sessionAttributes.put("name", "value");
 
@@ -242,11 +237,24 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("scope", this.testController.method);
+		assertThat(this.testController.method).isEqualTo("scope");
 	}
 
 	@Test
-	public void dotPathSeparator() {
+	void interfaceBasedController() {
+		InterfaceBasedController controller = new InterfaceBasedController();
+
+		Message<?> message = createMessage("/pre/binding/id/12");
+		this.messageHandler.registerHandler(controller);
+		this.messageHandler.handleMessage(message);
+
+		assertThat(controller.method).isEqualTo("simpleBinding");
+		assertThat(controller.arguments.get("id")).as("should be bound to type long").isInstanceOf(Long.class);
+		assertThat(controller.arguments.get("id")).isEqualTo(12L);
+	}
+
+	@Test
+	void dotPathSeparator() {
 		DotPathSeparatorController controller = new DotPathSeparatorController();
 
 		this.messageHandler.setPathMatcher(new AntPathMatcher("."));
@@ -257,50 +265,12 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("handleFoo", controller.method);
+		assertThat(controller.method).isEqualTo("handleFoo");
 
 		message = createMessage("/app2/pre.foo");
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("handleFoo", controller.method);
-	}
-
-	@Test
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public void listenableFutureSuccess() {
-		Message emptyMessage = MessageBuilder.withPayload(new byte[0]).build();
-		given(this.channel.send(any(Message.class))).willReturn(true);
-		given(this.converter.toMessage(any(), any(MessageHeaders.class))).willReturn(emptyMessage);
-
-		ListenableFutureController controller = new ListenableFutureController();
-		this.messageHandler.registerHandler(controller);
-		this.messageHandler.setDestinationPrefixes(Arrays.asList("/app1", "/app2/"));
-
-		Message<?> message = createMessage("/app1/listenable-future/success");
-		this.messageHandler.handleMessage(message);
-
-		assertNotNull(controller.future);
-		controller.future.run();
-		verify(this.converter).toMessage(this.payloadCaptor.capture(), any(MessageHeaders.class));
-		assertEquals("foo", this.payloadCaptor.getValue());
-	}
-
-	@Test
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public void listenableFutureFailure() {
-		Message emptyMessage = MessageBuilder.withPayload(new byte[0]).build();
-		given(this.channel.send(any(Message.class))).willReturn(true);
-		given(this.converter.toMessage(any(), any(MessageHeaders.class))).willReturn(emptyMessage);
-
-		ListenableFutureController controller = new ListenableFutureController();
-		this.messageHandler.registerHandler(controller);
-		this.messageHandler.setDestinationPrefixes(Arrays.asList("/app1", "/app2/"));
-
-		Message<?> message = createMessage("/app1/listenable-future/failure");
-		this.messageHandler.handleMessage(message);
-
-		controller.future.run();
-		assertTrue(controller.exceptionCaught);
+		assertThat(controller.method).isEqualTo("handleFoo");
 	}
 
 	@Test
@@ -317,19 +287,14 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		Message<?> message = createMessage("/app1/completable-future");
 		this.messageHandler.handleMessage(message);
 
-		assertNotNull(controller.future);
+		assertThat(controller.future).isNotNull();
 		controller.future.complete("foo");
 		verify(this.converter).toMessage(this.payloadCaptor.capture(), any(MessageHeaders.class));
-		assertEquals("foo", this.payloadCaptor.getValue());
+		assertThat(this.payloadCaptor.getValue()).isEqualTo("foo");
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public void completableFutureFailure() {
-		Message emptyMessage = MessageBuilder.withPayload(new byte[0]).build();
-		given(this.channel.send(any(Message.class))).willReturn(true);
-		given(this.converter.toMessage(any(), any(MessageHeaders.class))).willReturn(emptyMessage);
-
+	void completableFutureFailure() {
 		CompletableFutureController controller = new CompletableFutureController();
 		this.messageHandler.registerHandler(controller);
 		this.messageHandler.setDestinationPrefixes(Arrays.asList("/app1", "/app2/"));
@@ -338,7 +303,7 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		this.messageHandler.handleMessage(message);
 
 		controller.future.completeExceptionally(new IllegalStateException());
-		assertTrue(controller.exceptionCaught);
+		assertThat(controller.exceptionCaught).isTrue();
 	}
 
 	@Test
@@ -355,19 +320,14 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		Message<?> message = createMessage("/app1/mono");
 		this.messageHandler.handleMessage(message);
 
-		assertNotNull(controller.mono);
-		controller.mono.onNext("foo");
+		assertThat(controller.sinkOne).isNotNull();
+		controller.sinkOne.emitValue("foo", Sinks.EmitFailureHandler.FAIL_FAST);
 		verify(this.converter).toMessage(this.payloadCaptor.capture(), any(MessageHeaders.class));
-		assertEquals("foo", this.payloadCaptor.getValue());
+		assertThat(this.payloadCaptor.getValue()).isEqualTo("foo");
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public void monoFailure() {
-		Message emptyMessage = MessageBuilder.withPayload(new byte[0]).build();
-		given(this.channel.send(any(Message.class))).willReturn(true);
-		given(this.converter.toMessage(any(), any(MessageHeaders.class))).willReturn(emptyMessage);
-
+	void monoFailure() {
 		ReactiveController controller = new ReactiveController();
 		this.messageHandler.registerHandler(controller);
 		this.messageHandler.setDestinationPrefixes(Arrays.asList("/app1", "/app2/"));
@@ -375,17 +335,12 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		Message<?> message = createMessage("/app1/mono");
 		this.messageHandler.handleMessage(message);
 
-		controller.mono.onError(new IllegalStateException());
-		assertTrue(controller.exceptionCaught);
+		controller.sinkOne.emitError(new IllegalStateException(), Sinks.EmitFailureHandler.FAIL_FAST);
+		assertThat(controller.exceptionCaught).isTrue();
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public void fluxNotHandled() {
-		Message emptyMessage = MessageBuilder.withPayload(new byte[0]).build();
-		given(this.channel.send(any(Message.class))).willReturn(true);
-		given(this.converter.toMessage(any(), any(MessageHeaders.class))).willReturn(emptyMessage);
-
+	void fluxNotHandled() {
 		ReactiveController controller = new ReactiveController();
 		this.messageHandler.registerHandler(controller);
 		this.messageHandler.setDestinationPrefixes(Arrays.asList("/app1", "/app2/"));
@@ -393,20 +348,20 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		Message<?> message = createMessage("/app1/flux");
 		this.messageHandler.handleMessage(message);
 
-		assertNotNull(controller.flux);
-		controller.flux.onNext("foo");
+		assertThat(controller.sinkMany).isNotNull();
+		controller.sinkMany.tryEmitNext("foo");
 
 		verify(this.converter, never()).toMessage(any(), any(MessageHeaders.class));
 	}
 
 	@Test
-	public void placeholder() throws Exception {
+	void placeholder() {
 		Message<?> message = createMessage("/pre/myValue");
 		this.messageHandler.setEmbeddedValueResolver(value -> ("/${myProperty}".equals(value) ? "/myValue" : value));
 		this.messageHandler.registerHandler(this.testController);
 		this.messageHandler.handleMessage(message);
 
-		assertEquals("placeholder", this.testController.method);
+		assertThat(this.testController.method).isEqualTo("placeholder");
 	}
 
 
@@ -450,9 +405,9 @@ public class SimpAnnotationMethodMessageHandlerTests {
 	@MessageMapping("/pre")
 	private static class TestController {
 
-		private String method;
+		String method;
 
-		private Map<String, Object> arguments = new LinkedHashMap<>();
+		Map<String, Object> arguments = new LinkedHashMap<>();
 
 		@MessageMapping("/headers")
 		public void headers(@Header String foo, @Headers Map<String, Object> headers) {
@@ -465,7 +420,7 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		public void optionalHeaders(@Header(name="foo", required=false) String foo1, @Header("foo") Optional<String> foo2) {
 			this.method = "optionalHeaders";
 			this.arguments.put("foo1", foo1);
-			this.arguments.put("foo2", (foo2.isPresent() ? foo2.get() : null));
+			this.arguments.put("foo2", (foo2.orElse(null)));
 		}
 
 		@MessageMapping("/message/{foo}/{name}")
@@ -520,20 +475,20 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		public void handleExceptionWithHandlerMethodArg(IllegalStateException ex, HandlerMethod handlerMethod) {
 			this.method = "handleExceptionWithHandlerMethodArg";
 			this.arguments.put("handlerMethod", handlerMethod);
-			assertEquals("my cause", ex.getMessage());
+			assertThat(ex.getMessage()).isEqualTo("my cause");
 		}
 
 		@MessageExceptionHandler
 		public void handleErrorWithHandlerMethodArg(Error ex, HandlerMethod handlerMethod) {
 			this.method = "handleErrorWithHandlerMethodArg";
 			this.arguments.put("handlerMethod", handlerMethod);
-			assertEquals("my cause", ex.getMessage());
+			assertThat(ex.getMessage()).isEqualTo("my cause");
 		}
 
 		@MessageMapping("/scope")
 		public void scope() {
 			SimpAttributes simpAttributes = SimpAttributesContextHolder.currentAttributes();
-			assertThat(simpAttributes.getAttribute("name"), is("value"));
+			assertThat(simpAttributes.getAttribute("name")).isEqualTo("value");
 			this.method = "scope";
 		}
 
@@ -544,11 +499,35 @@ public class SimpAnnotationMethodMessageHandlerTests {
 	}
 
 
+	private interface ControllerInterface {
+
+		void simpleBinding(@DestinationVariable("id") Long id);
+	}
+
+
+	@Controller
+	@MessageMapping("pre")
+	private static class InterfaceBasedController implements ControllerInterface {
+
+		String method;
+
+		Map<String, Object> arguments = new LinkedHashMap<>();
+
+		@Override
+		@MessageMapping("/binding/id/{id}")
+		public void simpleBinding(Long id) {
+			this.method = "simpleBinding";
+			this.arguments.put("id", id);
+		}
+
+	}
+
+
 	@Controller
 	@MessageMapping("pre")
 	private static class DotPathSeparatorController {
 
-		private String method;
+		String method;
 
 		@MessageMapping("foo")
 		public void handleFoo() {
@@ -558,40 +537,11 @@ public class SimpAnnotationMethodMessageHandlerTests {
 
 
 	@Controller
-	@MessageMapping("listenable-future")
-	private static class ListenableFutureController {
-
-		private ListenableFutureTask<String> future;
-
-		private boolean exceptionCaught = false;
-
-		@MessageMapping("success")
-		public ListenableFutureTask<String> handleListenableFuture() {
-			this.future = new ListenableFutureTask<>(() -> "foo");
-			return this.future;
-		}
-
-		@MessageMapping("failure")
-		public ListenableFutureTask<String> handleListenableFutureException() {
-			this.future = new ListenableFutureTask<>(() -> {
-				throw new IllegalStateException();
-			});
-			return this.future;
-		}
-
-		@MessageExceptionHandler(IllegalStateException.class)
-		public void handleValidationException() {
-			this.exceptionCaught = true;
-		}
-	}
-
-
-	@Controller
 	private static class CompletableFutureController {
 
-		private CompletableFuture<String> future;
+		CompletableFuture<String> future;
 
-		private boolean exceptionCaught = false;
+		boolean exceptionCaught = false;
 
 		@MessageMapping("completable-future")
 		public CompletableFuture<String> handleCompletableFuture() {
@@ -605,25 +555,26 @@ public class SimpAnnotationMethodMessageHandlerTests {
 		}
 	}
 
+
 	@Controller
 	private static class ReactiveController {
 
-		private MonoProcessor<String> mono;
+		Sinks.One<String> sinkOne;
 
-		private FluxProcessor<String, String> flux;
+		Sinks.Many<String> sinkMany;
 
-		private boolean exceptionCaught = false;
+		boolean exceptionCaught = false;
 
 		@MessageMapping("mono")
 		public Mono<String> handleMono() {
-			this.mono = MonoProcessor.create();
-			return this.mono;
+			this.sinkOne = Sinks.one();
+			return this.sinkOne.asMono();
 		}
 
 		@MessageMapping("flux")
 		public Flux<String> handleFlux() {
-			this.flux = EmitterProcessor.create();
-			return this.flux;
+			this.sinkMany = Sinks.many().unicast().onBackpressureBuffer();
+			return this.sinkMany.asFlux();
 		}
 
 		@MessageExceptionHandler(IllegalStateException.class)
@@ -635,7 +586,7 @@ public class SimpAnnotationMethodMessageHandlerTests {
 
 	private static class StringTestValidator implements Validator {
 
-		private final String invalidValue;
+		final String invalidValue;
 
 		public StringTestValidator(String invalidValue) {
 			this.invalidValue = invalidValue;

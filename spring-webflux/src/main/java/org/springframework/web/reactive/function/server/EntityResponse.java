@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ package org.springframework.web.reactive.function.server;
 import java.net.URI;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -29,10 +30,10 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
-import org.springframework.http.codec.json.Jackson2CodecSupport;
+import org.springframework.http.codec.JacksonCodecSupport;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserter;
@@ -63,12 +64,36 @@ public interface EntityResponse<T> extends ServerResponse {
 
 	/**
 	 * Create a builder with the given object.
-	 * @param t the object that represents the body of the response
-	 * @param <T> the type of the elements contained in the publisher
+	 * @param body the object that represents the body of the response
+	 * @param <T> the type of the body
 	 * @return the created builder
 	 */
-	static <T> Builder<T> fromObject(T t) {
-		return new DefaultEntityResponseBuilder<>(t, BodyInserters.fromObject(t));
+	static <T> Builder<T> fromObject(T body) {
+		return new DefaultEntityResponseBuilder<>(body, BodyInserters.fromValue(body));
+	}
+
+	/**
+	 * Create a builder with the given producer.
+	 * @param producer the producer that represents the body of the response
+	 * @param elementClass the class of elements contained in the publisher
+	 * @return the created builder
+	 * @since 5.2
+	 */
+	static <T> Builder<T> fromProducer(T producer, Class<?> elementClass) {
+		return new DefaultEntityResponseBuilder<>(producer,
+				BodyInserters.fromProducer(producer, elementClass));
+	}
+
+	/**
+	 * Create a builder with the given producer.
+	 * @param producer the producer that represents the body of the response
+	 * @param typeReference the type of elements contained in the producer
+	 * @return the created builder
+	 * @since 5.2
+	 */
+	static <T> Builder<T> fromProducer(T producer, ParameterizedTypeReference<?> typeReference) {
+		return new DefaultEntityResponseBuilder<>(producer,
+				BodyInserters.fromProducer(producer, typeReference));
 	}
 
 	/**
@@ -125,11 +150,23 @@ public interface EntityResponse<T> extends ServerResponse {
 		Builder<T> headers(HttpHeaders headers);
 
 		/**
+		 * Manipulate this entity's headers with the given consumer. The
+		 * headers provided to the consumer are "live", so that the consumer can be used to
+		 * {@linkplain HttpHeaders#set(String, String) overwrite} existing header values,
+		 * {@linkplain HttpHeaders#remove(String) remove} values, or use any of the other
+		 * {@link HttpHeaders} methods.
+		 * @param headersConsumer a function that consumes the {@code HttpHeaders}
+		 * @return this builder
+		 * @since 6.1
+		 */
+		Builder<T> headers(Consumer<HttpHeaders> headersConsumer);
+
+		/**
 		 * Set the HTTP status.
 		 * @param status the response status
 		 * @return this builder
 		 */
-		Builder<T> status(HttpStatus status);
+		Builder<T> status(HttpStatusCode status);
 
 		/**
 		 * Set the HTTP status.
@@ -226,7 +263,7 @@ public interface EntityResponse<T> extends ServerResponse {
 		Builder<T> cacheControl(CacheControl cacheControl);
 
 		/**
-		 * Configure one or more request header names (e.g. "Accept-Language") to
+		 * Configure one or more request header names (for example, "Accept-Language") to
 		 * add to the "Vary" response header to inform clients that the response is
 		 * subject to content negotiation and variances based on the value of the
 		 * given request headers. The configured request header names are added only
@@ -255,12 +292,20 @@ public interface EntityResponse<T> extends ServerResponse {
 		Builder<T> contentType(MediaType contentType);
 
 		/**
-		 * Add a serialization hint like {@link Jackson2CodecSupport#JSON_VIEW_HINT} to
+		 * Add a serialization hint like {@link JacksonCodecSupport#JSON_VIEW_HINT} to
 		 * customize how the body will be serialized.
 		 * @param key the hint key
 		 * @param value the hint value
 		 */
 		Builder<T> hint(String key, Object value);
+
+		/**
+		 * Customize the serialization hints with the given consumer.
+		 * @param hintsConsumer a function that consumes the hints
+		 * @return this builder
+		 * @since 5.1.6
+		 */
+		Builder<T> hints(Consumer<Map<String, Object>> hintsConsumer);
 
 		/**
 		 * Build the response.

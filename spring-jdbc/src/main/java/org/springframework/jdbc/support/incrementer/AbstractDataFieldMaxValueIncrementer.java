@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,9 +34,11 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractDataFieldMaxValueIncrementer implements DataFieldMaxValueIncrementer, InitializingBean {
 
+	@SuppressWarnings("NullAway.Init")
 	private DataSource dataSource;
 
 	/** The name of the sequence/table containing the sequence. */
+	@SuppressWarnings("NullAway.Init")
 	private String incrementerName;
 
 	/** The length to which a string result should be pre-pended with zeroes. */
@@ -133,12 +135,7 @@ public abstract class AbstractDataFieldMaxValueIncrementer implements DataFieldM
 		String s = Long.toString(getNextKey());
 		int len = s.length();
 		if (len < this.paddingLength) {
-			StringBuilder sb = new StringBuilder(this.paddingLength);
-			for (int i = 0; i < this.paddingLength - len; i++) {
-				sb.append('0');
-			}
-			sb.append(s);
-			s = sb.toString();
+			s = "0".repeat(this.paddingLength - len) + s;
 		}
 		return s;
 	}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.web.socket.handler.WebSocketHandlerDecoratorFactory;
 
 /**
@@ -31,17 +32,13 @@ import org.springframework.web.socket.handler.WebSocketHandlerDecoratorFactory;
  */
 public class WebSocketTransportRegistration {
 
-	@Nullable
-	private Integer messageSizeLimit;
+	private @Nullable Integer messageSizeLimit;
 
-	@Nullable
-	private Integer sendTimeLimit;
+	private @Nullable Integer sendTimeLimit;
 
-	@Nullable
-	private Integer sendBufferSizeLimit;
+	private @Nullable Integer sendBufferSizeLimit;
 
-	@Nullable
-	private Integer timeToFirstMessage;
+	private @Nullable Integer timeToFirstMessage;
 
 	private final List<WebSocketHandlerDecoratorFactory> decoratorFactories = new ArrayList<>(2);
 
@@ -62,8 +59,7 @@ public class WebSocketTransportRegistration {
 	/**
 	 * Protected accessor for internal use.
 	 */
-	@Nullable
-	protected Integer getMessageSizeLimit() {
+	protected @Nullable Integer getMessageSizeLimit() {
 		return this.messageSizeLimit;
 	}
 
@@ -87,12 +83,12 @@ public class WebSocketTransportRegistration {
 	 * <p><strong>NOTE</strong> that closing the session may not succeed in
 	 * actually closing the physical socket and may also hang. This is true
 	 * especially when using blocking IO such as the BIO connector in Tomcat
-	 * that is used by default on Tomcat 7. Therefore it is recommended to ensure
+	 * that is used by default on Tomcat 7. Therefore, it is recommended to ensure
 	 * the server is using non-blocking IO such as Tomcat's NIO connector that
 	 * is used by default on Tomcat 8. If you must use blocking IO consider
 	 * customizing OS-level TCP settings, for example
 	 * {@code /proc/sys/net/ipv4/tcp_retries2} on Linux.
-	 * <p>The default value is 10 seconds (i.e. 10 * 10000).
+	 * <p>The default value is 10 seconds (i.e. 10 * 1000).
 	 * @param timeLimit the timeout value in milliseconds; the value must be
 	 * greater than 0, otherwise it is ignored.
 	 */
@@ -104,8 +100,7 @@ public class WebSocketTransportRegistration {
 	/**
 	 * Protected accessor for internal use.
 	 */
-	@Nullable
-	protected Integer getSendTimeLimit() {
+	protected @Nullable Integer getSendTimeLimit() {
 		return this.sendTimeLimit;
 	}
 
@@ -123,7 +118,7 @@ public class WebSocketTransportRegistration {
 	 * <p><strong>NOTE</strong> that closing the session may not succeed in
 	 * actually closing the physical socket and may also hang. This is true
 	 * especially when using blocking IO such as the BIO connector in Tomcat
-	 * configured by default on Tomcat 7. Therefore it is recommended to ensure
+	 * configured by default on Tomcat 7. Therefore, it is recommended to ensure
 	 * the server is using non-blocking IO such as Tomcat's NIO connector used
 	 * by default on Tomcat 8. If you must use blocking IO consider customizing
 	 * OS-level TCP settings, for example {@code /proc/sys/net/ipv4/tcp_retries2}
@@ -141,8 +136,7 @@ public class WebSocketTransportRegistration {
 	/**
 	 * Protected accessor for internal use.
 	 */
-	@Nullable
-	protected Integer getSendBufferSizeLimit() {
+	protected @Nullable Integer getSendBufferSizeLimit() {
 		return this.sendBufferSizeLimit;
 	}
 
@@ -151,7 +145,7 @@ public class WebSocketTransportRegistration {
 	 * is established and before the first sub-protocol message is received.
 	 * <p>This handler is for WebSocket connections that use a sub-protocol.
 	 * Therefore, we expect the client to send at least one sub-protocol message
-	 * in the beginning, or else we assume the connection isn't doing well, e.g.
+	 * in the beginning, or else we assume the connection isn't doing well, for example,
 	 * proxy issue, slow network, and can be closed.
 	 * <p>By default this is set to {@code 60,000} (1 minute).
 	 * @param timeToFirstMessage the maximum time allowed in milliseconds
@@ -165,8 +159,7 @@ public class WebSocketTransportRegistration {
 	/**
 	 * Protected accessor for internal use.
 	 */
-	@Nullable
-	protected Integer getTimeToFirstMessage() {
+	protected @Nullable Integer getTimeToFirstMessage() {
 		return this.timeToFirstMessage;
 	}
 

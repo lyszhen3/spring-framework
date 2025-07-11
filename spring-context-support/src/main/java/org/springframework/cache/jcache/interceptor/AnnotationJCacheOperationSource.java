@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+
 import javax.cache.annotation.CacheDefaults;
 import javax.cache.annotation.CacheKeyGenerator;
 import javax.cache.annotation.CacheMethodDetails;
@@ -29,9 +31,11 @@ import javax.cache.annotation.CacheRemoveAll;
 import javax.cache.annotation.CacheResolverFactory;
 import javax.cache.annotation.CacheResult;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.cache.interceptor.CacheResolver;
 import org.springframework.cache.interceptor.KeyGenerator;
-import org.springframework.lang.Nullable;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -40,12 +44,22 @@ import org.springframework.util.StringUtils;
  * {@link CacheRemoveAll} annotations.
  *
  * @author Stephane Nicoll
+ * @author Juergen Hoeller
  * @since 4.1
  */
 public abstract class AnnotationJCacheOperationSource extends AbstractFallbackJCacheOperationSource {
 
+	private static final Set<Class<? extends Annotation>> JCACHE_OPERATION_ANNOTATIONS =
+			Set.of(CacheResult.class, CachePut.class, CacheRemove.class, CacheRemoveAll.class);
+
+
 	@Override
-	protected JCacheOperation<?> findCacheOperation(Method method, @Nullable Class<?> targetType) {
+	public boolean isCandidateClass(Class<?> targetClass) {
+		return AnnotationUtils.isCandidateClass(targetClass, JCACHE_OPERATION_ANNOTATIONS);
+	}
+
+	@Override
+	protected @Nullable JCacheOperation<?> findCacheOperation(Method method, @Nullable Class<?> targetType) {
 		CacheResult cacheResult = method.getAnnotation(CacheResult.class);
 		CachePut cachePut = method.getAnnotation(CachePut.class);
 		CacheRemove cacheRemove = method.getAnnotation(CacheRemove.class);
@@ -74,8 +88,7 @@ public abstract class AnnotationJCacheOperationSource extends AbstractFallbackJC
 		}
 	}
 
-	@Nullable
-	protected CacheDefaults getCacheDefaults(Method method, @Nullable Class<?> targetType) {
+	protected @Nullable CacheDefaults getCacheDefaults(Method method, @Nullable Class<?> targetType) {
 		CacheDefaults annotation = method.getDeclaringClass().getAnnotation(CacheDefaults.class);
 		if (annotation != null) {
 			return annotation;
@@ -161,8 +174,7 @@ public abstract class AnnotationJCacheOperationSource extends AbstractFallbackJC
 		}
 	}
 
-	@Nullable
-	protected CacheResolverFactory determineCacheResolverFactory(
+	protected @Nullable CacheResolverFactory determineCacheResolverFactory(
 			@Nullable CacheDefaults defaults, Class<? extends CacheResolverFactory> candidate) {
 
 		if (candidate != CacheResolverFactory.class) {
@@ -211,11 +223,8 @@ public abstract class AnnotationJCacheOperationSource extends AbstractFallbackJC
 		for (Class<?> parameterType : parameterTypes) {
 			parameters.add(parameterType.getName());
 		}
-
-		StringBuilder sb = new StringBuilder(method.getDeclaringClass().getName());
-		sb.append(".").append(method.getName());
-		sb.append("(").append(StringUtils.collectionToCommaDelimitedString(parameters)).append(")");
-		return sb.toString();
+		return method.getDeclaringClass().getName() + '.' + method.getName() +
+				'(' + StringUtils.collectionToCommaDelimitedString(parameters) + ')';
 	}
 
 	private int countNonNull(Object... instances) {

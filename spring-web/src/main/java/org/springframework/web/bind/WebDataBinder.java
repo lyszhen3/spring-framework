@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,11 +20,13 @@ import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.beans.PropertyValue;
 import org.springframework.core.CollectionFactory;
-import org.springframework.lang.Nullable;
 import org.springframework.validation.DataBinder;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -34,12 +36,21 @@ import org.springframework.web.multipart.MultipartFile;
  * the Servlet API; serves as base class for more specific DataBinder variants,
  * such as {@link org.springframework.web.bind.ServletRequestDataBinder}.
  *
+ * <p><strong>WARNING</strong>: Data binding can lead to security issues by exposing
+ * parts of the object graph that are not meant to be accessed or modified by
+ * external clients. Therefore, the design and use of data binding should be considered
+ * carefully with regard to security. For more details, please refer to the dedicated
+ * sections on data binding for
+ * <a href="https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-ann-initbinder-model-design">Spring Web MVC</a> and
+ * <a href="https://docs.spring.io/spring-framework/docs/current/reference/html/web-reactive.html#webflux-ann-initbinder-model-design">Spring WebFlux</a>
+ * in the reference manual.
+ *
  * <p>Includes support for field markers which address a common problem with
  * HTML checkboxes and select options: detecting that a field was part of
  * the form, but did not generate a request parameter because it was empty.
  * A field marker allows to detect that state and reset the corresponding
  * bean property accordingly. Default values, for parameters that are otherwise
- * not present, can specify a value for the field other then empty.
+ * not present, can specify a value for the field other than empty.
  *
  * @author Juergen Hoeller
  * @author Scott Andrews
@@ -56,7 +67,7 @@ public class WebDataBinder extends DataBinder {
 
 	/**
 	 * Default prefix that field marker parameters start with, followed by the field
-	 * name: e.g. "_subscribeToNewsletter" for a field "subscribeToNewsletter".
+	 * name: for example, "_subscribeToNewsletter" for a field "subscribeToNewsletter".
 	 * <p>Such a marker parameter indicates that the field was visible, that is,
 	 * existed in the form that caused the submission. If no corresponding field
 	 * value parameter was found, the field will be reset. The value of the field
@@ -68,18 +79,16 @@ public class WebDataBinder extends DataBinder {
 
 	/**
 	 * Default prefix that field default parameters start with, followed by the field
-	 * name: e.g. "!subscribeToNewsletter" for a field "subscribeToNewsletter".
+	 * name: for example, "!subscribeToNewsletter" for a field "subscribeToNewsletter".
 	 * <p>Default parameters differ from field markers in that they provide a default
 	 * value instead of an empty value.
 	 * @see #setFieldDefaultPrefix
 	 */
 	public static final String DEFAULT_FIELD_DEFAULT_PREFIX = "!";
 
-	@Nullable
-	private String fieldMarkerPrefix = DEFAULT_FIELD_MARKER_PREFIX;
+	private @Nullable String fieldMarkerPrefix = DEFAULT_FIELD_MARKER_PREFIX;
 
-	@Nullable
-	private String fieldDefaultPrefix = DEFAULT_FIELD_DEFAULT_PREFIX;
+	private @Nullable String fieldDefaultPrefix = DEFAULT_FIELD_DEFAULT_PREFIX;
 
 	private boolean bindEmptyMultipartFiles = true;
 
@@ -110,7 +119,7 @@ public class WebDataBinder extends DataBinder {
 	 * empty fields, having "prefix + field" as name. Such a marker parameter is
 	 * checked by existence: You can send any value for it, for example "visible".
 	 * This is particularly useful for HTML checkboxes and select options.
-	 * <p>Default is "_", for "_FIELD" parameters (e.g. "_subscribeToNewsletter").
+	 * <p>Default is "_", for "_FIELD" parameters (for example, "_subscribeToNewsletter").
 	 * Set this to null if you want to turn off the empty field check completely.
 	 * <p>HTML checkboxes only send a value when they're checked, so it is not
 	 * possible to detect that a formerly checked box has just been unchecked,
@@ -133,8 +142,7 @@ public class WebDataBinder extends DataBinder {
 	/**
 	 * Return the prefix for parameters that mark potentially empty fields.
 	 */
-	@Nullable
-	public String getFieldMarkerPrefix() {
+	public @Nullable String getFieldMarkerPrefix() {
 		return this.fieldMarkerPrefix;
 	}
 
@@ -142,7 +150,7 @@ public class WebDataBinder extends DataBinder {
 	 * Specify a prefix that can be used for parameters that indicate default
 	 * value fields, having "prefix + field" as name. The value of the default
 	 * field is used when the field is not provided.
-	 * <p>Default is "!", for "!FIELD" parameters (e.g. "!subscribeToNewsletter").
+	 * <p>Default is "!", for "!FIELD" parameters (for example, "!subscribeToNewsletter").
 	 * Set this to null if you want to turn off the field defaults completely.
 	 * <p>HTML checkboxes only send a value when they're checked, so it is not
 	 * possible to detect that a formerly checked box has just been unchecked,
@@ -159,8 +167,7 @@ public class WebDataBinder extends DataBinder {
 	/**
 	 * Return the prefix for parameters that mark default fields.
 	 */
-	@Nullable
-	public String getFieldDefaultPrefix() {
+	public @Nullable String getFieldDefaultPrefix() {
 		return this.fieldDefaultPrefix;
 	}
 
@@ -185,6 +192,32 @@ public class WebDataBinder extends DataBinder {
 
 
 	/**
+	 * Check if a value can be resolved if {@link #getFieldDefaultPrefix()}
+	 * or {@link #getFieldMarkerPrefix()} is prepended.
+	 * @param name the name of the value to resolve
+	 * @param type the type of value expected
+	 * @param resolver delegate resolver to use for the checks
+	 * @return the resolved value, or {@code null}
+	 * @since 6.1
+	 */
+	protected @Nullable Object resolvePrefixValue(String name, Class<?> type, BiFunction<String, Class<?>, Object> resolver) {
+		Object value = resolver.apply(name, type);
+		if (value == null) {
+			String prefix = getFieldDefaultPrefix();
+			if (prefix != null) {
+				value = resolver.apply(prefix + name, type);
+			}
+			if (value == null) {
+				prefix = getFieldMarkerPrefix();
+				if (prefix != null && resolver.apply(prefix + name, type) != null) {
+					value = getEmptyValue(type);
+				}
+			}
+		}
+		return value;
+	}
+
+	/**
 	 * This implementation performs a field default and marker check
 	 * before delegating to the superclass binding process.
 	 * @see #checkFieldDefaults
@@ -194,6 +227,7 @@ public class WebDataBinder extends DataBinder {
 	protected void doBind(MutablePropertyValues mpvs) {
 		checkFieldDefaults(mpvs);
 		checkFieldMarkers(mpvs);
+		adaptEmptyArrayIndices(mpvs);
 		super.doBind(mpvs);
 	}
 
@@ -250,6 +284,27 @@ public class WebDataBinder extends DataBinder {
 	}
 
 	/**
+	 * Check for property values with names that end on {@code "[]"}. This is
+	 * used by some clients for array syntax without an explicit index value.
+	 * If such values are found, drop the brackets to adapt to the expected way
+	 * of expressing the same for data binding purposes.
+	 * @param mpvs the property values to be bound (can be modified)
+	 * @since 5.3
+	 */
+	protected void adaptEmptyArrayIndices(MutablePropertyValues mpvs) {
+		for (PropertyValue pv : mpvs.getPropertyValues()) {
+			String name = pv.getName();
+			if (name.endsWith("[]")) {
+				String field = name.substring(0, name.length() - 2);
+				if (getPropertyAccessor().isWritableProperty(field) && !mpvs.contains(field)) {
+					mpvs.add(field, pv.getValue());
+				}
+				mpvs.removePropertyValue(pv);
+			}
+		}
+	}
+
+	/**
 	 * Determine an empty value for the specified field.
 	 * <p>The default implementation delegates to {@link #getEmptyValue(Class)}
 	 * if the field type is known, otherwise falls back to {@code null}.
@@ -257,8 +312,7 @@ public class WebDataBinder extends DataBinder {
 	 * @param fieldType the type of the field
 	 * @return the empty value (for most fields: {@code null})
 	 */
-	@Nullable
-	protected Object getEmptyValue(String field, @Nullable Class<?> fieldType) {
+	protected @Nullable Object getEmptyValue(String field, @Nullable Class<?> fieldType) {
 		return (fieldType != null ? getEmptyValue(fieldType) : null);
 	}
 
@@ -276,8 +330,7 @@ public class WebDataBinder extends DataBinder {
 	 * @return the empty value (for most fields: {@code null})
 	 * @since 5.0
 	 */
-	@Nullable
-	public Object getEmptyValue(Class<?> fieldType) {
+	public @Nullable Object getEmptyValue(Class<?> fieldType) {
 		try {
 			if (boolean.class == fieldType || Boolean.class == fieldType) {
 				// Special handling of boolean property.
@@ -285,7 +338,7 @@ public class WebDataBinder extends DataBinder {
 			}
 			else if (fieldType.isArray()) {
 				// Special handling of array property.
-				return Array.newInstance(fieldType.getComponentType(), 0);
+				return Array.newInstance(fieldType.componentType(), 0);
 			}
 			else if (Collection.class.isAssignableFrom(fieldType)) {
 				return CollectionFactory.createCollection(fieldType, 0);

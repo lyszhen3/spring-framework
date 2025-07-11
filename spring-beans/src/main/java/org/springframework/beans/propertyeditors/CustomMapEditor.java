@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,8 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
@@ -107,9 +108,8 @@ public class CustomMapEditor extends PropertyEditorSupport {
 			// Use the source value as-is, as it matches the target type.
 			super.setValue(value);
 		}
-		else if (value instanceof Map) {
+		else if (value instanceof Map<?, ?> source) {
 			// Convert Map elements.
-			Map<?, ?> source = (Map<?, ?>) value;
 			Map<Object, Object> target = createMap(this.mapType, source.size());
 			source.forEach((key, val) -> target.put(convertKey(key), convertValue(val)));
 			super.setValue(target);
@@ -126,7 +126,7 @@ public class CustomMapEditor extends PropertyEditorSupport {
 	 * @param initialCapacity the initial capacity
 	 * @return the new Map instance
 	 */
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	protected Map<Object, Object> createMap(Class<? extends Map> mapType, int initialCapacity) {
 		if (!mapType.isInterface()) {
 			try {
@@ -197,8 +197,7 @@ public class CustomMapEditor extends PropertyEditorSupport {
 	 * there is no appropriate text representation.
 	 */
 	@Override
-	@Nullable
-	public String getAsText() {
+	public @Nullable String getAsText() {
 		return null;
 	}
 

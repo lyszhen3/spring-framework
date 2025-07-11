@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,19 +23,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.SpringJUnitJupiterTestSuite;
 import org.springframework.test.context.junit.jupiter.comics.Dog;
 import org.springframework.test.context.junit.jupiter.comics.Person;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests which demonstrate support for autowiring individual
  * parameters in test class constructors using {@link Autowired @Autowired}
  * and {@link Value @Value} with the Spring TestContext Framework and JUnit Jupiter.
- *
- * <p>To run these tests in an IDE that does not have built-in support for the JUnit
- * Platform, simply run {@link SpringJUnitJupiterTestSuite} as a JUnit 4 test.
  *
  * @author Sam Brannen
  * @since 5.0
@@ -64,28 +60,28 @@ class SpringJUnitJupiterConstructorInjectionTests {
 
 	@Test
 	void applicationContextInjected() {
-		assertNotNull(applicationContext, "ApplicationContext should have been injected by Spring");
-		assertEquals(this.dilbert, applicationContext.getBean("dilbert", Person.class));
+		assertThat(applicationContext).as("ApplicationContext should have been injected by Spring").isNotNull();
+		assertThat(applicationContext.getBean("dilbert", Person.class)).isEqualTo(this.dilbert);
 	}
 
 	@Test
 	void beansInjected() {
-		assertNotNull(this.dilbert, "Dilbert should have been @Autowired by Spring");
-		assertEquals("Dilbert", this.dilbert.getName(), "Person's name");
+		assertThat(this.dilbert).as("Dilbert should have been @Autowired by Spring").isNotNull();
+		assertThat(this.dilbert.getName()).as("Person's name").isEqualTo("Dilbert");
 
-		assertNotNull(this.dog, "Dogbert should have been @Autowired by Spring");
-		assertEquals("Dogbert", this.dog.getName(), "Dog's name");
+		assertThat(this.dog).as("Dogbert should have been @Autowired by Spring").isNotNull();
+		assertThat(this.dog.getName()).as("Dog's name").isEqualTo("Dogbert");
 	}
 
 	@Test
 	void propertyPlaceholderInjected() {
-		assertNotNull(this.enigma, "Enigma should have been injected via @Value by Spring");
-		assertEquals(Integer.valueOf(42), this.enigma, "enigma");
+		assertThat(this.enigma).as("Enigma should have been injected via @Value by Spring").isNotNull();
+		assertThat(this.enigma).as("enigma").isEqualTo(42);
 	}
 
 	@Test
 	void testInfoInjected() {
-		assertNotNull(this.testInfo, "TestInfo should have been injected by JUnit");
+		assertThat(this.testInfo).as("TestInfo should have been injected by JUnit").isNotNull();
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,16 +16,16 @@
 
 package org.springframework.web.reactive.config;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import javax.xml.bind.annotation.XmlRootElement;
 
 import com.google.protobuf.Message;
-import org.junit.Test;
+import jakarta.xml.bind.annotation.XmlRootElement;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -41,14 +41,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.HttpMessageReader;
 import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.codec.ServerCodecConfigurer;
-import org.springframework.http.codec.json.Jackson2JsonEncoder;
+import org.springframework.http.codec.json.JacksonJsonEncoder;
 import org.springframework.http.codec.xml.Jaxb2XmlDecoder;
 import org.springframework.http.codec.xml.Jaxb2XmlEncoder;
-import org.springframework.mock.web.test.server.MockServerWebExchange;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.MultiValueMap;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.validation.Validator;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -67,90 +65,56 @@ import org.springframework.web.reactive.result.method.annotation.RequestMappingH
 import org.springframework.web.reactive.result.method.annotation.ResponseBodyResultHandler;
 import org.springframework.web.reactive.result.method.annotation.ResponseEntityResultHandler;
 import org.springframework.web.reactive.result.view.HttpMessageWriterView;
-import org.springframework.web.reactive.result.view.View;
 import org.springframework.web.reactive.result.view.ViewResolutionResultHandler;
 import org.springframework.web.reactive.result.view.ViewResolver;
 import org.springframework.web.reactive.result.view.freemarker.FreeMarkerConfigurer;
 import org.springframework.web.reactive.result.view.freemarker.FreeMarkerViewResolver;
-import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebHandler;
 import org.springframework.web.util.pattern.PathPatternParser;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.springframework.core.ResolvableType.forClass;
 import static org.springframework.core.ResolvableType.forClassWithGenerics;
 import static org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
+import static org.springframework.http.MediaType.APPLICATION_PROTOBUF;
 import static org.springframework.http.MediaType.APPLICATION_XML;
 import static org.springframework.http.MediaType.IMAGE_PNG;
 import static org.springframework.http.MediaType.TEXT_PLAIN;
-import static org.springframework.mock.http.server.reactive.test.MockServerHttpRequest.get;
 
 /**
- * Unit tests for {@link WebFluxConfigurationSupport}.
+ * Tests for {@link WebFluxConfigurationSupport}.
  *
  * @author Rossen Stoyanchev
  */
-public class WebFluxConfigurationSupportTests {
+class WebFluxConfigurationSupportTests {
 
 	@Test
-	public void requestMappingHandlerMapping() throws Exception {
-		ApplicationContext context = loadConfig(WebFluxConfig.class);
-		final Field field = ReflectionUtils.findField(PathPatternParser.class, "matchOptionalTrailingSeparator");
-		ReflectionUtils.makeAccessible(field);
-
-		String name = "requestMappingHandlerMapping";
-		RequestMappingHandlerMapping mapping = context.getBean(name, RequestMappingHandlerMapping.class);
-		assertNotNull(mapping);
-
-		assertEquals(0, mapping.getOrder());
-
-		PathPatternParser patternParser = mapping.getPathPatternParser();
-		assertNotNull(patternParser);
-		boolean matchOptionalTrailingSlash = (boolean) ReflectionUtils.getField(field, patternParser);
-		assertTrue(matchOptionalTrailingSlash);
-
-		name = "webFluxContentTypeResolver";
-		RequestedContentTypeResolver resolver = context.getBean(name, RequestedContentTypeResolver.class);
-		assertSame(resolver, mapping.getContentTypeResolver());
-
-		ServerWebExchange exchange = MockServerWebExchange.from(get("/path").accept(MediaType.APPLICATION_JSON));
-		assertEquals(Collections.singletonList(MediaType.APPLICATION_JSON), resolver.resolveMediaTypes(exchange));
-	}
-
-	@Test
-	public void customPathMatchConfig() {
+	void customPathMatchConfig() {
 		ApplicationContext context = loadConfig(CustomPatchMatchConfig.class);
-		final Field field = ReflectionUtils.findField(PathPatternParser.class, "matchOptionalTrailingSeparator");
-		ReflectionUtils.makeAccessible(field);
 
 		String name = "requestMappingHandlerMapping";
 		RequestMappingHandlerMapping mapping = context.getBean(name, RequestMappingHandlerMapping.class);
-		assertNotNull(mapping);
-
-		PathPatternParser patternParser = mapping.getPathPatternParser();
-		assertNotNull(patternParser);
-		boolean matchOptionalTrailingSlash = (boolean) ReflectionUtils.getField(field, patternParser);
-		assertFalse(matchOptionalTrailingSlash);
+		assertThat(mapping).isNotNull();
 
 		Map<RequestMappingInfo, HandlerMethod> map = mapping.getHandlerMethods();
-		assertEquals(1, map.size());
-		assertEquals(Collections.singleton(new PathPatternParser().parse("/api/user/{id}")),
-				map.keySet().iterator().next().getPatternsCondition().getPatterns());
+		assertThat(map).hasSize(1);
+		assertThat(map.keySet().iterator().next().getPatternsCondition().getPatterns())
+				.isEqualTo(Collections.singleton(new PathPatternParser().parse("/api/user/{id}")));
 	}
 
 	@Test
-	public void requestMappingHandlerAdapter() throws Exception {
+	void requestMappingHandlerAdapter() {
 		ApplicationContext context = loadConfig(WebFluxConfig.class);
 
 		String name = "requestMappingHandlerAdapter";
 		RequestMappingHandlerAdapter adapter = context.getBean(name, RequestMappingHandlerAdapter.class);
-		assertNotNull(adapter);
+		assertThat(adapter).isNotNull();
 
 		List<HttpMessageReader<?>> readers = adapter.getMessageReaders();
-		assertEquals(13, readers.size());
+		assertThat(readers).hasSizeGreaterThanOrEqualTo(15);
 
 		ResolvableType multiValueMapType = forClassWithGenerics(MultiValueMap.class, String.class, String.class);
 
@@ -158,7 +122,7 @@ public class WebFluxConfigurationSupportTests {
 		assertHasMessageReader(readers, forClass(ByteBuffer.class), APPLICATION_OCTET_STREAM);
 		assertHasMessageReader(readers, forClass(String.class), TEXT_PLAIN);
 		assertHasMessageReader(readers, forClass(Resource.class), IMAGE_PNG);
-		assertHasMessageReader(readers, forClass(Message.class), new MediaType("application", "x-protobuf"));
+		assertHasMessageReader(readers, forClass(Message.class), APPLICATION_PROTOBUF);
 		assertHasMessageReader(readers, multiValueMapType, APPLICATION_FORM_URLENCODED);
 		assertHasMessageReader(readers, forClass(TestBean.class), APPLICATION_XML);
 		assertHasMessageReader(readers, forClass(TestBean.class), APPLICATION_JSON);
@@ -166,52 +130,52 @@ public class WebFluxConfigurationSupportTests {
 		assertHasMessageReader(readers, forClass(TestBean.class), null);
 
 		WebBindingInitializer bindingInitializer = adapter.getWebBindingInitializer();
-		assertNotNull(bindingInitializer);
+		assertThat(bindingInitializer).isNotNull();
 		WebExchangeDataBinder binder = new WebExchangeDataBinder(new Object());
 		bindingInitializer.initBinder(binder);
 
 		name = "webFluxConversionService";
 		ConversionService service = context.getBean(name, ConversionService.class);
-		assertSame(service, binder.getConversionService());
+		assertThat(binder.getConversionService()).isSameAs(service);
 
 		name = "webFluxValidator";
 		Validator validator = context.getBean(name, Validator.class);
-		assertSame(validator, binder.getValidator());
+		assertThat(binder.getValidator()).isSameAs(validator);
 	}
 
 	@Test
-	public void customMessageConverterConfig() throws Exception {
+	void customMessageConverterConfig() {
 		ApplicationContext context = loadConfig(CustomMessageConverterConfig.class);
 
 		String name = "requestMappingHandlerAdapter";
 		RequestMappingHandlerAdapter adapter = context.getBean(name, RequestMappingHandlerAdapter.class);
-		assertNotNull(adapter);
+		assertThat(adapter).isNotNull();
 
 		List<HttpMessageReader<?>> messageReaders = adapter.getMessageReaders();
-		assertEquals(2, messageReaders.size());
+		assertThat(messageReaders).hasSize(2);
 
 		assertHasMessageReader(messageReaders, forClass(String.class), TEXT_PLAIN);
 		assertHasMessageReader(messageReaders, forClass(TestBean.class), APPLICATION_XML);
 	}
 
 	@Test
-	public void responseEntityResultHandler() throws Exception {
+	void responseEntityResultHandler() {
 		ApplicationContext context = loadConfig(WebFluxConfig.class);
 
 		String name = "responseEntityResultHandler";
 		ResponseEntityResultHandler handler = context.getBean(name, ResponseEntityResultHandler.class);
-		assertNotNull(handler);
+		assertThat(handler).isNotNull();
 
-		assertEquals(0, handler.getOrder());
+		assertThat(handler.getOrder()).isEqualTo(0);
 
 		List<HttpMessageWriter<?>> writers = handler.getMessageWriters();
-		assertEquals(11, writers.size());
+		assertThat(writers).hasSizeGreaterThanOrEqualTo(15);
 
 		assertHasMessageWriter(writers, forClass(byte[].class), APPLICATION_OCTET_STREAM);
 		assertHasMessageWriter(writers, forClass(ByteBuffer.class), APPLICATION_OCTET_STREAM);
 		assertHasMessageWriter(writers, forClass(String.class), TEXT_PLAIN);
 		assertHasMessageWriter(writers, forClass(Resource.class), IMAGE_PNG);
-		assertHasMessageWriter(writers, forClass(Message.class), new MediaType("application", "x-protobuf"));
+		assertHasMessageWriter(writers, forClass(Message.class), APPLICATION_PROTOBUF);
 		assertHasMessageWriter(writers, forClass(TestBean.class), APPLICATION_XML);
 		assertHasMessageWriter(writers, forClass(TestBean.class), APPLICATION_JSON);
 		assertHasMessageWriter(writers, forClass(TestBean.class), new MediaType("application", "x-jackson-smile"));
@@ -219,27 +183,27 @@ public class WebFluxConfigurationSupportTests {
 
 		name = "webFluxContentTypeResolver";
 		RequestedContentTypeResolver resolver = context.getBean(name, RequestedContentTypeResolver.class);
-		assertSame(resolver, handler.getContentTypeResolver());
+		assertThat(handler.getContentTypeResolver()).isSameAs(resolver);
 	}
 
 	@Test
-	public void responseBodyResultHandler() throws Exception {
+	void responseBodyResultHandler() {
 		ApplicationContext context = loadConfig(WebFluxConfig.class);
 
 		String name = "responseBodyResultHandler";
 		ResponseBodyResultHandler handler = context.getBean(name, ResponseBodyResultHandler.class);
-		assertNotNull(handler);
+		assertThat(handler).isNotNull();
 
-		assertEquals(100, handler.getOrder());
+		assertThat(handler.getOrder()).isEqualTo(100);
 
 		List<HttpMessageWriter<?>> writers = handler.getMessageWriters();
-		assertEquals(11, writers.size());
+		assertThat(writers).hasSizeGreaterThanOrEqualTo(15);
 
 		assertHasMessageWriter(writers, forClass(byte[].class), APPLICATION_OCTET_STREAM);
 		assertHasMessageWriter(writers, forClass(ByteBuffer.class), APPLICATION_OCTET_STREAM);
 		assertHasMessageWriter(writers, forClass(String.class), TEXT_PLAIN);
 		assertHasMessageWriter(writers, forClass(Resource.class), IMAGE_PNG);
-		assertHasMessageWriter(writers, forClass(Message.class), new MediaType("application", "x-protobuf"));
+		assertHasMessageWriter(writers, forClass(Message.class), APPLICATION_PROTOBUF);
 		assertHasMessageWriter(writers, forClass(TestBean.class), APPLICATION_XML);
 		assertHasMessageWriter(writers, forClass(TestBean.class), APPLICATION_JSON);
 		assertHasMessageWriter(writers, forClass(TestBean.class), new MediaType("application", "x-jackson-smile"));
@@ -247,61 +211,59 @@ public class WebFluxConfigurationSupportTests {
 
 		name = "webFluxContentTypeResolver";
 		RequestedContentTypeResolver resolver = context.getBean(name, RequestedContentTypeResolver.class);
-		assertSame(resolver, handler.getContentTypeResolver());
+		assertThat(handler.getContentTypeResolver()).isSameAs(resolver);
 	}
 
 	@Test
-	public void viewResolutionResultHandler() throws Exception {
+	void viewResolutionResultHandler() {
 		ApplicationContext context = loadConfig(CustomViewResolverConfig.class);
 
 		String name = "viewResolutionResultHandler";
 		ViewResolutionResultHandler handler = context.getBean(name, ViewResolutionResultHandler.class);
-		assertNotNull(handler);
+		assertThat(handler).isNotNull();
 
-		assertEquals(Ordered.LOWEST_PRECEDENCE, handler.getOrder());
+		assertThat(handler.getOrder()).isEqualTo(Ordered.LOWEST_PRECEDENCE);
 
 		List<ViewResolver> resolvers = handler.getViewResolvers();
-		assertEquals(1, resolvers.size());
-		assertEquals(FreeMarkerViewResolver.class, resolvers.get(0).getClass());
+		assertThat(resolvers).hasSize(1);
+		assertThat(resolvers.get(0).getClass()).isEqualTo(FreeMarkerViewResolver.class);
 
-		List<View> views = handler.getDefaultViews();
-		assertEquals(1, views.size());
-
-		MimeType type = MimeTypeUtils.parseMimeType("application/json;charset=UTF-8");
-		assertEquals(type, views.get(0).getSupportedMediaTypes().get(0));
+		MimeType type = MimeTypeUtils.parseMimeType("application/json");
+		assertThat(handler.getDefaultViews()).singleElement().satisfies(view ->
+				assertThat(view.getSupportedMediaTypes()).element(0).isEqualTo(type));
 	}
 
 	@Test
-	public void resourceHandler() throws Exception {
+	void resourceHandler() {
 		ApplicationContext context = loadConfig(CustomResourceHandlingConfig.class);
 
 		String name = "resourceHandlerMapping";
 		AbstractUrlHandlerMapping handlerMapping = context.getBean(name, AbstractUrlHandlerMapping.class);
-		assertNotNull(handlerMapping);
+		assertThat(handlerMapping).isNotNull();
 
-		assertEquals(Ordered.LOWEST_PRECEDENCE - 1, handlerMapping.getOrder());
+		assertThat(handlerMapping.getOrder()).isEqualTo((Ordered.LOWEST_PRECEDENCE - 1));
 
 		SimpleUrlHandlerMapping urlHandlerMapping = (SimpleUrlHandlerMapping) handlerMapping;
 		WebHandler webHandler = (WebHandler) urlHandlerMapping.getUrlMap().get("/images/**");
-		assertNotNull(webHandler);
+		assertThat(webHandler).isNotNull();
 	}
 
 	@Test
-	public void resourceUrlProvider() throws Exception {
+	void resourceUrlProvider() {
 		ApplicationContext context = loadConfig(WebFluxConfig.class);
 
 		String name = "resourceUrlProvider";
 		ResourceUrlProvider resourceUrlProvider = context.getBean(name, ResourceUrlProvider.class);
-		assertNotNull(resourceUrlProvider);
+		assertThat(resourceUrlProvider).isNotNull();
 	}
 
 
-	private void assertHasMessageReader(List<HttpMessageReader<?>> readers, ResolvableType type, MediaType mediaType) {
-		assertTrue(readers.stream().anyMatch(c -> mediaType == null || c.canRead(type, mediaType)));
+	private void assertHasMessageReader(List<HttpMessageReader<?>> readers, ResolvableType type, @Nullable MediaType mediaType) {
+		assertThat(readers.stream().anyMatch(c -> mediaType == null || c.canRead(type, mediaType))).isTrue();
 	}
 
-	private void assertHasMessageWriter(List<HttpMessageWriter<?>> writers, ResolvableType type, MediaType mediaType) {
-		assertTrue(writers.stream().anyMatch(c -> mediaType == null || c.canWrite(type, mediaType)));
+	private void assertHasMessageWriter(List<HttpMessageWriter<?>> writers, ResolvableType type, @Nullable MediaType mediaType) {
+		assertThat(writers.stream().anyMatch(c -> mediaType == null || c.canWrite(type, mediaType))).isTrue();
 	}
 
 	private ApplicationContext loadConfig(Class<?>... configurationClasses) {
@@ -322,7 +284,6 @@ public class WebFluxConfigurationSupportTests {
 
 		@Override
 		public void configurePathMatching(PathMatchConfigurer configurer) {
-			configurer.setUseTrailingSlashMatch(false);
 			configurer.addPathPrefix("/api", HandlerTypePredicate.forAnnotation(RestController.class));
 		}
 
@@ -339,7 +300,7 @@ public class WebFluxConfigurationSupportTests {
 
 		@GetMapping("/{id}")
 		public Principal getUser() {
-			return mock(Principal.class);
+			return mock();
 		}
 	}
 
@@ -350,10 +311,10 @@ public class WebFluxConfigurationSupportTests {
 		@Override
 		protected void configureHttpMessageCodecs(ServerCodecConfigurer configurer) {
 			configurer.registerDefaults(false);
-			configurer.customCodecs().decoder(StringDecoder.textPlainOnly());
-			configurer.customCodecs().decoder(new Jaxb2XmlDecoder());
-			configurer.customCodecs().encoder(CharSequenceEncoder.textPlainOnly());
-			configurer.customCodecs().encoder(new Jaxb2XmlEncoder());
+			configurer.customCodecs().register(StringDecoder.textPlainOnly());
+			configurer.customCodecs().register(new Jaxb2XmlDecoder());
+			configurer.customCodecs().register(CharSequenceEncoder.textPlainOnly());
+			configurer.customCodecs().register(new Jaxb2XmlEncoder());
 		}
 	}
 
@@ -365,7 +326,7 @@ public class WebFluxConfigurationSupportTests {
 		@Override
 		protected void configureViewResolvers(ViewResolverRegistry registry) {
 			registry.freeMarker();
-			registry.defaultViews(new HttpMessageWriterView(new Jackson2JsonEncoder()));
+			registry.defaultViews(new HttpMessageWriterView(new JacksonJsonEncoder()));
 		}
 
 		@Bean

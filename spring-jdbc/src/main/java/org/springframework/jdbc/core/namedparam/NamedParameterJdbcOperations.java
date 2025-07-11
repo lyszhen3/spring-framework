@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,9 @@ package org.springframework.jdbc.core.namedparam;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcOperations;
@@ -27,7 +30,6 @@ import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
-import org.springframework.lang.Nullable;
 
 /**
  * Interface specifying a basic set of JDBC operations allowing the use
@@ -38,6 +40,12 @@ import org.springframework.lang.Nullable;
  * implemented by {@link NamedParameterJdbcTemplate}. This interface is not
  * often used directly, but provides a useful option to enhance testability,
  * as it can easily be mocked or stubbed.
+ *
+ * <p><b>NOTE: As of 6.1, there is a unified JDBC access facade available in
+ * the form of {@link org.springframework.jdbc.core.simple.JdbcClient}.</b>
+ * {@code JdbcClient} provides a fluent API style for common JDBC queries/updates
+ * with flexible use of indexed or named parameters. It delegates to
+ * {@code JdbcOperations}/{@code NamedParameterJdbcOperations} for actual execution.
  *
  * @author Thomas Risberg
  * @author Juergen Hoeller
@@ -68,8 +76,7 @@ public interface NamedParameterJdbcOperations {
 	 * @return a result object returned by the action, or {@code null}
 	 * @throws DataAccessException if there is any problem
 	 */
-	@Nullable
-	<T> T execute(String sql, SqlParameterSource paramSource, PreparedStatementCallback<T> action)
+	<T extends @Nullable Object> T execute(String sql, SqlParameterSource paramSource, PreparedStatementCallback<T> action)
 			throws DataAccessException;
 
 	/**
@@ -87,8 +94,7 @@ public interface NamedParameterJdbcOperations {
 	 * @return a result object returned by the action, or {@code null}
 	 * @throws DataAccessException if there is any problem
 	 */
-	@Nullable
-	<T> T execute(String sql, Map<String, ?> paramMap, PreparedStatementCallback<T> action)
+	<T extends @Nullable Object> T execute(String sql, Map<String, ?> paramMap, PreparedStatementCallback<T> action)
 			throws DataAccessException;
 
 	/**
@@ -104,8 +110,7 @@ public interface NamedParameterJdbcOperations {
 	 * @return a result object returned by the action, or {@code null}
 	 * @throws DataAccessException if there is any problem
 	 */
-	@Nullable
-	<T> T execute(String sql, PreparedStatementCallback<T> action) throws DataAccessException;
+	<T extends @Nullable Object> T execute(String sql, PreparedStatementCallback<T> action) throws DataAccessException;
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a list
@@ -117,8 +122,7 @@ public interface NamedParameterJdbcOperations {
 	 * @return an arbitrary result object, as returned by the ResultSetExtractor
 	 * @throws DataAccessException if the query fails
 	 */
-	@Nullable
-	<T> T query(String sql, SqlParameterSource paramSource, ResultSetExtractor<T> rse)
+	<T extends @Nullable Object> T query(String sql, SqlParameterSource paramSource, ResultSetExtractor<T> rse)
 			throws DataAccessException;
 
 	/**
@@ -130,10 +134,9 @@ public interface NamedParameterJdbcOperations {
 	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
 	 * @param rse object that will extract results
 	 * @return an arbitrary result object, as returned by the ResultSetExtractor
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 */
-	@Nullable
-	<T> T query(String sql, Map<String, ?> paramMap, ResultSetExtractor<T> rse)
+	<T extends @Nullable Object> T query(String sql, Map<String, ?> paramMap, ResultSetExtractor<T> rse)
 			throws DataAccessException;
 
 	/**
@@ -145,10 +148,9 @@ public interface NamedParameterJdbcOperations {
 	 * @param sql the SQL query to execute
 	 * @param rse object that will extract results
 	 * @return an arbitrary result object, as returned by the ResultSetExtractor
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 */
-	@Nullable
-	<T> T query(String sql, ResultSetExtractor<T> rse) throws DataAccessException;
+	<T extends @Nullable Object> T query(String sql, ResultSetExtractor<T> rse) throws DataAccessException;
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a list of
@@ -170,7 +172,7 @@ public interface NamedParameterJdbcOperations {
 	 * @param paramMap map of parameters to bind to the query
 	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
 	 * @param rch object that will extract results, one row at a time
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 */
 	void query(String sql, Map<String, ?> paramMap, RowCallbackHandler rch) throws DataAccessException;
 
@@ -182,7 +184,7 @@ public interface NamedParameterJdbcOperations {
 	 * equivalent to a query call with an empty parameter Map.
 	 * @param sql the SQL query to execute
 	 * @param rch object that will extract results, one row at a time
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 */
 	void query(String sql, RowCallbackHandler rch) throws DataAccessException;
 
@@ -194,9 +196,9 @@ public interface NamedParameterJdbcOperations {
 	 * @param paramSource container of arguments to bind to the query
 	 * @param rowMapper object that will map one object per row
 	 * @return the result List, containing mapped objects
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 */
-	<T> List<T> query(String sql, SqlParameterSource paramSource, RowMapper<T> rowMapper)
+	<T extends @Nullable Object> List<T> query(String sql, SqlParameterSource paramSource, RowMapper<T> rowMapper)
 			throws DataAccessException;
 
 	/**
@@ -208,9 +210,9 @@ public interface NamedParameterJdbcOperations {
 	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
 	 * @param rowMapper object that will map one object per row
 	 * @return the result List, containing mapped objects
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 */
-	<T> List<T> query(String sql, Map<String, ?> paramMap, RowMapper<T> rowMapper)
+	<T extends @Nullable Object> List<T> query(String sql, Map<String, ?> paramMap, RowMapper<T> rowMapper)
 			throws DataAccessException;
 
 	/**
@@ -222,9 +224,40 @@ public interface NamedParameterJdbcOperations {
 	 * @param sql the SQL query to execute
 	 * @param rowMapper object that will map one object per row
 	 * @return the result List, containing mapped objects
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 */
-	<T> List<T> query(String sql, RowMapper<T> rowMapper) throws DataAccessException;
+	<T extends @Nullable Object> List<T> query(String sql, RowMapper<T> rowMapper) throws DataAccessException;
+
+	/**
+	 * Query given SQL to create a prepared statement from SQL and a list
+	 * of arguments to bind to the query, mapping each row to a Java object
+	 * via a RowMapper, and turning it into an iterable and closeable Stream.
+	 * @param sql the SQL query to execute
+	 * @param paramSource container of arguments to bind to the query
+	 * @param rowMapper object that will map one object per row
+	 * @return the result Stream, containing mapped objects, needing to be
+	 * closed once fully processed (for example, through a try-with-resources clause)
+	 * @throws DataAccessException if the query fails
+	 * @since 5.3
+	 */
+	<T extends @Nullable Object> Stream<T> queryForStream(String sql, SqlParameterSource paramSource, RowMapper<T> rowMapper)
+			throws DataAccessException;
+
+	/**
+	 * Query given SQL to create a prepared statement from SQL and a list
+	 * of arguments to bind to the query, mapping each row to a Java object
+	 * via a RowMapper, and turning it into an iterable and closeable Stream.
+	 * @param sql the SQL query to execute
+	 * @param paramMap map of parameters to bind to the query
+	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
+	 * @param rowMapper object that will map one object per row
+	 * @return the result Stream, containing mapped objects, needing to be
+	 * closed once fully processed (for example, through a try-with-resources clause)
+	 * @throws DataAccessException if the query fails
+	 * @since 5.3
+	 */
+	<T extends @Nullable Object> Stream<T> queryForStream(String sql, Map<String, ?> paramMap, RowMapper<T> rowMapper)
+			throws DataAccessException;
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a list
@@ -234,14 +267,12 @@ public interface NamedParameterJdbcOperations {
 	 * @param paramSource container of arguments to bind to the query
 	 * @param rowMapper object that will map one object per row
 	 * @return the single mapped object (may be {@code null} if the given
-	 * {@link RowMapper} returned {@code} null)
+	 * {@link RowMapper} returned {@code null})
 	 * @throws org.springframework.dao.IncorrectResultSizeDataAccessException
-	 * if the query does not return exactly one row, or does not return exactly
-	 * one column in that row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * if the query does not return exactly one row
+	 * @throws DataAccessException if the query fails
 	 */
-	@Nullable
-	<T> T queryForObject(String sql, SqlParameterSource paramSource, RowMapper<T> rowMapper)
+	<T extends @Nullable Object> T queryForObject(String sql, SqlParameterSource paramSource, RowMapper<T> rowMapper)
 			throws DataAccessException;
 
 	/**
@@ -253,14 +284,12 @@ public interface NamedParameterJdbcOperations {
 	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
 	 * @param rowMapper object that will map one object per row
 	 * @return the single mapped object (may be {@code null} if the given
-	 * {@link RowMapper} returned {@code} null)
+	 * {@link RowMapper} returned {@code null})
 	 * @throws org.springframework.dao.IncorrectResultSizeDataAccessException
-	 * if the query does not return exactly one row, or does not return exactly
-	 * one column in that row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * if the query does not return exactly one row
+	 * @throws DataAccessException if the query fails
 	 */
-	@Nullable
-	<T> T queryForObject(String sql, Map<String, ?> paramMap, RowMapper<T> rowMapper)
+	<T extends @Nullable Object> T queryForObject(String sql, Map<String, ?> paramMap, RowMapper<T> rowMapper)
 			throws DataAccessException;
 
 	/**
@@ -273,13 +302,14 @@ public interface NamedParameterJdbcOperations {
 	 * @param requiredType the type that the result object is expected to match
 	 * @return the result object of the required type, or {@code null} in case of SQL NULL
 	 * @throws org.springframework.dao.IncorrectResultSizeDataAccessException
-	 * if the query does not return exactly one row, or does not return exactly
-	 * one column in that row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * if the query does not return exactly one row
+	 * @throws org.springframework.jdbc.IncorrectResultSetColumnCountException
+	 * if the query does not return a row containing a single column
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForObject(String, Class)
+	 * @see org.springframework.jdbc.core.SingleColumnRowMapper
 	 */
-	@Nullable
-	<T> T queryForObject(String sql, SqlParameterSource paramSource, Class<T> requiredType)
+	<T> @Nullable T queryForObject(String sql, SqlParameterSource paramSource, Class<T> requiredType)
 			throws DataAccessException;
 
 	/**
@@ -293,13 +323,13 @@ public interface NamedParameterJdbcOperations {
 	 * @param requiredType the type that the result object is expected to match
 	 * @return the result object of the required type, or {@code null} in case of SQL NULL
 	 * @throws org.springframework.dao.IncorrectResultSizeDataAccessException
-	 * if the query does not return exactly one row, or does not return exactly
-	 * one column in that row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * if the query does not return exactly one row
+	 * @throws org.springframework.jdbc.IncorrectResultSetColumnCountException
+	 * if the query does not return a row containing a single column
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForObject(String, Class)
 	 */
-	@Nullable
-	<T> T queryForObject(String sql, Map<String, ?> paramMap, Class<T> requiredType)
+	<T> @Nullable T queryForObject(String sql, Map<String, ?> paramMap, Class<T> requiredType)
 			throws DataAccessException;
 
 	/**
@@ -312,11 +342,11 @@ public interface NamedParameterJdbcOperations {
 	 * @return the result Map (one entry for each column, using the column name as the key)
 	 * @throws org.springframework.dao.IncorrectResultSizeDataAccessException
 	 * if the query does not return exactly one row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForMap(String)
 	 * @see org.springframework.jdbc.core.ColumnMapRowMapper
 	 */
-	Map<String, Object> queryForMap(String sql, SqlParameterSource paramSource) throws DataAccessException;
+	Map<String, @Nullable Object> queryForMap(String sql, SqlParameterSource paramSource) throws DataAccessException;
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a
@@ -332,11 +362,11 @@ public interface NamedParameterJdbcOperations {
 	 * @return the result Map (one entry for each column, using the column name as the key)
 	 * @throws org.springframework.dao.IncorrectResultSizeDataAccessException
 	 * if the query does not return exactly one row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForMap(String)
 	 * @see org.springframework.jdbc.core.ColumnMapRowMapper
 	 */
-	Map<String, Object> queryForMap(String sql, Map<String, ?> paramMap) throws DataAccessException;
+	Map<String, @Nullable Object> queryForMap(String sql, Map<String, ?> paramMap) throws DataAccessException;
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a
@@ -348,11 +378,11 @@ public interface NamedParameterJdbcOperations {
 	 * @param elementType the required type of element in the result list
 	 * (for example, {@code Integer.class})
 	 * @return a List of objects that match the specified element type
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForList(String, Class)
 	 * @see org.springframework.jdbc.core.SingleColumnRowMapper
 	 */
-	<T> List<T> queryForList(String sql, SqlParameterSource paramSource, Class<T> elementType)
+	<T> List<@Nullable T> queryForList(String sql, SqlParameterSource paramSource, Class<T> elementType)
 			throws DataAccessException;
 
 	/**
@@ -366,11 +396,11 @@ public interface NamedParameterJdbcOperations {
 	 * @param elementType the required type of element in the result list
 	 * (for example, {@code Integer.class})
 	 * @return a List of objects that match the specified element type
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForList(String, Class)
 	 * @see org.springframework.jdbc.core.SingleColumnRowMapper
 	 */
-	<T> List<T> queryForList(String sql, Map<String, ?> paramMap, Class<T> elementType)
+	<T> List<@Nullable T> queryForList(String sql, Map<String, ?> paramMap, Class<T> elementType)
 			throws DataAccessException;
 
 	/**
@@ -383,10 +413,10 @@ public interface NamedParameterJdbcOperations {
 	 * @param sql the SQL query to execute
 	 * @param paramSource container of arguments to bind to the query
 	 * @return a List that contains a Map per row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForList(String)
 	 */
-	List<Map<String, Object>> queryForList(String sql, SqlParameterSource paramSource) throws DataAccessException;
+	List<Map<String, @Nullable Object>> queryForList(String sql, SqlParameterSource paramSource) throws DataAccessException;
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a
@@ -399,25 +429,24 @@ public interface NamedParameterJdbcOperations {
 	 * @param paramMap map of parameters to bind to the query
 	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
 	 * @return a List that contains a Map per row
-	 * @throws org.springframework.dao.DataAccessException if the query fails
+	 * @throws DataAccessException if the query fails
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForList(String)
 	 */
-	List<Map<String, Object>> queryForList(String sql, Map<String, ?> paramMap) throws DataAccessException;
+	List<Map<String, @Nullable Object>> queryForList(String sql, Map<String, ?> paramMap) throws DataAccessException;
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a
-	 * list of arguments to bind to the query, expecting a SqlRowSet.
+	 * list of arguments to bind to the query, expecting an SqlRowSet.
 	 * <p>The results will be mapped to an SqlRowSet which holds the data in a
 	 * disconnected fashion. This wrapper will translate any SQLExceptions thrown.
 	 * <p>Note that, for the default implementation, JDBC RowSet support needs to
-	 * be available at runtime: by default, Sun's {@code com.sun.rowset.CachedRowSetImpl}
-	 * class is used, which is part of JDK 1.5+ and also available separately as part of
-	 * Sun's JDBC RowSet Implementations download (rowset.jar).
+	 * be available at runtime: by default, a standard JDBC {@code CachedRowSet}
+	 * is used.
 	 * @param sql the SQL query to execute
 	 * @param paramSource container of arguments to bind to the query
-	 * @return a SqlRowSet representation (possibly a wrapper around a
+	 * @return an SqlRowSet representation (possibly a wrapper around a
 	 * {@code javax.sql.rowset.CachedRowSet})
-	 * @throws org.springframework.dao.DataAccessException if there is any problem executing the query
+	 * @throws DataAccessException if there is any problem executing the query
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForRowSet(String)
 	 * @see org.springframework.jdbc.core.SqlRowSetResultSetExtractor
 	 * @see javax.sql.rowset.CachedRowSet
@@ -426,19 +455,18 @@ public interface NamedParameterJdbcOperations {
 
 	/**
 	 * Query given SQL to create a prepared statement from SQL and a
-	 * list of arguments to bind to the query, expecting a SqlRowSet.
+	 * list of arguments to bind to the query, expecting an SqlRowSet.
 	 * <p>The results will be mapped to an SqlRowSet which holds the data in a
 	 * disconnected fashion. This wrapper will translate any SQLExceptions thrown.
 	 * <p>Note that, for the default implementation, JDBC RowSet support needs to
-	 * be available at runtime: by default, Sun's {@code com.sun.rowset.CachedRowSetImpl}
-	 * class is used, which is part of JDK 1.5+ and also available separately as part of
-	 * Sun's JDBC RowSet Implementations download (rowset.jar).
+	 * be available at runtime: by default, a standard JDBC {@code CachedRowSet}
+	 * is used.
 	 * @param sql the SQL query to execute
 	 * @param paramMap map of parameters to bind to the query
 	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
-	 * @return a SqlRowSet representation (possibly a wrapper around a
+	 * @return an SqlRowSet representation (possibly a wrapper around a
 	 * {@code javax.sql.rowset.CachedRowSet})
-	 * @throws org.springframework.dao.DataAccessException if there is any problem executing the query
+	 * @throws DataAccessException if there is any problem executing the query
 	 * @see org.springframework.jdbc.core.JdbcTemplate#queryForRowSet(String)
 	 * @see org.springframework.jdbc.core.SqlRowSetResultSetExtractor
 	 * @see javax.sql.rowset.CachedRowSet
@@ -450,7 +478,7 @@ public interface NamedParameterJdbcOperations {
 	 * @param sql the SQL containing named parameters
 	 * @param paramSource container of arguments and SQL types to bind to the query
 	 * @return the number of rows affected
-	 * @throws org.springframework.dao.DataAccessException if there is any problem issuing the update
+	 * @throws DataAccessException if there is any problem issuing the update
 	 */
 	int update(String sql, SqlParameterSource paramSource) throws DataAccessException;
 
@@ -460,20 +488,22 @@ public interface NamedParameterJdbcOperations {
 	 * @param paramMap map of parameters to bind to the query
 	 * (leaving it to the PreparedStatement to guess the corresponding SQL type)
 	 * @return the number of rows affected
-	 * @throws org.springframework.dao.DataAccessException if there is any problem issuing the update
+	 * @throws DataAccessException if there is any problem issuing the update
 	 */
 	int update(String sql, Map<String, ?> paramMap) throws DataAccessException;
 
 	/**
 	 * Issue an update via a prepared statement, binding the given arguments,
 	 * returning generated keys.
+	 * <p>This method requires support for generated keys in the JDBC driver.
 	 * @param sql the SQL containing named parameters
 	 * @param paramSource container of arguments and SQL types to bind to the query
 	 * @param generatedKeyHolder a {@link KeyHolder} that will hold the generated keys
 	 * @return the number of rows affected
-	 * @throws org.springframework.dao.DataAccessException if there is any problem issuing the update
+	 * @throws DataAccessException if there is any problem issuing the update
 	 * @see MapSqlParameterSource
 	 * @see org.springframework.jdbc.support.GeneratedKeyHolder
+	 * @see java.sql.DatabaseMetaData#supportsGetGeneratedKeys()
 	 */
 	int update(String sql, SqlParameterSource paramSource, KeyHolder generatedKeyHolder)
 			throws DataAccessException;
@@ -481,32 +511,79 @@ public interface NamedParameterJdbcOperations {
 	/**
 	 * Issue an update via a prepared statement, binding the given arguments,
 	 * returning generated keys.
+	 * <p>This method requires support for generated keys in the JDBC driver.
 	 * @param sql the SQL containing named parameters
 	 * @param paramSource container of arguments and SQL types to bind to the query
 	 * @param generatedKeyHolder a {@link KeyHolder} that will hold the generated keys
 	 * @param keyColumnNames names of the columns that will have keys generated for them
 	 * @return the number of rows affected
-	 * @throws org.springframework.dao.DataAccessException if there is any problem issuing the update
+	 * @throws DataAccessException if there is any problem issuing the update
 	 * @see MapSqlParameterSource
 	 * @see org.springframework.jdbc.support.GeneratedKeyHolder
+	 * @see java.sql.DatabaseMetaData#supportsGetGeneratedKeys()
 	 */
 	int update(String sql, SqlParameterSource paramSource, KeyHolder generatedKeyHolder, String[] keyColumnNames)
 			throws DataAccessException;
+
+	/**
+	 * Execute a batch using the supplied SQL statement with the batch of supplied arguments.
+	 * @param sql the SQL statement to execute
+	 * @param batchArgs the array of {@link SqlParameterSource} containing the batch of
+	 * arguments for the query
+	 * @return an array containing the numbers of rows affected by each update in the batch
+	 * (may also contain special JDBC-defined negative values for affected rows such as
+	 * {@link java.sql.Statement#SUCCESS_NO_INFO}/{@link java.sql.Statement#EXECUTE_FAILED})
+	 * @throws DataAccessException if there is any problem issuing the update
+	 */
+	int[] batchUpdate(String sql, SqlParameterSource[] batchArgs);
 
 	/**
 	 * Executes a batch using the supplied SQL statement with the batch of supplied arguments.
 	 * @param sql the SQL statement to execute
 	 * @param batchValues the array of Maps containing the batch of arguments for the query
 	 * @return an array containing the numbers of rows affected by each update in the batch
+	 * (may also contain special JDBC-defined negative values for affected rows such as
+	 * {@link java.sql.Statement#SUCCESS_NO_INFO}/{@link java.sql.Statement#EXECUTE_FAILED})
+	 * @throws DataAccessException if there is any problem issuing the update
 	 */
 	int[] batchUpdate(String sql, Map<String, ?>[] batchValues);
 
 	/**
-	 * Execute a batch using the supplied SQL statement with the batch of supplied arguments.
+	 * Execute a batch using the supplied SQL statement with the batch of supplied
+	 * arguments, returning generated keys.
+	 * <p>This method requires support for generated keys in the JDBC driver.
 	 * @param sql the SQL statement to execute
-	 * @param batchArgs the array of {@link SqlParameterSource} containing the batch of arguments for the query
+	 * @param batchArgs the array of {@link SqlParameterSource} containing the batch of
+	 * arguments for the query
+	 * @param generatedKeyHolder a {@link KeyHolder} that will hold the generated keys
 	 * @return an array containing the numbers of rows affected by each update in the batch
+	 * (may also contain special JDBC-defined negative values for affected rows such as
+	 * {@link java.sql.Statement#SUCCESS_NO_INFO}/{@link java.sql.Statement#EXECUTE_FAILED})
+	 * @throws DataAccessException if there is any problem issuing the update
+	 * @since 6.1
+	 * @see org.springframework.jdbc.support.GeneratedKeyHolder
+	 * @see java.sql.DatabaseMetaData#supportsGetGeneratedKeys()
 	 */
-	int[] batchUpdate(String sql, SqlParameterSource[] batchArgs);
+	int[] batchUpdate(String sql, SqlParameterSource[] batchArgs, KeyHolder generatedKeyHolder);
+
+	/**
+	 * Execute a batch using the supplied SQL statement with the batch of supplied arguments,
+	 * returning generated keys.
+	 * <p>This method requires support for generated keys in the JDBC driver.
+	 * @param sql the SQL statement to execute
+	 * @param batchArgs the array of {@link SqlParameterSource} containing the batch of
+	 * arguments for the query
+	 * @param generatedKeyHolder a {@link KeyHolder} that will hold the generated keys
+	 * @param keyColumnNames names of the columns that will have keys generated for them
+	 * @return an array containing the numbers of rows affected by each update in the batch
+	 * (may also contain special JDBC-defined negative values for affected rows such as
+	 * {@link java.sql.Statement#SUCCESS_NO_INFO}/{@link java.sql.Statement#EXECUTE_FAILED})
+	 * @throws DataAccessException if there is any problem issuing the update
+	 * @since 6.1
+	 * @see org.springframework.jdbc.support.GeneratedKeyHolder
+	 * @see java.sql.DatabaseMetaData#supportsGetGeneratedKeys()
+	 */
+	int[] batchUpdate(String sql, SqlParameterSource[] batchArgs, KeyHolder generatedKeyHolder,
+			String[] keyColumnNames);
 
 }

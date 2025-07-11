@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@ package org.springframework.beans;
 
 import java.beans.PropertyChangeEvent;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Superclass for exceptions related to a property access,
@@ -30,8 +30,7 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public abstract class PropertyAccessException extends BeansException {
 
-	@Nullable
-	private final PropertyChangeEvent propertyChangeEvent;
+	private final @Nullable PropertyChangeEvent propertyChangeEvent;
 
 
 	/**
@@ -61,24 +60,21 @@ public abstract class PropertyAccessException extends BeansException {
 	 * <p>May be {@code null}; only available if an actual bean property
 	 * was affected.
 	 */
-	@Nullable
-	public PropertyChangeEvent getPropertyChangeEvent() {
+	public @Nullable PropertyChangeEvent getPropertyChangeEvent() {
 		return this.propertyChangeEvent;
 	}
 
 	/**
 	 * Return the name of the affected property, if available.
 	 */
-	@Nullable
-	public String getPropertyName() {
+	public @Nullable String getPropertyName() {
 		return (this.propertyChangeEvent != null ? this.propertyChangeEvent.getPropertyName() : null);
 	}
 
 	/**
 	 * Return the affected value that was about to be set, if any.
 	 */
-	@Nullable
-	public Object getValue() {
+	public @Nullable Object getValue() {
 		return (this.propertyChangeEvent != null ? this.propertyChangeEvent.getNewValue() : null);
 	}
 

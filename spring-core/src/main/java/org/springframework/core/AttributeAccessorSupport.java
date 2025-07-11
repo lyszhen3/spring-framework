@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,8 +19,10 @@ package org.springframework.core;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -32,6 +34,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
+ * @author Sam Brannen
  * @since 2.0
  */
 @SuppressWarnings("serial")
@@ -53,15 +56,24 @@ public abstract class AttributeAccessorSupport implements AttributeAccessor, Ser
 	}
 
 	@Override
-	@Nullable
-	public Object getAttribute(String name) {
+	public @Nullable Object getAttribute(String name) {
 		Assert.notNull(name, "Name must not be null");
 		return this.attributes.get(name);
 	}
 
 	@Override
-	@Nullable
-	public Object removeAttribute(String name) {
+	@SuppressWarnings("unchecked")
+	public <T> T computeAttribute(String name, Function<String, T> computeFunction) {
+		Assert.notNull(name, "Name must not be null");
+		Assert.notNull(computeFunction, "Compute function must not be null");
+		Object value = this.attributes.computeIfAbsent(name, computeFunction);
+		Assert.state(value != null,
+				() -> String.format("Compute function must not return null for attribute named '%s'", name));
+		return (T) value;
+	}
+
+	@Override
+	public @Nullable Object removeAttribute(String name) {
 		Assert.notNull(name, "Name must not be null");
 		return this.attributes.remove(name);
 	}
@@ -92,9 +104,9 @@ public abstract class AttributeAccessorSupport implements AttributeAccessor, Ser
 
 
 	@Override
-	public boolean equals(Object other) {
-		return (this == other || (other instanceof AttributeAccessorSupport &&
-				this.attributes.equals(((AttributeAccessorSupport) other).attributes)));
+	public boolean equals(@Nullable Object other) {
+		return (this == other || (other instanceof AttributeAccessorSupport that &&
+				this.attributes.equals(that.attributes)));
 	}
 
 	@Override

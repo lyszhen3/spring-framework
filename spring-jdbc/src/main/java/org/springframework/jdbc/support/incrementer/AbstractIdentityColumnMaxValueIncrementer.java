@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,12 +20,16 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
 import javax.sql.DataSource;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.JdbcUtils;
+import org.springframework.util.Assert;
 
 /**
  * Abstract base class for {@link DataFieldMaxValueIncrementer} implementations
@@ -40,7 +44,7 @@ public abstract class AbstractIdentityColumnMaxValueIncrementer extends Abstract
 	private boolean deleteSpecificValues = false;
 
 	/** The current cache of values. */
-	private long[] valueCache;
+	private long @Nullable [] valueCache;
 
 	/** The next id to serve from the value cache. */
 	private int nextValueIndex = -1;
@@ -117,6 +121,7 @@ public abstract class AbstractIdentityColumnMaxValueIncrementer extends Abstract
 				DataSourceUtils.releaseConnection(con, getDataSource());
 			}
 		}
+		Assert.state(this.valueCache != null, "The cache of values can't be null");
 		return this.valueCache[this.nextValueIndex++];
 	}
 
@@ -151,7 +156,7 @@ public abstract class AbstractIdentityColumnMaxValueIncrementer extends Abstract
 			for (int i = 0; i < values.length - 1; i++) {
 				sb.append(", ").append(values[i]);
 			}
-			sb.append(")");
+			sb.append(')');
 		}
 		else {
 			long maxValue = values[values.length - 1];

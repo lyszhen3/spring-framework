@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,19 +19,17 @@ package org.springframework.orm.jpa.vendor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
-import javax.persistence.EntityManager;
-import javax.persistence.spi.PersistenceProvider;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.spi.PersistenceProvider;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.config.TargetDatabase;
 import org.eclipse.persistence.jpa.JpaEntityManager;
-
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link org.springframework.orm.jpa.JpaVendorAdapter} implementation for Eclipse
- * Persistence Services (EclipseLink). Developed and tested against EclipseLink 2.7;
- * backwards-compatible with EclipseLink 2.5 and 2.6 at runtime.
+ * Persistence Services (EclipseLink). Compatible with EclipseLink 3.0/4.0.
  *
  * <p>Exposes EclipseLink's persistence provider and EntityManager extension interface,
  * and adapts {@link AbstractJpaVendorAdapter}'s common configuration settings.
@@ -92,21 +90,20 @@ public class EclipseLinkJpaVendorAdapter extends AbstractJpaVendorAdapter {
 	 * @param database the specified database
 	 * @return the EclipseLink target database name, or {@code null} if none found
 	 */
-	@Nullable
-	protected String determineTargetDatabaseName(Database database) {
-		switch (database) {
-			case DB2: return TargetDatabase.DB2;
-			case DERBY: return TargetDatabase.Derby;
-			case HANA: return TargetDatabase.HANA;
-			case HSQL: return TargetDatabase.HSQL;
-			case INFORMIX: return TargetDatabase.Informix;
-			case MYSQL: return TargetDatabase.MySQL;
-			case ORACLE: return TargetDatabase.Oracle;
-			case POSTGRESQL: return TargetDatabase.PostgreSQL;
-			case SQL_SERVER: return TargetDatabase.SQLServer;
-			case SYBASE: return TargetDatabase.Sybase;
-			default: return null;
-		}
+	protected @Nullable String determineTargetDatabaseName(Database database) {
+		return switch (database) {
+			case DB2 -> TargetDatabase.DB2;
+			case DERBY -> TargetDatabase.Derby;
+			case HANA -> TargetDatabase.HANA;
+			case HSQL -> TargetDatabase.HSQL;
+			case INFORMIX -> TargetDatabase.Informix;
+			case MYSQL -> TargetDatabase.MySQL;
+			case ORACLE -> TargetDatabase.Oracle;
+			case POSTGRESQL -> TargetDatabase.PostgreSQL;
+			case SQL_SERVER -> TargetDatabase.SQLServer;
+			case SYBASE -> TargetDatabase.Sybase;
+			default -> null;
+		};
 	}
 
 	@Override

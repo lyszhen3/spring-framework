@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,16 +16,17 @@
 
 package org.springframework.expression.spel.ast;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.expression.TypedValue;
 import org.springframework.expression.spel.SpelEvaluationException;
 import org.springframework.expression.spel.SpelMessage;
-import org.springframework.lang.Nullable;
 
 /**
  * Represents a reference to a value.  With a reference it is possible to get or set the
  * value. Passing around value references rather than the values themselves can avoid
- * incorrect duplication of operand evaluation. For example in 'list[index++]++' without a
- * value reference for 'list[index++]' it would be necessary to evaluate list[index++]
+ * incorrect duplication of operand evaluation. For example in 'list[index++]++' without
+ * a value reference for 'list[index++]' it would be necessary to evaluate list[index++]
  * twice (once to get the value, once to determine where the value goes) and that would
  * double increment index.
  *
@@ -103,7 +104,8 @@ public interface ValueRef {
 
 		@Override
 		public void setValue(@Nullable Object newValue) {
-			throw new SpelEvaluationException(this.node.pos, SpelMessage.NOT_ASSIGNABLE, this.node.toStringAST());
+			throw new SpelEvaluationException(
+					this.node.getStartPosition(), SpelMessage.NOT_ASSIGNABLE, this.node.toStringAST());
 		}
 
 		@Override

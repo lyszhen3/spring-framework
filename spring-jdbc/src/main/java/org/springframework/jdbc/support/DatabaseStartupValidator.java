@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,14 +20,15 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
+
 import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
-import org.springframework.lang.Nullable;
 
 /**
  * Bean that checks if a database has already started up. To be referenced
@@ -38,6 +39,7 @@ import org.springframework.lang.Nullable;
  * Particularly appropriate for waiting on a slowly starting Oracle database.
  *
  * @author Juergen Hoeller
+ * @author Marten Deinum
  * @since 18.12.2003
  */
 public class DatabaseStartupValidator implements InitializingBean {
@@ -55,11 +57,9 @@ public class DatabaseStartupValidator implements InitializingBean {
 
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private DataSource dataSource;
+	private @Nullable DataSource dataSource;
 
-	@Nullable
-	private String validationQuery;
+	private @Nullable String validationQuery;
 
 	private int interval = DEFAULT_INTERVAL;
 
@@ -75,7 +75,9 @@ public class DatabaseStartupValidator implements InitializingBean {
 
 	/**
 	 * Set the SQL query string to use for validation.
+	 * @deprecated in favor of the JDBC 4.0 connection validation
 	 */
+	@Deprecated(since = "5.3")
 	public void setValidationQuery(String validationQuery) {
 		this.validationQuery = validationQuery;
 	}
@@ -107,9 +109,6 @@ public class DatabaseStartupValidator implements InitializingBean {
 		if (this.dataSource == null) {
 			throw new IllegalArgumentException("Property 'dataSource' is required");
 		}
-		if (this.validationQuery == null) {
-			throw new IllegalArgumentException("Property 'validationQuery' is required");
-		}
 
 		try {
 			boolean validated = false;
@@ -123,17 +122,27 @@ public class DatabaseStartupValidator implements InitializingBean {
 				try {
 					con = this.dataSource.getConnection();
 					if (con == null) {
-						throw new CannotGetJdbcConnectionException("Failed to execute validation query: " +
+						throw new CannotGetJdbcConnectionException("Failed to execute validation: " +
 								"DataSource returned null from getConnection(): " + this.dataSource);
 					}
-					stmt = con.createStatement();
-					stmt.execute(this.validationQuery);
-					validated = true;
+					if (this.validationQuery == null) {
+						validated = con.isValid(this.interval);
+					}
+					else {
+						stmt = con.createStatement();
+						stmt.execute(this.validationQuery);
+						validated = true;
+					}
 				}
 				catch (SQLException ex) {
 					latestEx = ex;
 					if (logger.isDebugEnabled()) {
-						logger.debug("Validation query [" + this.validationQuery + "] threw exception", ex);
+						if (this.validationQuery != null) {
+							logger.debug("Validation query [" + this.validationQuery + "] threw exception", ex);
+						}
+						else {
+							logger.debug("Validation check threw exception", ex);
+						}
 					}
 					if (logger.isInfoEnabled()) {
 						float rest = ((float) (deadLine - System.currentTimeMillis())) / 1000;

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,29 +21,36 @@ import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.lang.Nullable;
 import org.springframework.transaction.interceptor.NoRollbackRuleAttribute;
 import org.springframework.transaction.interceptor.RollbackRuleAttribute;
 import org.springframework.transaction.interceptor.RuleBasedTransactionAttribute;
 import org.springframework.transaction.interceptor.TransactionAttribute;
 
 /**
- * Strategy implementation for parsing JTA 1.2's {@link javax.transaction.Transactional} annotation.
+ * Strategy implementation for parsing JTA 1.2's {@link jakarta.transaction.Transactional} annotation.
  *
  * @author Juergen Hoeller
  * @since 4.0
+ * @see SpringTransactionAnnotationParser
+ * @see Ejb3TransactionAnnotationParser
  */
 @SuppressWarnings("serial")
 public class JtaTransactionAnnotationParser implements TransactionAnnotationParser, Serializable {
 
 	@Override
-	@Nullable
-	public TransactionAttribute parseTransactionAnnotation(AnnotatedElement element) {
+	public boolean isCandidateClass(Class<?> targetClass) {
+		return AnnotationUtils.isCandidateClass(targetClass, jakarta.transaction.Transactional.class);
+	}
+
+	@Override
+	public @Nullable TransactionAttribute parseTransactionAnnotation(AnnotatedElement element) {
 		AnnotationAttributes attributes = AnnotatedElementUtils.getMergedAnnotationAttributes(
-				element, javax.transaction.Transactional.class);
+				element, jakarta.transaction.Transactional.class);
 		if (attributes != null) {
 			return parseTransactionAnnotation(attributes);
 		}
@@ -52,7 +59,7 @@ public class JtaTransactionAnnotationParser implements TransactionAnnotationPars
 		}
 	}
 
-	public TransactionAttribute parseTransactionAnnotation(javax.transaction.Transactional ann) {
+	public TransactionAttribute parseTransactionAnnotation(jakarta.transaction.Transactional ann) {
 		return parseTransactionAnnotation(AnnotationUtils.getAnnotationAttributes(ann, false, false));
 	}
 
@@ -60,7 +67,7 @@ public class JtaTransactionAnnotationParser implements TransactionAnnotationPars
 		RuleBasedTransactionAttribute rbta = new RuleBasedTransactionAttribute();
 
 		rbta.setPropagationBehaviorName(
-				RuleBasedTransactionAttribute.PREFIX_PROPAGATION + attributes.getEnum("value").toString());
+				RuleBasedTransactionAttribute.PREFIX_PROPAGATION + attributes.getEnum("value"));
 
 		List<RollbackRuleAttribute> rollbackRules = new ArrayList<>();
 		for (Class<?> rbRule : attributes.getClassArray("rollbackOn")) {
@@ -76,8 +83,8 @@ public class JtaTransactionAnnotationParser implements TransactionAnnotationPars
 
 
 	@Override
-	public boolean equals(Object other) {
-		return (this == other || other instanceof JtaTransactionAnnotationParser);
+	public boolean equals(@Nullable Object other) {
+		return (other instanceof JtaTransactionAnnotationParser);
 	}
 
 	@Override

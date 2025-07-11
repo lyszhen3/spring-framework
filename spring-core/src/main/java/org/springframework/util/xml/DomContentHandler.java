@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,8 +50,10 @@ class DomContentHandler implements ContentHandler {
 	 */
 	DomContentHandler(Node node) {
 		this.node = node;
-		if (node instanceof Document) {
-			this.document = (Document) node;
+		// The following pattern variable "doc" cannot be named "document" due to lacking
+		// support in Checkstyle: https://github.com/checkstyle/checkstyle/issues/10969
+		if (node instanceof Document doc) {
+			this.document = doc;
 		}
 		else {
 			this.document = node.getOwnerDocument();

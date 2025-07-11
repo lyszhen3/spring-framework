@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,19 +20,20 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.Arrays;
 import java.util.Map;
+
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.remote.JMXServiceURL;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.jmx.JmxException;
 import org.springframework.jmx.MBeanServerNotFoundException;
 import org.springframework.jmx.support.NotificationListenerHolder;
-import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -54,20 +55,15 @@ public class NotificationListenerRegistrar extends NotificationListenerHolder
 
 	private final ConnectorDelegate connector = new ConnectorDelegate();
 
-	@Nullable
-	private MBeanServerConnection server;
+	private @Nullable MBeanServerConnection server;
 
-	@Nullable
-	private JMXServiceURL serviceUrl;
+	private @Nullable JMXServiceURL serviceUrl;
 
-	@Nullable
-	private Map<String, ?> environment;
+	private @Nullable Map<String, ?> environment;
 
-	@Nullable
-	private String agentId;
+	private @Nullable String agentId;
 
-	@Nullable
-	private ObjectName[] actualObjectNames;
+	private ObjectName @Nullable [] actualObjectNames;
 
 
 	/**
@@ -87,14 +83,13 @@ public class NotificationListenerRegistrar extends NotificationListenerHolder
 	}
 
 	/**
-	 * Allow Map access to the environment to be set for the connector,
+	 * Allow {@code Map} access to the environment to be set for the connector,
 	 * with the option to add or override specific entries.
 	 * <p>Useful for specifying entries directly, for example via
-	 * "environment[myKey]". This is particularly useful for
+	 * {@code environment[myKey]}. This is particularly useful for
 	 * adding or overriding entries in child bean definitions.
 	 */
-	@Nullable
-	public Map<String, ?> getEnvironment() {
+	public @Nullable Map<String, ?> getEnvironment() {
 		return this.environment;
 	}
 
@@ -142,7 +137,7 @@ public class NotificationListenerRegistrar extends NotificationListenerHolder
 			this.actualObjectNames = getResolvedObjectNames();
 			if (this.actualObjectNames != null) {
 				if (logger.isDebugEnabled()) {
-					logger.debug("Registering NotificationListener for MBeans " + Arrays.asList(this.actualObjectNames));
+					logger.debug("Registering NotificationListener for MBeans " + Arrays.toString(this.actualObjectNames));
 				}
 				for (ObjectName actualObjectName : this.actualObjectNames) {
 					this.server.addNotificationListener(

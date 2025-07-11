@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,7 @@
 
 package org.springframework.web.reactive.result.view;
 
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Arrays;
@@ -26,11 +27,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.junit.Test;
+import io.reactivex.rxjava3.core.Completable;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import rx.Completable;
 
 import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.core.MethodParameter;
@@ -38,13 +40,10 @@ import org.springframework.core.Ordered;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
-import org.springframework.core.io.buffer.support.DataBufferTestUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.lang.Nullable;
-import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
-import org.springframework.mock.web.test.server.MockServerWebExchange;
 import org.springframework.ui.ConcurrentModel;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -54,13 +53,15 @@ import org.springframework.web.reactive.accept.HeaderContentTypeResolver;
 import org.springframework.web.reactive.accept.RequestedContentTypeResolver;
 import org.springframework.web.server.NotAcceptableStatusException;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.testfixture.http.server.reactive.MockServerHttpResponse;
+import org.springframework.web.testfixture.server.MockServerWebExchange;
 
-import static java.nio.charset.StandardCharsets.*;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.http.MediaType.*;
-import static org.springframework.mock.http.server.reactive.test.MockServerHttpRequest.*;
-import static org.springframework.web.method.ResolvableMethod.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest.get;
+import static org.springframework.web.testfixture.method.ResolvableMethod.on;
 
 /**
  * ViewResolutionResultHandler relying on a canned {@link TestViewResolver}
@@ -68,19 +69,28 @@ import static org.springframework.web.method.ResolvableMethod.*;
  *
  * @author Rossen Stoyanchev
  */
-public class ViewResolutionResultHandlerTests {
+class ViewResolutionResultHandlerTests {
 
 	private final BindingContext bindingContext = new BindingContext();
 
 
 	@Test
-	public void supports() {
+	void supports() {
 		testSupports(on(Handler.class).annotPresent(ModelAttribute.class).resolveReturnType(String.class));
 		testSupports(on(Handler.class).annotNotPresent(ModelAttribute.class).resolveReturnType(String.class));
 		testSupports(on(Handler.class).resolveReturnType(Mono.class, String.class));
 
 		testSupports(on(Handler.class).resolveReturnType(Rendering.class));
 		testSupports(on(Handler.class).resolveReturnType(Mono.class, Rendering.class));
+
+		testSupports(on(Handler.class).resolveReturnType(FragmentsRendering.class));
+		testSupports(on(Handler.class).resolveReturnType(Flux.class, Fragment.class));
+		testSupports(on(Handler.class).resolveReturnType(
+				Flux.class, ResolvableType.forClassWithGenerics(ServerSentEvent.class, Fragment.class)));
+
+		testSupports(on(Handler.class).resolveReturnType(List.class, Fragment.class));
+		testSupports(on(Handler.class).resolveReturnType(
+				Mono.class, ResolvableType.forClassWithGenerics(List.class, Fragment.class)));
 
 		testSupports(on(Handler.class).resolveReturnType(View.class));
 		testSupports(on(Handler.class).resolveReturnType(Mono.class, View.class));
@@ -114,22 +124,27 @@ public class ViewResolutionResultHandlerTests {
 	private void testSupports(MethodParameter returnType, boolean supports) {
 		ViewResolutionResultHandler resultHandler = resultHandler(mock(ViewResolver.class));
 		HandlerResult handlerResult = new HandlerResult(new Object(), null, returnType, this.bindingContext);
-		assertEquals(supports, resultHandler.supports(handlerResult));
+		if (supports) {
+			assertThat(resultHandler.supports(handlerResult)).as("return type [" + returnType + "] should be supported").isTrue();
+		}
+		else {
+			assertThat(resultHandler.supports(handlerResult)).as("return type [" + returnType + "] should not be supported").isFalse();
+		}
 	}
 
 	@Test
-	public void viewResolverOrder() {
+	void viewResolverOrder() {
 		TestViewResolver resolver1 = new TestViewResolver("account");
 		TestViewResolver resolver2 = new TestViewResolver("profile");
 		resolver1.setOrder(2);
 		resolver2.setOrder(1);
 		List<ViewResolver> resolvers = resultHandler(resolver1, resolver2).getViewResolvers();
 
-		assertEquals(Arrays.asList(resolver2, resolver1), resolvers);
+		assertThat(resolvers).isEqualTo(Arrays.asList(resolver2, resolver1));
 	}
 
 	@Test
-	public void handleReturnValueTypes() {
+	void handleReturnValueTypes() {
 		Object returnValue;
 		MethodParameter returnType;
 		ViewResolver resolver = new TestViewResolver("account");
@@ -188,12 +203,26 @@ public class ViewResolutionResultHandlerTests {
 		returnValue = Rendering.view("account").modelAttribute("a", "a1").status(status).header("h", "h1").build();
 		String expected = "account: {a=a1, id=123}";
 		ServerWebExchange exchange = testHandle("/path", returnType, returnValue, expected, resolver);
-		assertEquals(status, exchange.getResponse().getStatusCode());
-		assertEquals("h1", exchange.getResponse().getHeaders().getFirst("h"));
+		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(status);
+		assertThat(exchange.getResponse().getHeaders().getFirst("h")).isEqualTo("h1");
+	}
+
+	@Test // gh-33498
+	void handleRedirect() {
+		HttpStatus status = HttpStatus.MOVED_PERMANENTLY;
+		Rendering returnValue = Rendering.redirectTo("foo").status(status).build();
+		MethodParameter returnType = on(Handler.class).resolveReturnType(Rendering.class);
+		HandlerResult result = new HandlerResult(new Object(), returnValue, returnType, this.bindingContext);
+
+		MockServerWebExchange exchange = MockServerWebExchange.from(get("/path"));
+		resultHandler(new UrlBasedViewResolver()).handleResult(exchange, result).block(Duration.ofSeconds(5));
+
+		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(status);
+		assertThat(exchange.getResponse().getHeaders().getLocation()).isEqualTo(URI.create("foo"));
 	}
 
 	@Test
-	public void handleWithMultipleResolvers() {
+	void handleWithMultipleResolvers() {
 		testHandle("/account",
 				on(Handler.class).annotNotPresent(ModelAttribute.class).resolveReturnType(String.class),
 				"profile", "profile: {id=123}",
@@ -201,7 +230,7 @@ public class ViewResolutionResultHandlerTests {
 	}
 
 	@Test
-	public void defaultViewName() {
+	void defaultViewName() {
 		testDefaultViewName(null, on(Handler.class).annotPresent(ModelAttribute.class).resolveReturnType(String.class));
 		testDefaultViewName(Mono.empty(), on(Handler.class).resolveReturnType(Mono.class, String.class));
 		testDefaultViewName(Mono.empty(), on(Handler.class).resolveReturnType(Mono.class, Void.class));
@@ -227,7 +256,7 @@ public class ViewResolutionResultHandlerTests {
 	}
 
 	@Test
-	public void unresolvedViewName() {
+	void unresolvedViewName() {
 		String returnValue = "account";
 		MethodParameter returnType = on(Handler.class).annotPresent(ModelAttribute.class).resolveReturnType(String.class);
 		HandlerResult result = new HandlerResult(new Object(), returnValue, returnType, this.bindingContext);
@@ -242,7 +271,7 @@ public class ViewResolutionResultHandlerTests {
 	}
 
 	@Test
-	public void contentNegotiation() {
+	void contentNegotiation() {
 		TestBean value = new TestBean("Joe");
 		MethodParameter returnType = on(Handler.class).resolveReturnType(TestBean.class);
 		HandlerResult handlerResult = new HandlerResult(new Object(), value, returnType, this.bindingContext);
@@ -255,7 +284,7 @@ public class ViewResolutionResultHandlerTests {
 				.handleResult(exchange, handlerResult)
 				.block(Duration.ofSeconds(5));
 
-		assertEquals(APPLICATION_JSON, exchange.getResponse().getHeaders().getContentType());
+		assertThat(exchange.getResponse().getHeaders().getContentType()).isEqualTo(APPLICATION_JSON);
 		assertResponseBody(exchange, "jsonView: {" +
 				"org.springframework.validation.BindingResult.testBean=" +
 				"org.springframework.validation.BeanPropertyBindingResult: 0 errors, " +
@@ -264,7 +293,7 @@ public class ViewResolutionResultHandlerTests {
 	}
 
 	@Test
-	public void contentNegotiationWith406() {
+	void contentNegotiationWith406() {
 		TestBean value = new TestBean("Joe");
 		MethodParameter returnType = on(Handler.class).resolveReturnType(TestBean.class);
 		HandlerResult handlerResult = new HandlerResult(new Object(), value, returnType, this.bindingContext);
@@ -280,7 +309,7 @@ public class ViewResolutionResultHandlerTests {
 	}
 
 	@Test  // SPR-15291
-	public void contentNegotiationWithRedirect() {
+	void contentNegotiationWithRedirect() {
 		HandlerResult handlerResult = new HandlerResult(new Object(), "redirect:/",
 				on(Handler.class).annotNotPresent(ModelAttribute.class).resolveReturnType(String.class),
 				this.bindingContext);
@@ -293,8 +322,8 @@ public class ViewResolutionResultHandlerTests {
 		resultHandler.handleResult(exchange, handlerResult).block(Duration.ZERO);
 
 		MockServerHttpResponse response = exchange.getResponse();
-		assertEquals(303, response.getStatusCode().value());
-		assertEquals("/", response.getHeaders().getLocation().toString());
+		assertThat(response.getStatusCode().value()).isEqualTo(303);
+		assertThat(response.getHeaders().getLocation().toString()).isEqualTo("/");
 	}
 
 
@@ -325,7 +354,7 @@ public class ViewResolutionResultHandlerTests {
 
 	private void assertResponseBody(MockServerWebExchange exchange, String responseBody) {
 		StepVerifier.create(exchange.getResponse().getBody())
-				.consumeNextWith(buf -> assertEquals(responseBody, DataBufferTestUtils.dumpString(buf, UTF_8)))
+				.consumeNextWith(buf -> assertThat(buf.toString(UTF_8)).isEqualTo(responseBody))
 				.expectComplete()
 				.verify();
 	}
@@ -392,9 +421,9 @@ public class ViewResolutionResultHandlerTests {
 				response.getHeaders().setContentType(mediaType);
 			}
 			model = new TreeMap<>(model);
-			String value = this.name + ": " + model.toString();
+			String value = this.name + ": " + model;
 			ByteBuffer byteBuffer = ByteBuffer.wrap(value.getBytes(UTF_8));
-			DataBuffer dataBuffer = new DefaultDataBufferFactory().wrap(byteBuffer);
+			DataBuffer dataBuffer = DefaultDataBufferFactory.sharedInstance.wrap(byteBuffer);
 			return response.writeWith(Flux.just(dataBuffer));
 		}
 	}
@@ -429,6 +458,12 @@ public class ViewResolutionResultHandlerTests {
 
 		Rendering rendering() { return null; }
 		Mono<Rendering> monoRendering() { return null; }
+
+		FragmentsRendering fragmentsRendering() { return null; }
+		Flux<Fragment> fragmentFlux() { return null; }
+		Flux<ServerSentEvent<Fragment>> fragmentServerSentEventFlux() { return null; }
+		Mono<List<Fragment>> monoFragmentList() { return null; }
+		List<Fragment> fragmentList() { return null; }
 
 		View view() { return null; }
 		Mono<View> monoView() { return null; }

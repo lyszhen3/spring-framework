@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,10 +17,12 @@
 package org.springframework.web.servlet.view.xslt;
 
 import java.util.Properties;
+
 import javax.xml.transform.ErrorListener;
 import javax.xml.transform.URIResolver;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.web.servlet.view.AbstractUrlBasedView;
 import org.springframework.web.servlet.view.UrlBasedViewResolver;
 
@@ -35,32 +37,26 @@ import org.springframework.web.servlet.view.UrlBasedViewResolver;
  */
 public class XsltViewResolver extends UrlBasedViewResolver {
 
-	@Nullable
-	private String sourceKey;
+	private @Nullable String sourceKey;
 
-	@Nullable
-	private URIResolver uriResolver;
+	private @Nullable URIResolver uriResolver;
 
-	@Nullable
-	private ErrorListener errorListener;
+	private @Nullable ErrorListener errorListener;
 
 	private boolean indent = true;
 
-	@Nullable
-	private Properties outputProperties;
+	private @Nullable Properties outputProperties;
 
 	private boolean cacheTemplates = true;
 
 
+	/**
+	 * This resolver requires {@link XsltView}.
+	 */
 	public XsltViewResolver() {
 		setViewClass(requiredViewClass());
 	}
 
-
-	@Override
-	protected Class<?> requiredViewClass() {
-		return XsltView.class;
-	}
 
 	/**
 	 * Set the name of the model attribute that represents the XSLT Source.
@@ -125,6 +121,16 @@ public class XsltViewResolver extends UrlBasedViewResolver {
 		this.cacheTemplates = cacheTemplates;
 	}
 
+
+	@Override
+	protected Class<?> requiredViewClass() {
+		return XsltView.class;
+	}
+
+	@Override
+	protected AbstractUrlBasedView instantiateView() {
+		return (getViewClass() == XsltView.class ? new XsltView() : super.instantiateView());
+	}
 
 	@Override
 	protected AbstractUrlBasedView buildView(String viewName) throws Exception {

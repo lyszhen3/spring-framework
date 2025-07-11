@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,14 @@
 
 package org.springframework.jms.config;
 
-import javax.jms.MessageListener;
+import jakarta.jms.MessageListener;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.jms.listener.AbstractMessageListenerContainer;
 import org.springframework.jms.listener.MessageListenerContainer;
 import org.springframework.jms.listener.endpoint.JmsActivationSpecConfig;
 import org.springframework.jms.listener.endpoint.JmsMessageEndpointManager;
-import org.springframework.lang.Nullable;
+import org.springframework.util.StringUtils;
 
 /**
  * Base model for a JMS listener endpoint.
@@ -37,23 +38,25 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 
 	private String id = "";
 
-	@Nullable
-	private String destination;
+	private @Nullable String destination;
 
-	@Nullable
-	private String subscription;
+	private @Nullable String subscription;
 
-	@Nullable
-	private String selector;
+	private @Nullable String selector;
 
-	@Nullable
-	private String concurrency;
+	private @Nullable String concurrency;
 
 
+	/**
+	 * Set a custom id for this endpoint.
+	 */
 	public void setId(String id) {
 		this.id = id;
 	}
 
+	/**
+	 * Return the id of this endpoint (possibly generated).
+	 */
 	@Override
 	public String getId() {
 		return this.id;
@@ -69,8 +72,7 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 	/**
 	 * Return the name of the destination for this endpoint.
 	 */
-	@Nullable
-	public String getDestination() {
+	public @Nullable String getDestination() {
 		return this.destination;
 	}
 
@@ -84,8 +86,7 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 	/**
 	 * Return the name for the durable subscription, if any.
 	 */
-	@Nullable
-	public String getSubscription() {
+	public @Nullable String getSubscription() {
 		return this.subscription;
 	}
 
@@ -100,15 +101,14 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 	/**
 	 * Return the JMS message selector expression, if any.
 	 */
-	@Nullable
-	public String getSelector() {
+	public @Nullable String getSelector() {
 		return this.selector;
 	}
 
 	/**
 	 * Set a concurrency for the listener, if any.
-	 * <p>The concurrency limits can be a "lower-upper" String, e.g. "5-10", or a simple
-	 * upper limit String, e.g. "10" (the lower limit will be 1 in this case).
+	 * <p>The concurrency limits can be a "lower-upper" String, for example, "5-10", or a simple
+	 * upper limit String, for example, "10" (the lower limit will be 1 in this case).
 	 * <p>The underlying container may or may not support all features. For instance, it
 	 * may not be able to scale: in that case only the upper value is used.
 	 */
@@ -119,16 +119,15 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 	/**
 	 * Return the concurrency for the listener, if any.
 	 */
-	@Nullable
-	public String getConcurrency() {
+	public @Nullable String getConcurrency() {
 		return this.concurrency;
 	}
 
 
 	@Override
 	public void setupListenerContainer(MessageListenerContainer listenerContainer) {
-		if (listenerContainer instanceof AbstractMessageListenerContainer) {
-			setupJmsListenerContainer((AbstractMessageListenerContainer) listenerContainer);
+		if (listenerContainer instanceof AbstractMessageListenerContainer abstractContainer) {
+			setupJmsListenerContainer(abstractContainer);
 		}
 		else {
 			new JcaEndpointConfigurer().configureEndpoint(listenerContainer);
@@ -136,6 +135,9 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 	}
 
 	private void setupJmsListenerContainer(AbstractMessageListenerContainer listenerContainer) {
+		if (StringUtils.hasText(getId())) {
+			listenerContainer.setBeanName(getId());
+		}
 		if (getDestination() != null) {
 			listenerContainer.setDestinationName(getDestination());
 		}
@@ -167,9 +169,9 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 	 */
 	protected StringBuilder getEndpointDescription() {
 		StringBuilder result = new StringBuilder();
-		return result.append(getClass().getSimpleName()).append("[").append(this.id).append("] destination=").
+		return result.append(getClass().getSimpleName()).append('[').append(this.id).append("] destination=").
 				append(this.destination).append("' | subscription='").append(this.subscription).
-				append(" | selector='").append(this.selector).append("'");
+				append(" | selector='").append(this.selector).append('\'');
 	}
 
 	@Override
@@ -184,8 +186,8 @@ public abstract class AbstractJmsListenerEndpoint implements JmsListenerEndpoint
 	private class JcaEndpointConfigurer {
 
 		public void configureEndpoint(Object listenerContainer) {
-			if (listenerContainer instanceof JmsMessageEndpointManager) {
-				setupJcaMessageContainer((JmsMessageEndpointManager) listenerContainer);
+			if (listenerContainer instanceof JmsMessageEndpointManager endpointManager) {
+				setupJcaMessageContainer(endpointManager);
 			}
 			else {
 				throw new IllegalArgumentException("Could not configure endpoint with the specified container '" +

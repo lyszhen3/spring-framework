@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,10 @@ package org.springframework.web.reactive.result.view;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.lang.Nullable;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 import org.springframework.util.Assert;
@@ -36,14 +37,11 @@ class DefaultRenderingBuilder implements Rendering.RedirectBuilder {
 
 	private final Object view;
 
-	@Nullable
-	private Model model;
+	private @Nullable Model model;
 
-	@Nullable
-	private HttpStatus status;
+	private @Nullable HttpStatusCode status;
 
-	@Nullable
-	private HttpHeaders headers;
+	private @Nullable HttpHeaders headers;
 
 
 	DefaultRenderingBuilder(Object view) {
@@ -83,8 +81,13 @@ class DefaultRenderingBuilder implements Rendering.RedirectBuilder {
 	}
 
 	@Override
-	public DefaultRenderingBuilder status(HttpStatus status) {
-		this.status = status;
+	public DefaultRenderingBuilder status(HttpStatusCode status) {
+		if (this.view instanceof RedirectView redirectView) {
+			redirectView.setStatusCode(status);
+		}
+		else {
+			this.status = status;
+		}
 		return this;
 	}
 

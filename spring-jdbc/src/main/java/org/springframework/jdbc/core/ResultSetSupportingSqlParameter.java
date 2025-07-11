@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@ package org.springframework.jdbc.core;
 
 import java.sql.ResultSet;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Common base class for ResultSet-supporting SqlParameters like
@@ -29,19 +29,16 @@ import org.springframework.lang.Nullable;
  */
 public class ResultSetSupportingSqlParameter extends SqlParameter {
 
-	@Nullable
-	private ResultSetExtractor<?> resultSetExtractor;
+	private @Nullable ResultSetExtractor<?> resultSetExtractor;
 
-	@Nullable
-	private RowCallbackHandler rowCallbackHandler;
+	private @Nullable RowCallbackHandler rowCallbackHandler;
 
-	@Nullable
-	private RowMapper<?> rowMapper;
+	private @Nullable RowMapper<?> rowMapper;
 
 
 	/**
 	 * Create a new ResultSetSupportingSqlParameter.
-	 * @param name name of the parameter, as used in input and output maps
+	 * @param name the name of the parameter, as used in input and output maps
 	 * @param sqlType the parameter SQL type according to {@code java.sql.Types}
 	 */
 	public ResultSetSupportingSqlParameter(String name, int sqlType) {
@@ -50,7 +47,7 @@ public class ResultSetSupportingSqlParameter extends SqlParameter {
 
 	/**
 	 * Create a new ResultSetSupportingSqlParameter.
-	 * @param name name of the parameter, as used in input and output maps
+	 * @param name the name of the parameter, as used in input and output maps
 	 * @param sqlType the parameter SQL type according to {@code java.sql.Types}
 	 * @param scale the number of digits after the decimal point
 	 * (for DECIMAL and NUMERIC types)
@@ -61,7 +58,7 @@ public class ResultSetSupportingSqlParameter extends SqlParameter {
 
 	/**
 	 * Create a new ResultSetSupportingSqlParameter.
-	 * @param name name of the parameter, as used in input and output maps
+	 * @param name the name of the parameter, as used in input and output maps
 	 * @param sqlType the parameter SQL type according to {@code java.sql.Types}
 	 * @param typeName the type name of the parameter (optional)
 	 */
@@ -71,7 +68,7 @@ public class ResultSetSupportingSqlParameter extends SqlParameter {
 
 	/**
 	 * Create a new ResultSetSupportingSqlParameter.
-	 * @param name name of the parameter, as used in input and output maps
+	 * @param name the name of the parameter, as used in input and output maps
 	 * @param sqlType the parameter SQL type according to {@code java.sql.Types}
 	 * @param rse the {@link ResultSetExtractor} to use for parsing the {@link ResultSet}
 	 */
@@ -82,7 +79,7 @@ public class ResultSetSupportingSqlParameter extends SqlParameter {
 
 	/**
 	 * Create a new ResultSetSupportingSqlParameter.
-	 * @param name name of the parameter, as used in input and output maps
+	 * @param name the name of the parameter, as used in input and output maps
 	 * @param sqlType the parameter SQL type according to {@code java.sql.Types}
 	 * @param rch the {@link RowCallbackHandler} to use for parsing the {@link ResultSet}
 	 */
@@ -93,7 +90,7 @@ public class ResultSetSupportingSqlParameter extends SqlParameter {
 
 	/**
 	 * Create a new ResultSetSupportingSqlParameter.
-	 * @param name name of the parameter, as used in input and output maps
+	 * @param name the name of the parameter, as used in input and output maps
 	 * @param sqlType the parameter SQL type according to {@code java.sql.Types}
 	 * @param rm the {@link RowMapper} to use for parsing the {@link ResultSet}
 	 */
@@ -114,24 +111,21 @@ public class ResultSetSupportingSqlParameter extends SqlParameter {
 	/**
 	 * Return the ResultSetExtractor held by this parameter, if any.
 	 */
-	@Nullable
-	public ResultSetExtractor<?> getResultSetExtractor() {
+	public @Nullable ResultSetExtractor<?> getResultSetExtractor() {
 		return this.resultSetExtractor;
 	}
 
 	/**
 	 * Return the RowCallbackHandler held by this parameter, if any.
 	 */
-	@Nullable
-	public RowCallbackHandler getRowCallbackHandler() {
+	public @Nullable RowCallbackHandler getRowCallbackHandler() {
 		return this.rowCallbackHandler;
 	}
 
 	/**
 	 * Return the RowMapper held by this parameter, if any.
 	 */
-	@Nullable
-	public RowMapper<?> getRowMapper() {
+	public @Nullable RowMapper<?> getRowMapper() {
 		return this.rowMapper;
 	}
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@ package org.springframework.aop.support;
 
 import java.io.Serializable;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Abstract superclass for expression pointcuts,
@@ -33,11 +33,9 @@ import org.springframework.lang.Nullable;
 @SuppressWarnings("serial")
 public abstract class AbstractExpressionPointcut implements ExpressionPointcut, Serializable {
 
-	@Nullable
-	private String location;
+	private @Nullable String location;
 
-	@Nullable
-	private String expression;
+	private @Nullable String expression;
 
 
 	/**
@@ -53,8 +51,7 @@ public abstract class AbstractExpressionPointcut implements ExpressionPointcut, 
 	 * @return location information as a human-readable String,
 	 * or {@code null} if none is available
 	 */
-	@Nullable
-	public String getLocation() {
+	public @Nullable String getLocation() {
 		return this.location;
 	}
 
@@ -78,7 +75,7 @@ public abstract class AbstractExpressionPointcut implements ExpressionPointcut, 
 	 * Called when a new pointcut expression is set.
 	 * The expression should be parsed at this point if possible.
 	 * <p>This implementation is empty.
-	 * @param expression expression to set
+	 * @param expression the expression to set
 	 * @throws IllegalArgumentException if the expression is invalid
 	 * @see #setExpression
 	 */
@@ -89,8 +86,7 @@ public abstract class AbstractExpressionPointcut implements ExpressionPointcut, 
 	 * Return this pointcut's expression.
 	 */
 	@Override
-	@Nullable
-	public String getExpression() {
+	public @Nullable String getExpression() {
 		return this.expression;
 	}
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,8 +18,9 @@ package org.springframework.jndi;
 
 import javax.naming.NamingException;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -28,11 +29,11 @@ import org.springframework.util.StringUtils;
  * providing configurable lookup of a specific JNDI resource.
  *
  * <p>Exposes a {@link #setJndiName "jndiName"} property. This may or may not
- * include the "java:comp/env/" prefix expected by Java EE applications when
+ * include the "java:comp/env/" prefix expected by Jakarta EE applications when
  * accessing a locally mapped (Environmental Naming Context) resource. If it
  * doesn't, the "java:comp/env/" prefix will be prepended if the "resourceRef"
  * property is true (the default is <strong>false</strong>) and no other scheme
- * (e.g. "java:") is given.
+ * (for example, "java:") is given.
  *
  * <p>Subclasses may invoke the {@link #lookup()} method whenever it is appropriate.
  * Some classes might do this on initialization, while others might do it
@@ -49,11 +50,9 @@ import org.springframework.util.StringUtils;
  */
 public abstract class JndiObjectLocator extends JndiLocatorSupport implements InitializingBean {
 
-	@Nullable
-	private String jndiName;
+	private @Nullable String jndiName;
 
-	@Nullable
-	private Class<?> expectedType;
+	private @Nullable Class<?> expectedType;
 
 
 	/**
@@ -69,8 +68,7 @@ public abstract class JndiObjectLocator extends JndiLocatorSupport implements In
 	/**
 	 * Return the JNDI name to look up.
 	 */
-	@Nullable
-	public String getJndiName() {
+	public @Nullable String getJndiName() {
 		return this.jndiName;
 	}
 
@@ -86,8 +84,7 @@ public abstract class JndiObjectLocator extends JndiLocatorSupport implements In
 	 * Return the type that the located JNDI object is supposed
 	 * to be assignable to, if any.
 	 */
-	@Nullable
-	public Class<?> getExpectedType() {
+	public @Nullable Class<?> getExpectedType() {
 		return this.expectedType;
 	}
 

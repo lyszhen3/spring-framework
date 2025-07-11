@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,12 +22,12 @@ import java.util.function.Supplier;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.framework.autoproxy.AbstractBeanFactoryAwareAdvisingPostProcessor;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.function.SingletonSupplier;
 
@@ -36,13 +36,13 @@ import org.springframework.util.function.SingletonSupplier;
  * behavior to any bean that carries the {@link Async} annotation at class or
  * method-level by adding a corresponding {@link AsyncAnnotationAdvisor} to the
  * exposed proxy (either an existing AOP proxy or a newly generated proxy that
- * implements all of the target's interfaces).
+ * implements all the target's interfaces).
  *
  * <p>The {@link TaskExecutor} responsible for the asynchronous execution may
  * be provided as well as the annotation type that indicates a method should be
  * invoked asynchronously. If no annotation type is specified, this post-
  * processor will detect both Spring's {@link Async @Async} annotation as well
- * as the EJB 3.1 {@code javax.ejb.Asynchronous} annotation.
+ * as the EJB 3.1 {@code jakarta.ejb.Asynchronous} annotation.
  *
  * <p>For methods having a {@code void} return type, any exception thrown
  * during the asynchronous method invocation cannot be accessed by the
@@ -77,14 +77,11 @@ public class AsyncAnnotationBeanPostProcessor extends AbstractBeanFactoryAwareAd
 
 	protected final Log logger = LogFactory.getLog(getClass());
 
-	@Nullable
-	private Supplier<Executor> executor;
+	private @Nullable Supplier<? extends @Nullable Executor> executor;
 
-	@Nullable
-	private Supplier<AsyncUncaughtExceptionHandler> exceptionHandler;
+	private @Nullable Supplier<? extends @Nullable AsyncUncaughtExceptionHandler> exceptionHandler;
 
-	@Nullable
-	private Class<? extends Annotation> asyncAnnotationType;
+	private @Nullable Class<? extends Annotation> asyncAnnotationType;
 
 
 
@@ -98,8 +95,8 @@ public class AsyncAnnotationBeanPostProcessor extends AbstractBeanFactoryAwareAd
 	 * applying the corresponding default if a supplier is not resolvable.
 	 * @since 5.1
 	 */
-	public void configure(
-			@Nullable Supplier<Executor> executor, @Nullable Supplier<AsyncUncaughtExceptionHandler> exceptionHandler) {
+	public void configure(@Nullable Supplier<? extends @Nullable Executor> executor,
+			@Nullable Supplier<? extends @Nullable AsyncUncaughtExceptionHandler> exceptionHandler) {
 
 		this.executor = executor;
 		this.exceptionHandler = exceptionHandler;
@@ -130,7 +127,7 @@ public class AsyncAnnotationBeanPostProcessor extends AbstractBeanFactoryAwareAd
 	/**
 	 * Set the 'async' annotation type to be detected at either class or method
 	 * level. By default, both the {@link Async} annotation and the EJB 3.1
-	 * {@code javax.ejb.Asynchronous} annotation will be detected.
+	 * {@code jakarta.ejb.Asynchronous} annotation will be detected.
 	 * <p>This setter property exists so that developers can provide their own
 	 * (non-Spring-specific) annotation type to indicate that a method (or all
 	 * methods of a given class) should be invoked asynchronously.

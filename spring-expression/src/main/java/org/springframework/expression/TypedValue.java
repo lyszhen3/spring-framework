@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,15 @@
 
 package org.springframework.expression;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.convert.TypeDescriptor;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
  * Encapsulates an object and a {@link TypeDescriptor} that describes it.
- * The type descriptor can contain generic declarations that would not
+ *
+ * <p>The type descriptor can contain generic declarations that would not
  * be accessible through a simple {@code getClass()} call on the object.
  *
  * @author Andy Clement
@@ -37,11 +39,9 @@ public class TypedValue {
 	public static final TypedValue NULL = new TypedValue(null);
 
 
-	@Nullable
-	private final Object value;
+	private final @Nullable Object value;
 
-	@Nullable
-	private TypeDescriptor typeDescriptor;
+	private @Nullable TypeDescriptor typeDescriptor;
 
 
 	/**
@@ -66,13 +66,11 @@ public class TypedValue {
 	}
 
 
-	@Nullable
-	public Object getValue() {
+	public @Nullable Object getValue() {
 		return this.value;
 	}
 
-	@Nullable
-	public TypeDescriptor getTypeDescriptor() {
+	public @Nullable TypeDescriptor getTypeDescriptor() {
 		if (this.typeDescriptor == null && this.value != null) {
 			this.typeDescriptor = TypeDescriptor.forObject(this.value);
 		}
@@ -81,18 +79,12 @@ public class TypedValue {
 
 
 	@Override
-	public boolean equals(Object other) {
-		if (this == other) {
-			return true;
-		}
-		if (!(other instanceof TypedValue)) {
-			return false;
-		}
-		TypedValue otherTv = (TypedValue) other;
+	public boolean equals(@Nullable Object other) {
 		// Avoid TypeDescriptor initialization if not necessary
-		return (ObjectUtils.nullSafeEquals(this.value, otherTv.value) &&
-				((this.typeDescriptor == null && otherTv.typeDescriptor == null) ||
-						ObjectUtils.nullSafeEquals(getTypeDescriptor(), otherTv.getTypeDescriptor())));
+		return (this == other || (other instanceof TypedValue that &&
+				ObjectUtils.nullSafeEquals(this.value, that.value) &&
+				((this.typeDescriptor == null && that.typeDescriptor == null) ||
+						ObjectUtils.nullSafeEquals(getTypeDescriptor(), that.getTypeDescriptor()))));
 	}
 
 	@Override

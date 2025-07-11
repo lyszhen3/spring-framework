@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,13 @@
 
 package org.springframework.messaging.simp.config;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.simp.stomp.StompBrokerRelayMessageHandler;
 import org.springframework.messaging.tcp.TcpOperations;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.util.Assert;
 
 /**
@@ -43,27 +45,29 @@ public class StompBrokerRelayRegistration extends AbstractBrokerRegistration {
 
 	private String systemPasscode = "guest";
 
-	@Nullable
-	private Long systemHeartbeatSendInterval;
+	private @Nullable Long systemHeartbeatSendInterval;
 
-	@Nullable
-	private Long systemHeartbeatReceiveInterval;
+	private @Nullable Long systemHeartbeatReceiveInterval;
 
-	@Nullable
-	private String virtualHost;
+	private @Nullable String virtualHost;
 
-	@Nullable
-	private TcpOperations<byte[]> tcpClient;
+	private @Nullable TcpOperations<byte[]> tcpClient;
+
+	private @Nullable TaskScheduler taskScheduler;
 
 	private boolean autoStartup = true;
 
-	@Nullable
-	private String userDestinationBroadcast;
+	private @Nullable String userDestinationBroadcast;
 
-	@Nullable
-	private String userRegistryBroadcast;
+	private @Nullable String userRegistryBroadcast;
 
 
+	/**
+	 * Create a new {@code StompBrokerRelayRegistration}.
+	 * @param clientInboundChannel the inbound channel
+	 * @param clientOutboundChannel the outbound channel
+	 * @param destinationPrefixes the destination prefixes
+	 */
 	public StompBrokerRelayRegistration(SubscribableChannel clientInboundChannel,
 			MessageChannel clientOutboundChannel, String[] destinationPrefixes) {
 
@@ -113,7 +117,7 @@ public class StompBrokerRelayRegistration extends AbstractBrokerRegistration {
 	/**
 	 * Set the login for the shared "system" connection used to send messages to
 	 * the STOMP broker from within the application, i.e. messages not associated
-	 * with a specific client session (e.g. REST/HTTP request handling method).
+	 * with a specific client session (for example, REST/HTTP request handling method).
 	 * <p>By default this is set to "guest".
 	 */
 	public StompBrokerRelayRegistration setSystemLogin(String login) {
@@ -125,7 +129,7 @@ public class StompBrokerRelayRegistration extends AbstractBrokerRegistration {
 	/**
 	 * Set the passcode for the shared "system" connection used to send messages to
 	 * the STOMP broker from within the application, i.e. messages not associated
-	 * with a specific client session (e.g. REST/HTTP request handling method).
+	 * with a specific client session (for example, REST/HTTP request handling method).
 	 * <p>By default this is set to "guest".
 	 */
 	public StompBrokerRelayRegistration setSystemPasscode(String passcode) {
@@ -178,8 +182,27 @@ public class StompBrokerRelayRegistration extends AbstractBrokerRegistration {
 	 * specified are effectively ignored.
 	 * @since 4.3.15
 	 */
-	public void setTcpClient(TcpOperations<byte[]> tcpClient) {
+	public StompBrokerRelayRegistration setTcpClient(TcpOperations<byte[]> tcpClient) {
 		this.tcpClient = tcpClient;
+		return this;
+	}
+
+	/**
+	 * Some STOMP clients (for example, stomp-js) always send heartbeats at a fixed rate
+	 * but others (Spring STOMP client) do so only when no other messages are
+	 * sent. However messages with a non-broker {@link #getDestinationPrefixes()
+	 * destination prefix} aren't forwarded and as a result the broker may deem
+	 * the connection inactive.
+	 * <p>When this {@link TaskScheduler} is set, it is used to reset a count of
+	 * the number of messages sent from client to broker since the beginning of
+	 * the current heartbeat period. This is then used to decide whether to send
+	 * a heartbeat to the broker when ignoring a message with a non-broker
+	 * destination prefix.
+	 * @since 5.3
+	 */
+	public StompBrokerRelayRegistration setTaskScheduler(@Nullable TaskScheduler taskScheduler) {
+		this.taskScheduler = taskScheduler;
+		return this;
 	}
 
 	/**
@@ -199,15 +222,14 @@ public class StompBrokerRelayRegistration extends AbstractBrokerRegistration {
 	 * a chance to try.
 	 * <p>By default this is not set.
 	 * @param destination the destination to broadcast unresolved messages to,
-	 * e.g. "/topic/unresolved-user-destination"
+	 * for example, "/topic/unresolved-user-destination"
 	 */
 	public StompBrokerRelayRegistration setUserDestinationBroadcast(String destination) {
 		this.userDestinationBroadcast = destination;
 		return this;
 	}
 
-	@Nullable
-	protected String getUserDestinationBroadcast() {
+	protected @Nullable String getUserDestinationBroadcast() {
 		return this.userDestinationBroadcast;
 	}
 
@@ -218,21 +240,20 @@ public class StompBrokerRelayRegistration extends AbstractBrokerRegistration {
 	 * users connected to other servers.
 	 * <p>By default this is not set.
 	 * @param destination the destination for broadcasting user registry details,
-	 * e.g. "/topic/simp-user-registry".
+	 * for example, "/topic/simp-user-registry".
 	 */
 	public StompBrokerRelayRegistration setUserRegistryBroadcast(String destination) {
 		this.userRegistryBroadcast = destination;
 		return this;
 	}
 
-	@Nullable
-	protected String getUserRegistryBroadcast() {
+	protected @Nullable String getUserRegistryBroadcast() {
 		return this.userRegistryBroadcast;
 	}
 
 
+	@Override
 	protected StompBrokerRelayMessageHandler getMessageHandler(SubscribableChannel brokerChannel) {
-
 		StompBrokerRelayMessageHandler handler = new StompBrokerRelayMessageHandler(
 				getClientInboundChannel(), getClientOutboundChannel(),
 				brokerChannel, getDestinationPrefixes());
@@ -257,6 +278,9 @@ public class StompBrokerRelayRegistration extends AbstractBrokerRegistration {
 		}
 		if (this.tcpClient != null) {
 			handler.setTcpClient(this.tcpClient);
+		}
+		if (this.taskScheduler != null) {
+			handler.setTaskScheduler(this.taskScheduler);
 		}
 
 		handler.setAutoStartup(this.autoStartup);

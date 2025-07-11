@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2015 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.springframework.core.annotation.AliasFor;
+
 /**
  * {@code @CacheConfig} provides a mechanism for sharing common cache-related
  * settings at the class level.
@@ -32,6 +34,9 @@ import java.lang.annotation.Target;
  * @author Stephane Nicoll
  * @author Sam Brannen
  * @since 4.1
+ * @see Cacheable
+ * @see CachePut
+ * @see CacheEvict
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -39,12 +44,25 @@ import java.lang.annotation.Target;
 public @interface CacheConfig {
 
 	/**
+	 * Alias for {@link #cacheNames}.
+	 * <p>Intended to be used when no other attributes are needed, for example:
+	 * {@code @CacheConfig("books")}.
+	 * @since 6.2.9
+	 */
+	@AliasFor("cacheNames")
+	String[] value() default {};
+
+	/**
 	 * Names of the default caches to consider for caching operations defined
 	 * in the annotated class.
 	 * <p>If none is set at the operation level, these are used instead of the default.
-	 * <p>May be used to determine the target cache (or caches), matching the
-	 * qualifier value or the bean names of a specific bean definition.
+	 * <p>Names may be used to determine the target cache(s), to be resolved via the
+	 * configured {@link #cacheResolver()} which typically delegates to
+	 * {@link org.springframework.cache.CacheManager#getCache}.
+	 * For further details see {@link Cacheable#cacheNames()}.
+	 * @see #value
 	 */
+	@AliasFor("value")
 	String[] cacheNames() default {};
 
 	/**

@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,9 @@
 
 package org.springframework.beans.factory.parsing;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.io.Resource;
-import org.springframework.lang.Nullable;
 
 /**
  * Context that gets passed along a bean definition reading process,
@@ -152,14 +153,14 @@ public class ReaderContext {
 	// Explicit parse events
 
 	/**
-	 * Fire an defaults-registered event.
+	 * Fire a defaults-registered event.
 	 */
 	public void fireDefaultsRegistered(DefaultsDefinition defaultsDefinition) {
 		this.eventListener.defaultsRegistered(defaultsDefinition);
 	}
 
 	/**
-	 * Fire an component-registered event.
+	 * Fire a component-registered event.
 	 */
 	public void fireComponentRegistered(ComponentDefinition componentDefinition) {
 		this.eventListener.componentRegistered(componentDefinition);
@@ -203,8 +204,7 @@ public class ReaderContext {
 	 * @see #getSourceExtractor()
 	 * @see SourceExtractor#extractSource
 	 */
-	@Nullable
-	public Object extractSource(Object sourceCandidate) {
+	public @Nullable Object extractSource(Object sourceCandidate) {
 		return this.sourceExtractor.extractSource(sourceCandidate, this.resource);
 	}
 

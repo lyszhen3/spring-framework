@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,19 +21,20 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
-import javax.faces.context.ExternalContext;
-import javax.faces.context.FacesContext;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpSession;
+
+import jakarta.faces.context.ExternalContext;
+import jakarta.faces.context.FacesContext;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource.StubPropertySource;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.context.ConfigurableWebApplicationContext;
@@ -65,7 +66,7 @@ import org.springframework.web.context.request.WebRequest;
 public abstract class WebApplicationContextUtils {
 
 	private static final boolean jsfPresent =
-			ClassUtils.isPresent("javax.faces.context.FacesContext", RequestContextHolder.class.getClassLoader());
+			ClassUtils.isPresent("jakarta.faces.context.FacesContext", RequestContextHolder.class.getClassLoader());
 
 
 	/**
@@ -95,8 +96,7 @@ public abstract class WebApplicationContextUtils {
 	 * @return the root WebApplicationContext for this web app, or {@code null} if none
 	 * @see org.springframework.web.context.WebApplicationContext#ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE
 	 */
-	@Nullable
-	public static WebApplicationContext getWebApplicationContext(ServletContext sc) {
+	public static @Nullable WebApplicationContext getWebApplicationContext(ServletContext sc) {
 		return getWebApplicationContext(sc, WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
 	}
 
@@ -106,26 +106,25 @@ public abstract class WebApplicationContextUtils {
 	 * @param attrName the name of the ServletContext attribute to look for
 	 * @return the desired WebApplicationContext for this web app, or {@code null} if none
 	 */
-	@Nullable
-	public static WebApplicationContext getWebApplicationContext(ServletContext sc, String attrName) {
+	public static @Nullable WebApplicationContext getWebApplicationContext(ServletContext sc, String attrName) {
 		Assert.notNull(sc, "ServletContext must not be null");
 		Object attr = sc.getAttribute(attrName);
 		if (attr == null) {
 			return null;
 		}
-		if (attr instanceof RuntimeException) {
-			throw (RuntimeException) attr;
+		if (attr instanceof RuntimeException runtimeException) {
+			throw runtimeException;
 		}
-		if (attr instanceof Error) {
-			throw (Error) attr;
+		if (attr instanceof Error error) {
+			throw error;
 		}
-		if (attr instanceof Exception) {
-			throw new IllegalStateException((Exception) attr);
+		if (attr instanceof Exception exception) {
+			throw new IllegalStateException(exception);
 		}
-		if (!(attr instanceof WebApplicationContext)) {
+		if (!(attr instanceof WebApplicationContext wac)) {
 			throw new IllegalStateException("Context attribute is not of type WebApplicationContext: " + attr);
 		}
-		return (WebApplicationContext) attr;
+		return wac;
 	}
 
 	/**
@@ -143,20 +142,19 @@ public abstract class WebApplicationContextUtils {
 	 * @see #getWebApplicationContext(ServletContext)
 	 * @see ServletContext#getAttributeNames()
 	 */
-	@Nullable
-	public static WebApplicationContext findWebApplicationContext(ServletContext sc) {
+	public static @Nullable WebApplicationContext findWebApplicationContext(ServletContext sc) {
 		WebApplicationContext wac = getWebApplicationContext(sc);
 		if (wac == null) {
 			Enumeration<String> attrNames = sc.getAttributeNames();
 			while (attrNames.hasMoreElements()) {
 				String attrName = attrNames.nextElement();
 				Object attrValue = sc.getAttribute(attrName);
-				if (attrValue instanceof WebApplicationContext) {
+				if (attrValue instanceof WebApplicationContext currentWac) {
 					if (wac != null) {
 						throw new IllegalStateException("No unique WebApplicationContext found: more than one " +
 								"DispatcherServlet registered with publishContext=true?");
 					}
-					wac = (WebApplicationContext) attrValue;
+					wac = currentWac;
 				}
 			}
 		}
@@ -295,11 +293,11 @@ public abstract class WebApplicationContextUtils {
 
 		Assert.notNull(sources, "'propertySources' must not be null");
 		String name = StandardServletEnvironment.SERVLET_CONTEXT_PROPERTY_SOURCE_NAME;
-		if (servletContext != null && sources.contains(name) && sources.get(name) instanceof StubPropertySource) {
+		if (servletContext != null && sources.get(name) instanceof StubPropertySource) {
 			sources.replace(name, new ServletContextPropertySource(name, servletContext));
 		}
 		name = StandardServletEnvironment.SERVLET_CONFIG_PROPERTY_SOURCE_NAME;
-		if (servletConfig != null && sources.contains(name) && sources.get(name) instanceof StubPropertySource) {
+		if (servletConfig != null && sources.get(name) instanceof StubPropertySource) {
 			sources.replace(name, new ServletConfigPropertySource(name, servletConfig));
 		}
 	}
@@ -310,10 +308,10 @@ public abstract class WebApplicationContextUtils {
 	 */
 	private static ServletRequestAttributes currentRequestAttributes() {
 		RequestAttributes requestAttr = RequestContextHolder.currentRequestAttributes();
-		if (!(requestAttr instanceof ServletRequestAttributes)) {
+		if (!(requestAttr instanceof ServletRequestAttributes servletRequestAttributes)) {
 			throw new IllegalStateException("Current request is not a servlet request");
 		}
-		return (ServletRequestAttributes) requestAttr;
+		return servletRequestAttributes;
 	}
 
 
